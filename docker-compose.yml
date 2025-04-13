@@ -1,0 +1,97 @@
+version: '3.7'
+
+x-logging:
+  &json-logging
+  driver: json-file
+  options:
+    max-size: "1m"
+    max-file: "3"
+
+services:
+  revproxy:
+    image: ${ASSETMGMT_ARCH:-arm32v7}/nginx:1.27-alpine3.21-perl
+    container_name: nginx.asset-management
+    restart: always
+    environment:
+      - TZ=${ASSETMGMT_TZ:-UTC}
+    volumes:
+      - static-volume:/var/www/static:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/uwsgi_params:/etc/nginx/uwsgi_params:ro
+    logging: *json-logging
+    ports:
+      - ${ASSETMGMT_ACCESS_PORT:-3101}:80
+    depends_on:
+      - django
+    networks:
+      - frontend-link
+
+  django:
+    build:
+      context: ./django
+      dockerfile: Dockerfile
+      args:
+        ARCHITECTURE: ${ASSETMGMT_ARCH:-arm32v7}
+        TZ: ${ASSETMGMT_TZ:-UTC}
+    image: django.asset-management
+    container_name: django.asset-management
+    restart: always
+    env_file:
+      - ./env_files/django/.env
+      - ./env_files/postgres/.env
+    environment:
+      - DJANGO_DATABASE_HOST=postgres
+      - DJANGO_DATABASE_PORT=5432
+      - LANGUAGE_CODE=${ASSETMGMT_LANGCODE:-en}
+      - TIME_ZONE=${ASSETMGMT_TZ:-UTC}
+    volumes:
+      - static-volume:/var/static
+      - ./django/uwsgi.ini:/uwsgi.ini:ro
+      - ./django/src:/code
+    logging: *json-logging
+    expose:
+      - 8001
+    depends_on:
+      - postgres
+    networks:
+      - frontend-link
+      - backend-link
+
+  postgres:
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+      args:
+        ARCHITECTURE: ${ASSETMGMT_ARCH:-arm32v7}
+        TZ: ${ASSETMGMT_TZ:-UTC}
+    image: postgres.asset-management
+    container_name: postgres.asset-management
+    restart: always
+    env_file:
+      - ./env_files/postgres/.env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - LANG=C
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    volumes:
+      - db-volume:/var/lib/postgresql/data
+    logging: *json-logging
+    expose:
+      - 5432
+    networks:
+      - backend-link
+
+networks:
+  frontend-link:
+    name: frontend-asset-management
+  backend-link:
+    name: backend-asset-management
+
+volumes:
+  static-volume:
+    name: static-asset-management
+    driver: local
+  db-volume:
+    name: postgres-asset-management
+    driver: local
