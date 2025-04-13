@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrubs.html' with title=_("Asset Management - Index") %}
+<div class="row justify-content-center">
+  <div class="col">
+  {% if not user.is_authenticated %}
+    <p>{% trans "Please login from above link." %}</p>
+  {% else %}
+    <p>Hello World</p>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

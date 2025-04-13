@@ -1,0 +1,26 @@
+{% extends 'err_base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrubs.html' with title=_("404 Page Not Found") %}
+<div class="p-4">
+  <div class="d-flex flex-column justify-content-start">
+    <div class="d-flex flex-column">
+      <div>
+        {% trans "Requested URL is not found." %}
+      </div>
+      <div>
+        URL: {{ request.get_full_path }}
+      </div>
+    </div>
+    {% if exception %}
+    <div class="text-danger">
+      {{ exception }}
+    </div>
+    {% endif %}
+    <div>
+      {{ block.super }}
+    </div>
+  </div>
+</div>
+{% endblock %}

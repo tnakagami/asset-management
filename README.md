@@ -42,29 +42,17 @@ But because of using docker environment, you can use the other architecture such
 
     ```bash
     ./wrapper.sh build
-    # or
-    # docker-compose build --no-cache
+    # or docker-compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)"
     ```
 
-1. Type the following commands and then execute them to migrate database.
-
-    ```bash
-    # In the host environment
-    docker-compose run --rm django bash
-    # In the container environment
-    python manage.py makemigrations
-    python manage.py migrate
-    exit
-    # Come back to host environment
-    ```
+1. Check [`README.md`](./django/README.md) to initialize Django application.
 
 ## Execution
 1. Type the following command, and then wait for a moment.
 
     ```bash
     ./wrapper.sh start
-    # or
-    # docker-compose up -d
+    # or docker-compose up -d
     ```
 
 1. Access to `http://your-server-ip-address:your-port-number`.

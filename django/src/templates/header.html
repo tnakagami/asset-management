@@ -1,0 +1,57 @@
+{% load static %}
+{% load i18n %}
+{% load custom_tags %}
+
+<header class="w-100">
+  <div class="row">
+    <div class="col">
+      <nav class="row justify-content-between navbar navbar-expand-md">
+        <h1 class="col-auto text-dark">
+          <a href="{% url 'account:index' %}" class="text-decoration-none text-reset">{% trans "Asset Management" %}</a>
+        </h1>
+        {% if not request|is_login_page %}
+        <div class="col-auto pr-3">
+          <button type="button" class="navbar-toggler" data-bs-toggle="collapse" aria-label="Toggle navigation"
+                  data-bs-target="#assetmgmt-header-content" aria-controls="assetmgmt-header-content" aria-expanded="false">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+        </div>
+        {% endif %}
+        <div class="col-auto collapse navbar-collapse" id="assetmgmt-header-content">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            {% if request|is_login_page  %}
+              {# Do nothing #}
+            {% elif not user.is_authenticated %}
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Language {% if LANGUAGE_CODE|stringformat:"s" != "en" %}({% trans "Language" %}){% endif %}
+              </a>
+              <ul class="dropdown-menu">
+                {% get_available_languages as LANGUAGES %}
+                {% get_language_info_list for LANGUAGES as languages %}
+                {% for language in languages %}
+                  <li>
+                    <a class="dropdown-item" href="/{{ language.code }}">
+                      {{ language.name_local }} ({{ language.code }})
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'account:login' %}">{% trans "Login" %}</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              {# <a class="nav-link" href="{% url 'account:user_profile' pk=user.pk %}">{% trans "User Profile" %}</a> #}
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'account:logout' %}">{% trans "Logout" %}</a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </div>
+</header>

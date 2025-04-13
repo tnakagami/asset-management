@@ -1,11 +1,6 @@
 import os
 
-def get_settings_module():
-  exec_type = os.getenv('EXECUTABLE_TYPE', 'release')
-
-  if exec_type == 'release':
-    ret = 'config.settings.release'
-  else:
-    ret = 'config.settings.development'
-
-  return ret
+def setup_default_setting():
+  exec_type = os.getenv('DJANGO_EXECUTABLE_TYPE', 'development')
+  setting_filename = 'release' if exec_type == 'release' else 'development'
+  os.environ.setdefault('DJANGO_SETTINGS_MODULE', f'config.settings.{setting_filename}')

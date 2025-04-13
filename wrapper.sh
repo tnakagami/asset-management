@@ -59,7 +59,7 @@ while [ -n "$1" ]; do
       ;;
 
     build )
-      docker-compose build --no-cache
+      docker-compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)"
       clean_up
 
       shift

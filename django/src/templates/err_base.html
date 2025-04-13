@@ -1,0 +1,45 @@
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|stringformat:"s" }}">
+  <head>
+    {# Required meta tags #}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />
+    <title>Asset Management</title>
+    {# bootstrap CSS #}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    {% block header %}
+    {% endblock %}
+  </head>
+  <body>
+    <div class="container mx-auto px-2">
+      {# header contents #}
+      <header class="mt-auto w-100">
+        <div class="row">
+          <div class="col">
+            <a href="{% url 'account:index' %}" class="navbar-brand h1">Asset Management</a>
+          </div>
+        </div>
+      </header>
+      {# main contents #}
+      <main class="mt-auto w-100">
+        {% block content %}
+        <span>{% trans "Redirect to the top page after 3 seconds." %}</span>
+        {% endblock %}
+      </main>
+    </div>
+    {# Optional Javascript #}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <script>
+      // redirect process
+      (function(){
+        setTimeout(() => {
+          window.location.href = "{% url 'account:index' %}";
+        }, 3000);
+      }());
+    </script>
+    {% block bodyjs %}
+    {% endblock %}
+  </body>
+</html>

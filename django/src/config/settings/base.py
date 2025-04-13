@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 DEBUG = False
 
 # Application definition
@@ -33,6 +33,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.forms',
+    # apps
+    'account.apps.AccountConfig',
 ]
 
 MIDDLEWARE = [
@@ -48,17 +51,21 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        'APP_DIRS': True,
+        'DIRS': [os.path.join(BASE_DIR, 'templates'), os.path.join(django.__path__[0], 'forms/templates')],
+        'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            'libraries': {
+                'custom_tags': 'custom_templatetags.custom_tags',
+            },
         },
     },
 ]
@@ -77,9 +84,11 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
         'HOST':     os.getenv('DJANGO_DATABASE_HOST'),
         'PORT':     int(os.getenv('DJANGO_DATABASE_PORT', '5432')),
+        'TEST': {
+            'NAME': 'test_db',
+        },
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -103,9 +112,13 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = os.getenv('LANGUAGE_CODE', 'en-us')
+LANGUAGE_CODE = os.getenv('DJANGO_LANGUAGE_CODE', 'en-us')
+LANGUAGES = [
+    ('en', gettext_lazy('English')),
+    ('ja', gettext_lazy('Japanese')),
+]
 
-TIME_ZONE = os.getenv('TIME_ZONE', 'UTC')
+TIME_ZONE = os.getenv('DJANGO_TIME_ZONE', 'UTC')
 
 USE_I18N = True
 
@@ -125,3 +138,55 @@ STATIC_ROOT = '/var/static'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ============================================
+# === Custom settings defined by developer ===
+# ============================================
+# Define custom user model
+AUTH_USER_MODEL = 'account.User'
+AUTHENTICATION_BACKENDS = [
+    'account.backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+LOGIN_URL = 'account:login'
+LOGIN_REDIRECT_URL = 'account:index'
+LOGOUT_URL = 'account:logout'
+LOGOUT_REDIRECT_URL = 'account:index'
+
+# Log setting
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime}[{levelname}] {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'verbose_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['verbose_console'],
+        'level': 'INFO',
+        'propagate': False,
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
