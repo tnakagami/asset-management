@@ -59,7 +59,14 @@
           class="dropdown-menu dropdown-menu-end"
           aria-labelledby="dropdown-avatar-menu"
         >
+          {# User profile #}
+          <li>
+            <a class="dropdown-item" href="{% url 'account:user_profile' pk=user.pk %}">
+              {% trans "User Profile" %}
+            </a>
+          </li>
           {# Logout button #}
+          <li><hr class="dropdown-divider" /></li>
           <li>
             <form action="{% url 'account:logout' %}" method="POST">
               {% csrf_token %}

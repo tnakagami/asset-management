@@ -20,6 +20,7 @@ python = "^3.12"
 django = "^5.2"
 uWSGI = "^2.0.29"
 psycopg = { version="^3.2.6", extras=["c", "pool"] }
+crumbles = "^0.1.2"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.5"

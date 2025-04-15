@@ -26,7 +26,7 @@ Enabled commands:
   logs
     Show logs of each container
 
-  cleanup
+  cleanup [-f]
     Delete invalid containers and images
 
   help | -h
@@ -125,8 +125,12 @@ while [ -n "$1" ]; do
 
     cleanup )
       clean_up
-
       shift
+
+      if [ "$1" = "-f" ]; then
+        docker builder prune -f
+        shift
+      fi
       ;;
 
     * )
