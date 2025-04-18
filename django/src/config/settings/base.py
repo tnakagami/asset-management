@@ -85,6 +85,9 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
         'HOST':     os.getenv('DJANGO_DATABASE_HOST'),
         'PORT':     int(os.getenv('DJANGO_DATABASE_PORT', '5432')),
+        'OPTIONS': {
+            'pool': True,
+        },
         'TEST': {
             'NAME': 'test_db',
         },

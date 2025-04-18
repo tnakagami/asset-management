@@ -1,5 +1,6 @@
 from django.contrib.auth.management.commands import createsuperuser
 from django.core.management import CommandError
+from django.db import DEFAULT_DB_ALIAS
 
 class Command(createsuperuser.Command):
   help = 'Create a superuser with a password non-interactively'
@@ -16,7 +17,7 @@ class Command(createsuperuser.Command):
     username = options.get('username')
     email = options.get('email')
     password = options.get('password')
-    database = options.get('database')
+    database = options.get('database', DEFAULT_DB_ALIAS)
 
     if not (username and email and password):
       raise CommandError('--username, --email and --password are required options')

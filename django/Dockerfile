@@ -12,6 +12,7 @@ LABEL maintainer="tnakagami"
 LABEL description="Build the environment of Django application"
 
 COPY ./pyproject.toml /opt/pyproject.toml
+COPY ./tester.sh /opt/tester.sh
 
 RUN    apk update \
     && apk upgrade \
@@ -36,7 +37,8 @@ RUN    apk update \
          --gid ${GID} --uid ${UID} \
          ${USERNAME} \
     && mkdir -p ${APP_ROOT_PATH} \
-    && chown -R ${USERNAME}:${GROUPNAME} /opt/home
+    && chown -R ${USERNAME}:${GROUPNAME} /opt/home /opt/tester.sh \
+    && chmod 755 /opt/tester.sh
 
 RUN   cd /opt \
     \

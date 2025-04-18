@@ -61,4 +61,26 @@ exit # or press Ctrl + D
 ```
 
 ## Test
-T.B.D
+### Preparation
+In this project, `pytest` and pytest's third packages are used. In particular, `pytest-django` is useful when I develop web applications using the Django framework.
+
+So, I prepare `conftest.py` in the top directory of `app_tests`. The details are shown below.
+
+```python
+# app_tests/conftest.py
+import pytest
+
+@pytest.fixture(scope='session', autouse=True)
+def django_db_setup(django_db_setup):
+  pass
+```
+
+After that, I will create test scripts for each application. See [this directory](./src/app_tests) for detail.
+
+### Execution
+Run the following command to execute pytest in your pc.
+
+```bash
+# In the host environment
+./wrapper.sh test
+```

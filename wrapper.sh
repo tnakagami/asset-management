@@ -26,6 +26,9 @@ Enabled commands:
   logs
     Show logs of each container
 
+  test
+    Execute pytest
+
   cleanup [-f]
     Delete invalid containers and images
 
@@ -119,6 +122,13 @@ while [ -n "$1" ]; do
 
     logs )
       docker-compose logs -t | sort -t "|" -k 1,+2d
+
+      shift
+      ;;
+
+    test )
+      docker-compose up -d
+      docker exec django.asset-management /opt/tester.sh
 
       shift
       ;;
