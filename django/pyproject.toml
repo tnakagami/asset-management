@@ -1,0 +1,62 @@
+[project]
+name = "app"
+version = "0.0.1"
+authors = [{ name="tnakagami", email="61491272+tnakagami@users.noreply.github.com" },]
+maintainers = [{ name="tnakagami", email="61491272+tnakagami@users.noreply.github.com" },]
+description = "Backend application using Django"
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.urls]
+homepage = "https://github.com/tnakagami/asset-management/blob/master/README.md"
+repository = "https://github.com/tnakagami/asset-management"
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+django = "^5.2"
+uWSGI = "^2.0.29"
+psycopg = { version="^3.2.6", extras=["c", "pool"] }
+crumbles = "^0.1.2"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.5"
+pytest-asyncio = "^0.26.0"
+pytest-cov = "^6.1.1"
+pytest-django = "^4.11.1"
+pytest-env = "^1.1.5"
+pytest-factoryboy = "^2.7.0"
+pytest-mock = "^3.14.0"
+pytest-randomly = "^3.16.0"
+factory-boy = "^3.3.3"
+mock = "^5.2.0"
+coverage = "^7.8.0"
+django-webtest = "^1.9.13"
+
+[tool.pytest_env]
+PYTHONPATH = "/opt/app"
+DJANGO_EXECUTABLE_TYPE = "release"
+
+[tool.pytest.ini_options]
+addopts = "-vv --rootdir=/opt/app --cov=. --cov-report=xml --cov-report=html --cov-config=.coveragerc"
+DJANGO_SETTINGS_MODULE = "config.settings.release"
+testpaths = ["app_tests"]
+python_files = ["test_*.py", "tests.py", "*_test.py"]
+markers = [
+  "customtag: mark tests as custom_tags",
+  "model: mark tests as Django Model",
+  "form: mark tests as Django Form",
+  "view: mark tests as Django View",
+  "account: mark tests as account application",
+]
+cache_dir = "/opt/home/.cache"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+asyncio_mode = "strict"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

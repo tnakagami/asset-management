@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("User profile") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="row">
+      <div class="col">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">{% trans "Element" %}</th>
+                <th scope="col">{% trans "Value" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="col">{% trans 'screen name' %}</th>
+                <td>{{ owner.get_full_name }}</td>
+              </tr>
+              <tr>
+                <th scope="col">{% trans 'UID' %}</th>
+                <td>{{ owner.pk }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="row row-cols-1 row-cols-md-2 g-2">
+      <div class="col">
+        <a href="{% url 'account:update_profile' pk=owner.pk %}" class="btn btn-primary w-100">
+          {% trans "Update user profile" %}
+        </a>
+      </div>
+      <div class="col">
+        <a href="{% url 'account:index' %}" class="btn btn-secondary w-100">
+          {% trans "Back" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

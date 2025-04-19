@@ -1,0 +1,51 @@
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|stringformat:"s" }}">
+  <head>
+    {# Required meta tags #}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />
+    <title>Asset Management</title>
+    {# Font Awesome #}
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    {# Google Fonts #}
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    {# MDB #}
+    <link href="https://cdn.jsdelivr.net/npm/mdb-ui-kit@9.0.0/css/mdb.min.css" rel="stylesheet" />
+    <style>
+      .custom-min-width {
+        min-width: 290px;
+      }
+    </style>
+    {% block header %}
+    {% endblock %}
+  </head>
+  <body class="d-flex flex-column vh-100 custom-min-width">
+    <header class="mb-2">
+      {% include "header.html" %}
+    </header>
+    <main class="w-100 mx-auto mb-auto bg-body-tertiary">
+      <div class="container">
+        {% block content %}
+        <span>{% trans "Redirect to the top page after 3 seconds." %}</span>
+        {% endblock %}
+      </div>
+    </main>
+    <footer>
+      {% include "footer.html" %}
+    </footer>
+    {# MDB #}
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mdb-ui-kit@9.0.0/js/mdb.umd.min.js"></script>
+    <script>
+      // redirect process
+      (function(){
+        setTimeout(() => {
+          window.location.href = "{% url 'account:index' %}";
+        }, 3000);
+      }());
+    </script>
+    {% block bodyjs %}
+    {% endblock %}
+  </body>
+</html>

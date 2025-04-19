@@ -1,0 +1,21 @@
+{% extends 'err_base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("405 Method Not Allowed") %}
+<div class="p-4">
+  <div class="d-flex flex-column justify-content-start">
+    <div>
+      {% trans "Requested HTTP Method is not allowd." %}
+    </div>
+    {% if exception %}
+    <div class="text-danger">
+      {{ exception }}
+    </div>
+    {% endif %}
+    <div>
+      {{ block.super }}
+    </div>
+  </div>
+</div>
+{% endblock %}
