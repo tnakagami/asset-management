@@ -1,0 +1,160 @@
+- model: stock.industry
+  pk: 1
+  fields:
+    name: Services
+    is_defensive: True
+- model: stock.industry
+  pk: 2
+  fields:
+    name: Other products
+    is_defensive: True
+- model: stock.industry
+  pk: 3
+  fields:
+    name: Pharmaceuticals
+    is_defensive: True
+- model: stock.industry
+  pk: 4
+  fields:
+    name: Metal products
+    is_defensive: True
+- model: stock.industry
+  pk: 5
+  fields:
+    name: Retail
+    is_defensive: True
+- model: stock.industry
+  pk: 6
+  fields:
+    name: Information and Communication
+    is_defensive: True
+- model: stock.industry
+  pk: 7
+  fields:
+    name: Food
+    is_defensive: True
+- model: stock.industry
+  pk: 8
+  fields:
+    name: Warehousing and Transportation
+    is_defensive: True
+- model: stock.industry
+  pk: 9
+  fields:
+    name: Electricity and Gas
+    is_defensive: True
+- model: stock.industry
+  pk: 10
+  fields:
+    name: Real Estate
+    is_defensive: True
+- model: stock.industry
+  pk: 11
+  fields:
+    name: Insurance
+    is_defensive: True
+- model: stock.industry
+  pk: 12
+  fields:
+    name: Fisheries and Forestry
+    is_defensive: True
+- model: stock.industry
+  pk: 13
+  fields:
+    name: Pulp and Paper
+    is_defensive: True
+- model: stock.industry
+  pk: 14
+  fields:
+    name: Land transportation
+    is_defensive: True
+- model: stock.industry
+  pk: 15
+  fields:
+    name: Glass and stone products
+    is_defensive: False
+- model: stock.industry
+  pk: 16
+  fields:
+    name: Rubber products
+    is_defensive: False
+- model: stock.industry
+  pk: 17
+  fields:
+    name: Other financial services
+    is_defensive: False
+- model: stock.industry
+  pk: 18
+  fields:
+    name: Wholesale
+    is_defensive: False
+- model: stock.industry
+  pk: 19
+  fields:
+    name: Chemical
+    is_defensive: False
+- model: stock.industry
+  pk: 20
+  fields:
+    name: Machinery
+    is_defensive: False
+- model: stock.industry
+  pk: 21
+  fields:
+    name: Banking
+    is_defensive: False
+- model: stock.industry
+  pk: 22
+  fields:
+    name: Construction
+    is_defensive: False
+- model: stock.industry
+  pk: 23
+  fields:
+    name: Mining
+    is_defensive: False
+- model: stock.industry
+  pk: 24
+  fields:
+    name: Textiles
+    is_defensive: False
+- model: stock.industry
+  pk: 25
+  fields:
+    name: Electric equipment
+    is_defensive: False
+- model: stock.industry
+  pk: 26
+  fields:
+    name: Oil and coal products
+    is_defensive: False
+- model: stock.industry
+  pk: 27
+  fields:
+    name: Steel
+    is_defensive: False
+- model: stock.industry
+  pk: 28
+  fields:
+    name: Nonferrous metals
+    is_defensive: False
+- model: stock.industry
+  pk: 29
+  fields:
+    name: Transportation equipment
+    is_defensive: False
+- model: stock.industry
+  pk: 30
+  fields:
+    name: Precision equipment
+    is_defensive: False
+- model: stock.industry
+  pk: 31
+  fields:
+    name: Marine transportation
+    is_defensive: False
+- model: stock.industry
+  pk: 32
+  fields:
+    name: Air transportation
+    is_defensive: False

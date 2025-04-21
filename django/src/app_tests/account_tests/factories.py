@@ -5,7 +5,7 @@ from account import models
 
 faker = FakerFactory.create()
 
-def _clip(target_name, max_length):
+def clip(target_name, max_length):
   if len(target_name) > max_length:
     clipped = target_name[:max_length]
   else:
@@ -18,6 +18,6 @@ class UserFactory(factory.django.DjangoModelFactory):
     model = models.User
 
   username = factory.Sequence(lambda idx: f'user{idx}')
-  email = factory.LazyAttribute(lambda instance: _clip(f'{instance.username}@example.com', 128).lower())
-  screen_name = factory.LazyAttribute(lambda instance: _clip(faker.name(), 128))
+  email = factory.LazyAttribute(lambda instance: clip(f'{instance.username}@example.com', 128).lower())
+  screen_name = factory.LazyAttribute(lambda instance: clip(faker.name(), 128))
   date_joined = factory.LazyFunction(timezone.now)

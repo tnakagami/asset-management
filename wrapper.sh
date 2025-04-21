@@ -26,6 +26,9 @@ Enabled commands:
   logs
     Show logs of each container
 
+  migrate
+    Execute database migration of Django in the docker environment
+
   test
     Execute pytest
 
@@ -122,6 +125,15 @@ while [ -n "$1" ]; do
 
     logs )
       docker-compose logs -t | sort -t "|" -k 1,+2d
+
+      shift
+      ;;
+
+    migrate )
+      docker-compose up -d
+      apps=$(find django/src -type f | grep -oP "(?<=/)([a-zA-Z]+)(?=/apps.py$)" | tr '\n' ' ')
+      commands="python manage.py makemigrations ${apps}; python manage.py migrate"
+      docker exec django.asset-management bash -c "${commands}"
 
       shift
       ;;

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.forms',
     # apps
     'account.apps.AccountConfig',
+    'stock.apps.StockConfig',
 ]
 
 MIDDLEWARE = [

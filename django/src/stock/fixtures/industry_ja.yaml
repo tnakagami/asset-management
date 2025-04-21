@@ -1,0 +1,160 @@
+- model: stock.industry
+  pk: 1
+  fields:
+    name: サービス業
+    is_defensive: True
+- model: stock.industry
+  pk: 2
+  fields:
+    name: その他製品
+    is_defensive: True
+- model: stock.industry
+  pk: 3
+  fields:
+    name: 医薬品
+    is_defensive: True
+- model: stock.industry
+  pk: 4
+  fields:
+    name: 金属製品
+    is_defensive: True
+- model: stock.industry
+  pk: 5
+  fields:
+    name: 小売業
+    is_defensive: True
+- model: stock.industry
+  pk: 6
+  fields:
+    name: 情報・通信
+    is_defensive: True
+- model: stock.industry
+  pk: 7
+  fields:
+    name: 食料品
+    is_defensive: True
+- model: stock.industry
+  pk: 8
+  fields:
+    name: 倉庫・運輸関連業
+    is_defensive: True
+- model: stock.industry
+  pk: 9
+  fields:
+    name: 電気・ガス業
+    is_defensive: True
+- model: stock.industry
+  pk: 10
+  fields:
+    name: 不動産業
+    is_defensive: True
+- model: stock.industry
+  pk: 11
+  fields:
+    name: 保険業
+    is_defensive: True
+- model: stock.industry
+  pk: 12
+  fields:
+    name: 水産・農林業
+    is_defensive: True
+- model: stock.industry
+  pk: 13
+  fields:
+    name: パルプ・紙
+    is_defensive: True
+- model: stock.industry
+  pk: 14
+  fields:
+    name: 陸運業
+    is_defensive: True
+- model: stock.industry
+  pk: 15
+  fields:
+    name: ガラス・土石製品
+    is_defensive: False
+- model: stock.industry
+  pk: 16
+  fields:
+    name: ゴム製品
+    is_defensive: False
+- model: stock.industry
+  pk: 17
+  fields:
+    name: その他金融業
+    is_defensive: False
+- model: stock.industry
+  pk: 18
+  fields:
+    name: 卸売業
+    is_defensive: False
+- model: stock.industry
+  pk: 19
+  fields:
+    name: 化学
+    is_defensive: False
+- model: stock.industry
+  pk: 20
+  fields:
+    name: 機械
+    is_defensive: False
+- model: stock.industry
+  pk: 21
+  fields:
+    name: 銀行業
+    is_defensive: False
+- model: stock.industry
+  pk: 22
+  fields:
+    name: 建設業
+    is_defensive: False
+- model: stock.industry
+  pk: 23
+  fields:
+    name: 鉱業
+    is_defensive: False
+- model: stock.industry
+  pk: 24
+  fields:
+    name: 繊維製品
+    is_defensive: False
+- model: stock.industry
+  pk: 25
+  fields:
+    name: 電気機器
+    is_defensive: False
+- model: stock.industry
+  pk: 26
+  fields:
+    name: 石油・石炭製品
+    is_defensive: False
+- model: stock.industry
+  pk: 27
+  fields:
+    name: 鉄鋼
+    is_defensive: False
+- model: stock.industry
+  pk: 28
+  fields:
+    name: 非鉄金属
+    is_defensive: False
+- model: stock.industry
+  pk: 29
+  fields:
+    name: 輸送用機器
+    is_defensive: False
+- model: stock.industry
+  pk: 30
+  fields:
+    name: 精密機器
+    is_defensive: False
+- model: stock.industry
+  pk: 31
+  fields:
+    name: 海運業
+    is_defensive: False
+- model: stock.industry
+  pk: 32
+  fields:
+    name: 空運業
+    is_defensive: False
