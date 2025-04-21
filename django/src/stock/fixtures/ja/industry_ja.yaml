@@ -158,3 +158,8 @@
   fields:
     name: 空運業
     is_defensive: False
+- model: stock.industry
+  pk: 33
+  fields:
+    name: 証券業
+    is_defensive: False

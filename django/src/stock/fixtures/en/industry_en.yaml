@@ -158,3 +158,8 @@
   fields:
     name: Air transportation
     is_defensive: False
+- model: stock.industry
+  pk: 33
+  fields:
+    name: Securities trading
+    is_defensive: False

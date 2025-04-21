@@ -1,5 +1,7 @@
 #!/bin/bash
 
+readonly DJANGO_CONTAINER_NAME=django.asset-management
+
 function Usage() {
 cat <<- _EOF
 Usage: $0 command [option] ...
@@ -28,6 +30,9 @@ Enabled commands:
 
   migrate
     Execute database migration of Django in the docker environment
+
+  loaddata
+    Load yaml data to Django's database
 
   test
     Execute pytest
@@ -133,14 +138,22 @@ while [ -n "$1" ]; do
       docker-compose up -d
       apps=$(find django/src -type f | grep -oP "(?<=/)([a-zA-Z]+)(?=/apps.py$)" | tr '\n' ' ')
       commands="python manage.py makemigrations ${apps}; python manage.py migrate"
-      docker exec django.asset-management bash -c "${commands}"
+      docker exec ${DJANGO_CONTAINER_NAME} bash -c "${commands}"
+
+      shift
+      ;;
+
+    loaddata )
+      docker-compose up -d
+      xml_file_path='stock/fixtures/${DJANGO_LANGUAGE_CODE}/*.yaml'
+      docker exec ${DJANGO_CONTAINER_NAME} bash -c "python manage.py loaddata ${xml_file_path}"
 
       shift
       ;;
 
     test )
       docker-compose up -d
-      docker exec django.asset-management /opt/tester.sh
+      docker ${DJANGO_CONTAINER_NAME} /opt/tester.sh
 
       shift
       ;;
