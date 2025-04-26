@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load custom_tags %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Register purchsed stock") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" id="purchased-stock-form">
+          {% csrf_token %}
+
+          {{ form }}
+
+          {# Register or cancel #}
+          <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <button
+                type="submit"
+                class="btn btn-primary w-100 custom-boxshadow"
+              >
+                {% trans "Register" %}
+              </button>
+            </div>
+            <div class="col">
+              <a
+                href="{% url 'stock:list_purchased_stock' %}"
+                class="btn btn-secondary w-100 custom-boxshadow"
+              >
+                {% trans "Cancel" %}
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block bodyjs %}
+{% include form.datalist_template_name with form_id='purchased-stock-form' datalist_ids=form.datalist_ids %}
+<script>
+(function () {
+  const _pickerCallback = (event, target) => {
+    if (!event.isClear && event.isValid && event.date) {
+      target.viewDate = event.date;
+    }
+  };
+  const target = document.querySelector('#purchase-date-id');
+  const picker = new tempusDominus.TempusDominus(target, {
+    localization: {
+      format: 'yyyy/MM/dd',
+      dayViewHeaderFormat: { year: 'numeric', month: 'long' },
+    },
+    display: {
+      components: {
+        clock: false,
+      },
+      buttons: {
+        close: true,
+      },
+      icons: {
+        type:     'icons',
+        date:     'fas fa-calendar-week',
+        up:       'fas fa-arrow-up',
+        down:     'fas fa-arrow-down',
+        previous: 'fas fa-chevron-left',
+        next:     'fas fa-chevron-right',
+        clear:    'fas fa-trash',
+        close:    'fas fa-x',
+      },
+      viewMode: 'calendar',
+    },
+  });
+  picker.subscribe('change.td', function (event) {_pickerCallback(event, this);});
+})();
+</script>
+{% endblock %}

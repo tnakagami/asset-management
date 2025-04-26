@@ -1,0 +1,22 @@
+<script>
+(function() {
+  const ids = [
+    {% for target_id in datalist_ids %}"{{ target_id|stringformat:'s' }}",{% endfor %}
+  ];
+  const form = document.querySelector('#{{ form_id }}');
+
+  form.addEventListener('submit', (event) => {
+    // Update dataset values for each relevant field
+    for (const target_id of ids) {
+      const element = document.querySelector(`#${target_id}`);
+      const datalist = element.getAttribute('list');
+      const options = document.querySelectorAll(`#${datalist} option`);
+      const selectedOption = Array.from(options).find((option) => option.label === element.value);
+      // In the case of that valid option exists
+      if (selectedOption) {
+        element.value = selectedOption.dataset.value;
+      }
+    }
+  });
+})();
+</script>

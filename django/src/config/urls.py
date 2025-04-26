@@ -24,4 +24,5 @@ urlpatterns = [
 ]
 urlpatterns += i18n_patterns(
     path('', include('account.urls')),
+    path('stock/', include('stock.urls')),
 )

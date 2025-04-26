@@ -153,7 +153,7 @@ while [ -n "$1" ]; do
 
     test )
       docker-compose up -d
-      docker ${DJANGO_CONTAINER_NAME} /opt/tester.sh
+      docker exec -it ${DJANGO_CONTAINER_NAME} /opt/tester.sh
 
       shift
       ;;

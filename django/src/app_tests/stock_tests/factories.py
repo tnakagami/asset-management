@@ -74,7 +74,12 @@ class PurchasedStockFactory(factory.django.DjangoModelFactory):
     model = models.PurchasedStock
   
   class Params:
-    params = {
+    price_params = {
+      'left_digits': 9,
+      'right_digits': 2,
+      'min_value': 0,
+    }
+    count_params = {
       'min_value': 0,
       'max_value': 1000,
       'step': 1,
@@ -82,5 +87,6 @@ class PurchasedStockFactory(factory.django.DjangoModelFactory):
 
   user = factory.SubFactory(UserFactory)
   stock = factory.SubFactory(StockFactory)
+  price = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.price_params))
   purchase_date = factory.LazyFunction(timezone.now)
-  count = factory.LazyAttribute(lambda instance: faker.pyint(**instance.params))
+  count = factory.LazyAttribute(lambda instance: faker.pyint(**instance.count_params))

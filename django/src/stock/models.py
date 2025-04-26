@@ -49,11 +49,11 @@ class Stock(models.Model):
   class Meta:
     ordering = ('code',)
     constraints = [
-      models.CheckConstraint(condition=models.Q(price__gte=0),    name='price_gte_0'),
-      models.CheckConstraint(condition=models.Q(dividend__gte=0), name='dividend_gte_0'),
-      models.CheckConstraint(condition=models.Q(per__gte=0),      name='per_gte_0'),
-      models.CheckConstraint(condition=models.Q(pbr__gte=0),      name='pbr_gte_0'),
-      models.CheckConstraint(condition=models.Q(eps__gte=0),      name='eps_gte_0'),
+      models.CheckConstraint(condition=models.Q(price__gte=0),    name='price_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(dividend__gte=0), name='dividend_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(per__gte=0),      name='per_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(pbr__gte=0),      name='pbr_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(eps__gte=0),      name='eps_gte_0_in_stock'),
     ]
 
   code = models.CharField(
@@ -161,6 +161,9 @@ class Cash(models.Model):
 class PurchasedStock(models.Model):
   class Meta:
     ordering = ('-purchase_date', 'stock__code')
+    constraints = [
+      models.CheckConstraint(condition=models.Q(price__gte=0), name='price_gte_0_in_purchased_stock'),
+    ]
 
   user = models.ForeignKey(
     UserModel,
@@ -172,8 +175,13 @@ class PurchasedStock(models.Model):
   stock = models.ForeignKey(
     Stock,
     verbose_name=gettext_lazy('Target stock'),
-    help_text=gettext_lazy('This field is shown in admin page only'),
     on_delete=models.CASCADE,
+  )
+  price = models.DecimalField(
+    max_digits=11,
+    decimal_places=2,
+    verbose_name=gettext_lazy('Trade price'),
+    validators=[MinValueValidator(0)],
   )
   purchase_date = models.DateTimeField(
     verbose_name=gettext_lazy('Purchased date'),
@@ -181,15 +189,19 @@ class PurchasedStock(models.Model):
   count = models.IntegerField(
     verbose_name=gettext_lazy('The number of purchased stocks'),
     validators=[MinValueValidator(0)],
-    default=0,
   )
 
   def get_dict(self):
     return {
       'stock': self.stock.get_dict(),
+      'price': float(self.price),
       'purchase_date': convert_timezone(self.purchase_date, is_string=True),
       'count': self.count,
     }
+
+  def save(self, *args, **kwargs):
+    self.full_clean()
+    super().save(*args, **kwargs)
 
   def __str__(self):
     target_time = convert_timezone(self.purchase_date, is_string=True)

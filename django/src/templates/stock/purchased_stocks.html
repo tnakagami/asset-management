@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Purchased stocks") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="row row-cols-1 g-2">
+      <div class="col">
+        <a
+          href="{% url 'stock:register_purchased_stock' %}"
+          class="btn btn-primary w-100 custom-boxshadow"
+        >
+          {% trans "Register purchsed stock" %}
+        </a>
+      </div>
+      <div class="col">
+        {% if pstocks %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">{% trans "Code" %}</th>
+                <th scope="col">{% trans "Stock name" %}</th>
+                <th scope="col">{% trans "Industry" %}</th>
+                <th scope="col">{% trans "Trade date" %}</th>
+                <th scope="col">{% trans "Trade price" %}</th>
+                <th scope="col">{% trans "Count" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider">
+              {% for instance in pstocks %}
+              <tr>
+                <td scope="row">{{ instance.stock.code }}</td>
+                <td>{{ instance.stock.name }}</td>
+                <td>{{ instance.stock.industry }}</td>
+                <td>{{ instance.purchase_date|date:"Y-d-m" }}</td>
+                <td>{{ instance.price }}</td>
+                <td>{{ instance.count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <span>{% trans "There is no purchased stocks. Please add the items from the above button." %}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -3,11 +3,14 @@ import json
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
 from django.utils import timezone as djangoTimeZone
+from django.contrib.auth import get_user_model
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from decimal import Decimal
 from stock import models
 from . import factories
+
+UserModel = get_user_model()
 
 @pytest.fixture
 def get_judgement_funcs():
@@ -272,9 +275,9 @@ def test_add_same_code_in_stock(code):
 ])
 def test_check_valid_inputs_of_stock(options):
   kwargs = {
-    'price':    Decimal('1.23'), 
-    'dividend': Decimal('12.0'), 
-    'per':      Decimal('1.07'), 
+    'price':    Decimal('1.23'),
+    'dividend': Decimal('12.0'),
+    'per':      Decimal('1.07'),
     'pbr':      Decimal('2.0'),
     'eps':      Decimal('1.12'),
   }
@@ -424,7 +427,7 @@ def test_check_get_dict_function_of_cash(get_judgement_funcs):
   assert _registered_date is not None
   assert compare_keys(list(out_dict.keys()), fields)
   assert compare_values(fields, out_dict, instance)
-  assert _registered_date == target_date.strftime('%Y-%m-%d')
+  assert _registered_date == models.convert_timezone(target_date, is_string=True)
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -448,6 +451,77 @@ def test_check_cash_str_function(settings, pseudo_date):
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
+@pytest.mark.parametrize([
+  'options',
+], [
+  ({}, ),
+  ({'price': 0}, ),
+  ({'price': 999999999.99}, ),
+  ({'count': 0}, ),
+  ({'count': 2147483647}, ),
+], ids=[
+  'valid-values',
+  'min-value-of-price',
+  'max-value-of-price',
+  'min-value-of-count',
+  'max-value-of-count',
+])
+def test_check_valid_inputs_of_purchased_stock(options):
+  kwargs = {
+    'price': Decimal('1.23'),
+    'count': 100,
+  }
+  kwargs.update(options)
+
+  try:
+    _ = models.PurchasedStock.objects.create(
+      user=factories.UserFactory(),
+      stock=factories.StockFactory(),
+      purchase_date=datetime(1999,1,2,3,4,5, tzinfo=timezone.utc),
+      **kwargs,
+    )
+  except ValidationError as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'options',
+  'exception_type',
+  'err_msg',
+], [
+  ({'price':          -0.01}, ValidationError, '11 digits in total'),
+  ({'price':         12.991}, ValidationError, '2 decimal places'),
+  ({'price':  1000000000.00}, ValidationError, '9 digits before the decimal point'),
+  ({'count':             -1}, ValidationError, 'greater than or equal to 0'),
+  ({'count': 2147483647 + 1}, ValidationError, 'less than or equal to 2147483647'),
+], ids=[
+  'negative-purchased-price',
+  'invalid-decimal-part-of-purchased-price',
+  'invalid-max-digits-of-purchased-price',
+  'is-negative-count',
+  'is-overflow-count',
+])
+def test_check_invalid_inputs_of_purchased_stock(options, exception_type, err_msg):
+  kwargs = {
+    'price': Decimal('1.23'),
+    'count': 100,
+  }
+  kwargs.update(options)
+
+  with pytest.raises(exception_type) as ex:
+    _ = models.PurchasedStock.objects.create(
+      user=factories.UserFactory(),
+      stock=factories.StockFactory(),
+      purchase_date=datetime(1999,1,2,3,4,5, tzinfo=timezone.utc),
+      **kwargs,
+    )
+  assert err_msg in str(ex.value)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
 def test_check_get_dict_function_of_purchased_stock(get_judgement_funcs):
   collector, compare_keys, compare_values = get_judgement_funcs
   target_date = datetime(2022,3,4,10,9,1, tzinfo=timezone.utc)
@@ -463,7 +537,7 @@ def test_check_get_dict_function_of_purchased_stock(get_judgement_funcs):
   assert _purchase_date is not None
   assert compare_keys(list(out_dict.keys()), fields)
   assert compare_values(fields, out_dict, instance)
-  assert _purchase_date == target_date.strftime('%Y-%m-%d')
+  assert _purchase_date == models.convert_timezone(target_date, is_string=True)
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -533,10 +607,10 @@ def test_check_that_cashes_exist_in_snapshot(balances, months_days, exact_idx):
   out_dict = json.loads(instance.detail)
   # Create exact data
   expected_balance = balances[exact_idx]
-  expected_date = datetime(
-    2024,*(months_days[exact_idx]),1,2,3,
-    tzinfo=timezone.utc
-  ).strftime('%Y-%m-%d')
+  expected_date = models.convert_timezone(
+    datetime(2024,*(months_days[exact_idx]),1,2,3, tzinfo=timezone.utc),
+    is_string=True,
+  )
 
   assert all(key in out_dict.keys() for key in ['cash', 'purchased_stocks'])
   assert len(out_dict['cash']) == 2
@@ -575,7 +649,8 @@ def test_check_that_purchased_stocks_exist_in_snapshot(number_of_purchased_stock
   assert all([
     all([
       extracted['stock']['name'] == exact_val.stock.name,
-      extracted['purchase_date'] == exact_val.purchase_date.strftime('%Y-%m-%d'),
+      extracted['price'] == float(exact_val.price),
+      extracted['purchase_date'] == models.convert_timezone(exact_val.purchase_date, is_string=True),
       extracted['count'] == exact_val.count,
     ])
     for extracted, exact_val in zip(out_dict['purchased_stocks'], purchased_stocks)
@@ -607,11 +682,11 @@ def test_check_general_pattern_in_snapshot():
   assert len(out_dict['cash']) == 2
   assert len(out_dict['purchased_stocks']) == 4
   assert out_dict['cash']['balance'] == cashes[exact_cash_idx].balance
-  assert out_dict['cash']['registered_date'] == cashes[exact_cash_idx].registered_date.strftime('%Y-%m-%d')
+  assert out_dict['cash']['registered_date'] == models.convert_timezone(cashes[exact_cash_idx].registered_date, is_string=True)
   assert all([
     all([
       extracted['stock']['name'] == exact_val.stock.name,
-      extracted['purchase_date'] == exact_val.purchase_date.strftime('%Y-%m-%d'),
+      extracted['purchase_date'] == models.convert_timezone(exact_val.purchase_date, is_string=True),
       extracted['count'] == exact_val.count,
     ])
     for extracted, exact_val in zip(out_dict['purchased_stocks'], purchased_stocks)
@@ -633,3 +708,37 @@ def test_check_snapshot_str_function(settings, pseudo_date):
   expected = f'{instance.title}({exact_date})'
 
   assert out == expected
+
+# ======================
+# Delete related records
+# ======================
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'basename',
+  'base_factory',
+  'base_model',
+  'target_factory',
+  'target_model',
+], [
+  ('industry', factories.IndustryFactory, models.Industry, factories.StockFactory, models.Stock),
+  ('user', factories.UserFactory, UserModel, factories.CashFactory, models.Cash),
+  ('user', factories.UserFactory, UserModel, factories.PurchasedStockFactory, models.PurchasedStock),
+  ('stock', factories.StockFactory, models.Stock, factories.PurchasedStockFactory, models.PurchasedStock),
+], ids=[
+  'industry-stock-pair',
+  'user-cach-pair',
+  'user-purchased-stock-pair',
+  'stock-purchased-stock-pair',
+])
+def test_delete_related_records(basename, base_factory, base_model, target_factory, target_model):
+  expected_counts = 3
+  instances = base_factory.create_batch(2)
+  _ = target_factory.create_batch(5, **{basename: instances[0]})
+  _ = target_factory.create_batch(expected_counts, **{basename: instances[1]})
+  # Delete instance
+  base_model.objects.get(pk=instances[0].pk).delete()
+  rest_counts = target_model.objects.all().count()
+
+  assert rest_counts == expected_counts
