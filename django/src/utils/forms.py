@@ -8,11 +8,6 @@ class ModelFormBasedOnUser(forms.ModelForm):
     super().__init__(*args, **kwargs)
     self.user = user
 
-    for field in self.fields.values():
-      _classes = field.widget.attrs.get('class', '')
-      field.widget.attrs['class'] = f'{_classes} form-control'
-      field.widget.attrs['placeholder'] = field.help_text
-
   def save(self, *args, **kwargs):
     instance = super().save(commit=False)
     instance.user = self.user
@@ -22,13 +17,11 @@ class ModelFormBasedOnUser(forms.ModelForm):
 
 class ModelDatalistFormMixin(forms.BaseForm):
   class Meta:
-    fields_ordering = ()
     datalist_fields = []
     datalist_kwargs = {}
 
   def __init__(self, *args, **kwargs):
     _meta = getattr(self, 'Meta', None)
-    fields_ordering = getattr(_meta, 'fields_ordering', ())
     datalist_fields = getattr(_meta, 'datalist_fields', [])
     datalist_kwargs = getattr(_meta, 'datalist_kwargs', {})
     widgets = getattr(_meta, 'widgets', {})
@@ -40,18 +33,11 @@ class ModelDatalistFormMixin(forms.BaseForm):
       dynamic_fields[field_name] = ModelDatalistField(widget=widget, **options)
     # Update declared_fields
     self.declared_fields.update(dynamic_fields)
-    self._extra_fields = [item for item in datalist_fields]
+    self._extra_datalist_fields = [item for item in datalist_fields]
     # Call constractor of parent class
     super().__init__(*args, **kwargs)
     # Update fields data
     self.fields.update(self.declared_fields)
-    for field_name in datalist_fields:
-      field = self.fields[field_name]
-      _classes = field.widget.attrs.get('class', '')
-      field.widget.attrs['class'] = f'{_classes} form-control'
-    # Update order of fields
-    if fields_ordering:
-      self.fields = {field_name: self.fields[field_name] for field_name in fields_ordering}
 
   @property
   def datalist_template_name(self):
@@ -59,7 +45,7 @@ class ModelDatalistFormMixin(forms.BaseForm):
 
   @property
   def datalist_ids(self):
-    extra_attrs = [self.fields[field_name].widget.attrs for field_name in self._extra_fields]
+    extra_attrs = [self.fields[field_name].widget.attrs for field_name in self._extra_datalist_fields]
     datalist_ids = [attrs['id'] for attrs in extra_attrs]
 
     return datalist_ids

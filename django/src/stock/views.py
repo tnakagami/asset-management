@@ -1,10 +1,10 @@
 from django.views.generic import TemplateView, ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy
-from django.urls import reverse
+from django.urls import reverse_lazy
 from utils.views import (
   CreateViewBasedOnUser,
-  IsOwner,
+  CustomDeleteView,
   DjangoBreadcrumbsMixin,
 )
 from account.views import Index
@@ -39,8 +39,19 @@ class RegisterPurchasedStock(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
   form_class = forms.PurchasedStockForm
   template_name = 'stock/purchased_stock_form.html'
+  success_url = reverse_lazy('stock:list_purchased_stock')
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:register_purchased_stock',
     title=gettext_lazy('Register purchsed stock'),
     parent_view_class=ListPurchasedStock,
+  )
+
+class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
+  model = models.PurchasedStock
+  success_url = reverse_lazy('stock:list_purchased_stock')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:update_purchased_stock',
+    title=gettext_lazy('Update purchsed stock'),
+    parent_view_class=ListPurchasedStock,
+    url_keys=['pk'],
   )

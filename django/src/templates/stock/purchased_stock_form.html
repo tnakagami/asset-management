@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% load i18n %}
-{% load custom_tags %}
+
+{% block header %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
 {% include 'breadcrumbs.html' with title=_("Register purchsed stock") %}
@@ -12,6 +15,20 @@
           {% csrf_token %}
 
           {{ form }}
+
+          <div class="mt-2 row">
+            <div class="col">
+              <button
+                type="button"
+                id="stock-helper"
+                class="btn btn-outline-primary w-100 custom-boxshadow"
+                data-bs-toggle="modal"
+                data-bs-target="#stock-helper-modal"
+              >
+                {% trans "Stock (Helper)" %}
+              </button>
+            </div>
+          </div>
 
           {# Register or cancel #}
           <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
@@ -37,44 +54,119 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="stock-helper-modal" tabindex="-1" aria-labelledby="stock-helper-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title h3" id="stock-helper-label">{% trans "Stock helper" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <select name="stockListOfModal" id="stock-list-of-modal" class="form-control"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Close" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block bodyjs %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 {% include form.datalist_template_name with form_id='purchased-stock-form' datalist_ids=form.datalist_ids %}
 <script>
 (function () {
-  const _pickerCallback = (event, target) => {
-    if (!event.isClear && event.isValid && event.date) {
-      target.viewDate = event.date;
-    }
+  const setupPicker = (element) => {
+    // Process of purchase data field
+    const _pickerCallback = (event, target) => {
+      if (!event.isClear && event.isValid && event.date) {
+        target.viewDate = event.date;
+      }
+    };
+    const picker = new tempusDominus.TempusDominus(element, {
+      localization: {
+        format: 'yyyy/MM/dd',
+        dayViewHeaderFormat: { year: 'numeric', month: 'long' },
+      },
+      display: {
+        components: {
+          clock: false,
+        },
+        buttons: {
+          close: true,
+        },
+        icons: {
+          type:     'icons',
+          date:     'fas fa-calendar-week',
+          up:       'fas fa-arrow-up',
+          down:     'fas fa-arrow-down',
+          previous: 'fas fa-chevron-left',
+          next:     'fas fa-chevron-right',
+          clear:    'fas fa-trash',
+          close:    'fas fa-x',
+        },
+        viewMode: 'calendar',
+      },
+    });
+    picker.subscribe('change.td', function (event) {_pickerCallback(event, this);});
+    // Register focus event
+    element.addEventListener('focusin', function (event) {
+      this.click();
+    });
   };
-  const target = document.querySelector('#purchase-date-id');
-  const picker = new tempusDominus.TempusDominus(target, {
-    localization: {
-      format: 'yyyy/MM/dd',
-      dayViewHeaderFormat: { year: 'numeric', month: 'long' },
-    },
-    display: {
-      components: {
-        clock: false,
+  const setupStockField = (stockInputElement) => {
+    // Process of stock field
+    const _getTargetOption = (options, keyName, key) => {
+      const targetOption = Object.values(options).find((_option) => _option[keyName] === key);
+      const ret = (targetOption) ? targetOption : options[0];
+
+      return ret;
+    };
+    const stockModalElement = document.querySelector('#stock-list-of-modal');
+    const controller = new TomSelect(stockModalElement, {
+      allowEmptyOption: true,
+      closeAfterSelect: true,
+      create: false,
+      maxItems: 1,
+      maxOptions: null,
+      onInitialize: function () {
+        this.setValue([0]);
       },
-      buttons: {
-        close: true,
+      onFocus: function () {
+        this.clear();
       },
-      icons: {
-        type:     'icons',
-        date:     'fas fa-calendar-week',
-        up:       'fas fa-arrow-up',
-        down:     'fas fa-arrow-down',
-        previous: 'fas fa-chevron-left',
-        next:     'fas fa-chevron-right',
-        clear:    'fas fa-trash',
-        close:    'fas fa-x',
+      onChange: function (pk) {
+        const targetOption = _getTargetOption(this.options, 'pk', Number(pk));
+        stockInputElement.value = targetOption.text;
       },
-      viewMode: 'calendar',
-    },
-  });
-  picker.subscribe('change.td', function (event) {_pickerCallback(event, this);});
+      onDropdownClose: function (dropdown) {
+        stockModalElement.focus();
+      },
+      valueField: 'pk',
+      labelField: 'label',
+      searchField: 'text',
+      options: Object.freeze([
+        {pk: 0, label: '{% trans "Please select an option." %}', text: ''},
+        {% for option in form.stock_choices %}{pk: {{ option.pk }}, label: '{{ option.name }}({{ option.code }})', text: '{{ option.name }}({{ option.code }})'},
+        {% endfor %}
+      ]),
+    });
+    stockInputElement.addEventListener('focusout', (event) => {
+      const selectedLabel = event.target.value.trim();
+      const targetOption = _getTargetOption(controller.options, 'label', selectedLabel);
+      controller.setValue([targetOption.pk]);
+      event.target.value = targetOption.text;
+    });
+  };
+  // Define initialization function
+  const init = () => {
+    setupPicker(document.querySelector('#purchase-date-id'));
+    setupStockField(document.querySelector('#stock-id'));
+  };
+  // Add DOM event
+  document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
 {% endblock %}

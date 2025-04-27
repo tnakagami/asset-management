@@ -7,4 +7,5 @@ urlpatterns = [
   path('', views.Dashboard.as_view(), name='dashboard'),
   path('list/purchased-stocks', views.ListPurchasedStock.as_view(), name='list_purchased_stock'),
   path('register/purchased-stocks', views.RegisterPurchasedStock.as_view(), name='register_purchased_stock'),
+  path('delete/purchased-stocks/<int:pk>', views.DeletePurchasedStock.as_view(), name='delete_purchased_stock'),
 ]

@@ -26,6 +26,7 @@
                 <th scope="col">{% trans "Trade date" %}</th>
                 <th scope="col">{% trans "Trade price" %}</th>
                 <th scope="col">{% trans "Count" %}</th>
+                <th scope="col">{% trans "Delete" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -34,9 +35,19 @@
                 <td scope="row">{{ instance.stock.code }}</td>
                 <td>{{ instance.stock.name }}</td>
                 <td>{{ instance.stock.industry }}</td>
-                <td>{{ instance.purchase_date|date:"Y-d-m" }}</td>
+                <td>{{ instance.purchase_date|date:"Y-m-d" }}</td>
                 <td>{{ instance.price }}</td>
                 <td>{{ instance.count }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-danger w-100 custom-boxshadow delete-target-record"
+                    data-name="[{{ instance.purchase_date|date:'Y-m-d' }}] {{ instance.stock.name }}({{ instance.stock.code }})"
+                    data-url="{% url 'stock:delete_purchased_stock' pk=instance.pk %}"
+                  >
+                    {% trans "Delete" %}
+                  </button>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -49,4 +60,55 @@
     </div>
   </div>
 </div>
+
+<div class="modal" id="delete-modal" tabindex="-1" aria-labelledby="deletion-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title fs-5" id="deletion-label">{% trans "Confirmation of deletion" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-danger"><strong>{% trans "May I really delete this record ?" %}</strong></p>
+        <p>{% trans "target" %}: <span id="target-name" class="text-break"></span></p>
+      </div>
+      <div class="modal-footer">
+        <form method="POST" action="" id="delete-form" class="w-100">
+          {% csrf_token %}
+          <div class="row g-2">
+            <div class="col-12 col-md-6">
+              <button type="submit" class="btn btn-danger w-100 custom-boxshadow">
+                {% trans "Accept" %}
+              </button>
+            </div>
+            <div class="col-12 col-md-6">
+              <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+                {% trans "Close" %}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block bodyjs %}
+<script>
+(function () {
+  const deleteBtns = document.querySelectorAll('.delete-target-record');
+  const deleteForm = document.querySelector('#delete-form');
+  const targetField = document.querySelector('#target-name');
+
+  for (const btn of deleteBtns) {
+    btn.addEventListener('click', (event) => {
+      deleteForm.action = btn.dataset.url;
+      targetField.textContent = btn.dataset.name;
+      const modal = new bootstrap.Modal('#delete-modal');
+      modal.show();
+    });
+  }
+})();
+</script>
 {% endblock %}

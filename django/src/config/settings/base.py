@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from django.conf.global_settings import DATETIME_INPUT_FORMATS, DATE_INPUT_FORMATS
 from django.utils.translation import gettext_lazy
 import os
 import django
@@ -136,6 +137,12 @@ USE_TZ = True
 LOCALE_PATHS = (
     os.path.join(BASE_DIR, 'locale'),
 )
+
+DATETIME_INPUT_FORMATS += ['%Y/%m/%d']
+DATE_INPUT_FORMATS += [
+    '%Y/%m/%d',
+    '%Y/%m/%d %H:%M:%S',
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/

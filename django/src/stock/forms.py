@@ -8,7 +8,7 @@ from . import models
 class PurchasedStockForm(ModelDatalistFormMixin, ModelFormBasedOnUser):
   class Meta:
     model = models.PurchasedStock
-    fields = ('price', 'purchase_date', 'count')
+    fields = ('stock', 'price', 'purchase_date', 'count')
     widgets = {
       'stock': Datalist(attrs={
         'id': 'stock-id',
@@ -20,7 +20,6 @@ class PurchasedStockForm(ModelDatalistFormMixin, ModelFormBasedOnUser):
       }),
     }
     # For ModelDatalistFormMixin
-    fields_ordering = ('stock', 'price', 'purchase_date', 'count')
     datalist_fields = ['stock']
     datalist_kwargs = {
       'stock': {
@@ -28,3 +27,15 @@ class PurchasedStockForm(ModelDatalistFormMixin, ModelFormBasedOnUser):
         'queryset': models.Stock.objects.all(),
       },
     }
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
+    for field in self.fields.values():
+      _classes = field.widget.attrs.get('class', '')
+      field.widget.attrs['class'] = f'{_classes} form-control'
+      field.widget.attrs['placeholder'] = field.help_text
+
+  @property
+  def stock_choices(self):
+    return self.fields['stock'].queryset.values('pk', 'name', 'code').order_by('pk')

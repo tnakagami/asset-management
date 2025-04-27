@@ -24,14 +24,14 @@ class _BaseCreateUpdateView(LoginRequiredMixin):
 class CreateViewBasedOnUser(_BaseCreateUpdateView, CreateView):
   pass
 
-class UpdateViewBasedOnUser(_BaseCreateUpdateView, UpdateView):
+class UpdateViewBasedOnUser(_BaseCreateUpdateView, IsOwner, UpdateView):
   pass
 
 class CustomDeleteView(LoginRequiredMixin, IsOwner, DeleteView):
   raise_exception = True
+  http_method_names = ['post']
   model = None
   success_url = None
-  http_method_names = ['post']
 
 class DjangoBreadcrumbsMixin(CrumblesViewMixin):
   def url_resolve(self, *args, **kwargs):
