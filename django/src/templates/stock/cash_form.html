@@ -2,28 +2,29 @@
 {% load i18n %}
 
 {% block content %}
-{% include 'breadcrumbs.html' with title=_("Login") %}
+{% include 'breadcrumbs.html' with title=_("Register cash") %}
 <div class="row justify-content-center">
   <div class="col">
     <div class="card">
       <div class="card-body">
-        <form action="{% url 'account:login' %}" method="POST">
+        <form method="POST">
           {% csrf_token %}
 
           {{ form }}
 
-          <div class="mt-2 row row-cols-1 row-cols-md-2 g-2">
+          {# Register or cancel #}
+          <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
             <div class="col">
               <button
                 type="submit"
                 class="btn btn-primary w-100 custom-boxshadow"
               >
-                {% trans "Login" %}
+                {% trans "Register" %}
               </button>
             </div>
             <div class="col">
               <a
-                href="{% url 'account:index' %}"
+                href="{% url 'stock:list_cash' %}"
                 class="btn btn-secondary w-100 custom-boxshadow"
               >
                 {% trans "Cancel" %}
@@ -38,4 +39,15 @@
 {% endblock %}
 
 {% block bodyjs %}
+{{ block.super }}
+<script>
+(function () {
+  // Define initialization function
+  const init = () => {
+    g_setupPicker(document.querySelector('#registered-date-id'));
+  };
+  // Add DOM event
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
 {% endblock %}

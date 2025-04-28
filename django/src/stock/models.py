@@ -180,7 +180,7 @@ class PurchasedStock(models.Model):
   price = models.DecimalField(
     max_digits=11,
     decimal_places=2,
-    verbose_name=gettext_lazy('Trade price'),
+    verbose_name=gettext_lazy('Average trade price'),
     validators=[MinValueValidator(0)],
   )
   purchase_date = models.DateTimeField(

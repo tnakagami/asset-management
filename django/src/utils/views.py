@@ -6,9 +6,12 @@ from crumbles import CrumblesViewMixin, CrumbleDefinition
 from operator import attrgetter, methodcaller
 
 class IsOwner(UserPassesTestMixin):
+  owner_name = 'user'
+
   def test_func(self):
-    user = self.get_object()
-    is_valid = user.pk == self.request.user.pk
+    instance = self.get_object()
+    owner = getattr(instance, self.owner_name, instance)
+    is_valid = owner.pk == self.request.user.pk
 
     return is_valid
 

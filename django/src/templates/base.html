@@ -84,6 +84,75 @@
     {# Tempus Dominus #}
     <script src="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6.9.4/dist/js/tempus-dominus.min.js" crossorigin="anonymous"></script>
     {% block bodyjs %}
+    <script>
+      const g_registerDeleteModalEvent = (args) => {
+        const {targetCSS, formID, modalID} = args;
+        const deleteBtns = document.querySelectorAll(`.${targetCSS}`);
+        const deleteForm = document.querySelector(`#${formID}`);
+        const targetField = document.querySelector('#target-name');
+
+        for (const btn of deleteBtns) {
+          btn.addEventListener('click', (event) => {
+            deleteForm.action = btn.dataset.url;
+            targetField.textContent = btn.dataset.name;
+            const modal = new bootstrap.Modal(`#${modalID}`);
+            modal.show();
+          });
+        }
+      };
+
+      const g_setupPicker = (element) => {
+        // Process of purchase data field
+        const _pickerCallback = (event, target) => {
+          if (!event.isClear && event.isValid && event.date) {
+            target.viewDate = event.date;
+          }
+        };
+        const picker = new tempusDominus.TempusDominus(element, {
+          localization: {
+            format: 'yyyy/MM/dd',
+            dayViewHeaderFormat: { year: 'numeric', month: 'long' },
+          },
+          display: {
+            components: {
+              clock: false,
+            },
+            buttons: {
+              close: true,
+            },
+            icons: {
+              type:     'icons',
+              date:     'fas fa-calendar-week',
+              up:       'fas fa-arrow-up',
+              down:     'fas fa-arrow-down',
+              previous: 'fas fa-chevron-left',
+              next:     'fas fa-chevron-right',
+              clear:    'fas fa-trash',
+              close:    'fas fa-x',
+            },
+            viewMode: 'calendar',
+          },
+        });
+        picker.subscribe('change.td', function (event) {_pickerCallback(event, this);});
+        // Register focus event and click event
+        let isFocused = false;
+        element.addEventListener('focusin', function (event) {
+          isFocused = true;
+
+          window.setTimeout(() => {
+            if (isFocused) {
+              this.click();
+            }
+            isFocused = false;
+          }, 200);
+        });
+        element.addEventListener('click', (envet) => {
+          isFocused = false;
+        });
+
+        return picker;
+      };
+    </script>
     {% endblock %}
   </body>
 </html>

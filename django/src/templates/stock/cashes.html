@@ -3,47 +3,39 @@
 {% load humanize %}
 
 {% block content %}
-{% include 'breadcrumbs.html' with title=_("Purchased stocks") %}
+{% include 'breadcrumbs.html' with title=_("Cashes") %}
 <div class="row justify-content-center">
   <div class="col">
     <div class="row row-cols-1 g-2">
       <div class="col">
         <a
-          href="{% url 'stock:register_purchased_stock' %}"
+          href="{% url 'stock:register_cash' %}"
           class="btn btn-primary w-100 custom-boxshadow"
         >
-          {% trans "Register purchsed stock" %}
+          {% trans "Register cash" %}
         </a>
       </div>
       <div class="col">
-        {% if pstocks %}
+        {% if cashes %}
         <div class="table-responsive">
           <table class="table table-hover">
             <thead>
               <tr>
-                <th scope="col">{% trans "Code" %}</th>
-                <th scope="col">{% trans "Stock name" %}</th>
-                <th scope="col">{% trans "Industry" %}</th>
-                <th scope="col">{% trans "Trade date" %}</th>
-                <th scope="col">{% trans "Average trade price" %}</th>
-                <th scope="col">{% trans "Count" %}</th>
+                <th scope="col">{% trans "Balance" %}</th>
+                <th scope="col">{% trans "Registered date" %}</th>
                 <th scope="col">{% trans "Delete" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
-              {% for instance in pstocks %}
+              {% for instance in cashes %}
               <tr>
-                <td scope="row">{{ instance.stock.code }}</td>
-                <td>{{ instance.stock.name }}</td>
-                <td>{{ instance.stock.industry }}</td>
-                <td>{{ instance.purchase_date|date:"Y-m-d" }}</td>
-                <td>{{ instance.price|intcomma }}</td>
-                <td>{{ instance.count }}</td>
+                <td scope="row">{{ instance.balance|intcomma }}</td>
+                <td>{{ instance.registered_date|date:"Y-m-d" }}</td>
                 <td>
                   <div
                     class="text-danger delete-target-record"
-                    data-name="[{{ instance.purchase_date|date:'Y-m-d' }}] {{ instance.stock.name }}({{ instance.stock.code }})"
-                    data-url="{% url 'stock:delete_purchased_stock' pk=instance.pk %}"
+                    data-name="[{{ instance.registered_date|date:'Y-m-d' }}] {{ instance.balance }}"
+                    data-url="{% url 'stock:delete_cash' pk=instance.pk %}"
                   >
                     <i class="fas fa-trash"></i>
                   </div>
@@ -54,7 +46,7 @@
           </table>
         </div>
         {% else %}
-        <span>{% trans "There is no purchased stocks. Please add the items from the above button." %}</span>
+        <span>{% trans "There is no cashes. Please add the items from the above button." %}</span>
         {% endif %}
       </div>
     </div>

@@ -49,9 +49,35 @@ class RegisterPurchasedStock(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
 class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
   success_url = reverse_lazy('stock:list_purchased_stock')
+
+class ListCash(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = models.Cash
+  template_name = 'stock/cashes.html'
+  paginate_by = 10
+  context_object_name = 'cashes'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
-    url_name='stock:update_purchased_stock',
-    title=gettext_lazy('Update purchsed stock'),
-    parent_view_class=ListPurchasedStock,
-    url_keys=['pk'],
+    url_name='stock:list_cash',
+    title=gettext_lazy('Cash list'),
+    parent_view_class=Index,
   )
+
+  def get_queryset(self):
+    user = self.request.user
+    queryset = user.cashes.all()
+
+    return queryset
+
+class RegisterCash(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = models.Cash
+  form_class = forms.CashForm
+  template_name = 'stock/cash_form.html'
+  success_url = reverse_lazy('stock:list_cash')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:register_cash',
+    title=gettext_lazy('Register cash'),
+    parent_view_class=ListCash,
+  )
+
+class DeleteCash(CustomDeleteView, DjangoBreadcrumbsMixin):
+  model = models.Cash
+  success_url = reverse_lazy('stock:list_cash')

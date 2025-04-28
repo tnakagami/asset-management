@@ -21,6 +21,8 @@ class ModelDatalistFormMixin(forms.BaseForm):
     datalist_kwargs = {}
 
   def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
     _meta = getattr(self, 'Meta', None)
     datalist_fields = getattr(_meta, 'datalist_fields', [])
     datalist_kwargs = getattr(_meta, 'datalist_kwargs', {})
@@ -34,8 +36,6 @@ class ModelDatalistFormMixin(forms.BaseForm):
     # Update declared_fields
     self.declared_fields.update(dynamic_fields)
     self._extra_datalist_fields = [item for item in datalist_fields]
-    # Call constractor of parent class
-    super().__init__(*args, **kwargs)
     # Update fields data
     self.fields.update(self.declared_fields)
 

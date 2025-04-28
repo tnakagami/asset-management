@@ -76,46 +76,9 @@
 {% block bodyjs %}
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 {% include form.datalist_template_name with form_id='purchased-stock-form' datalist_ids=form.datalist_ids %}
+{{ block.super }}
 <script>
 (function () {
-  const setupPicker = (element) => {
-    // Process of purchase data field
-    const _pickerCallback = (event, target) => {
-      if (!event.isClear && event.isValid && event.date) {
-        target.viewDate = event.date;
-      }
-    };
-    const picker = new tempusDominus.TempusDominus(element, {
-      localization: {
-        format: 'yyyy/MM/dd',
-        dayViewHeaderFormat: { year: 'numeric', month: 'long' },
-      },
-      display: {
-        components: {
-          clock: false,
-        },
-        buttons: {
-          close: true,
-        },
-        icons: {
-          type:     'icons',
-          date:     'fas fa-calendar-week',
-          up:       'fas fa-arrow-up',
-          down:     'fas fa-arrow-down',
-          previous: 'fas fa-chevron-left',
-          next:     'fas fa-chevron-right',
-          clear:    'fas fa-trash',
-          close:    'fas fa-x',
-        },
-        viewMode: 'calendar',
-      },
-    });
-    picker.subscribe('change.td', function (event) {_pickerCallback(event, this);});
-    // Register focus event
-    element.addEventListener('focusin', function (event) {
-      this.click();
-    });
-  };
   const setupStockField = (stockInputElement) => {
     // Process of stock field
     const _getTargetOption = (options, keyName, key) => {
@@ -162,7 +125,7 @@
   };
   // Define initialization function
   const init = () => {
-    setupPicker(document.querySelector('#purchase-date-id'));
+    g_setupPicker(document.querySelector('#purchase-date-id'));
     setupStockField(document.querySelector('#stock-id'));
   };
   // Add DOM event

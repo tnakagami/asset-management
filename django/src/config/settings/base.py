@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'django.forms',
     # apps
     'account.apps.AccountConfig',
@@ -168,6 +169,9 @@ LOGIN_URL = 'account:login'
 LOGIN_REDIRECT_URL = 'account:index'
 LOGOUT_URL = 'account:logout'
 LOGOUT_REDIRECT_URL = 'account:index'
+
+# Define comma interval to use human readable expression
+NUMBER_GROUPING = 3
 
 # Log setting
 LOGGING = {
