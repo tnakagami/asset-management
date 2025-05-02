@@ -45,7 +45,10 @@ class ModelDatalistFormMixin(forms.BaseForm):
 
   @property
   def datalist_ids(self):
-    extra_attrs = [self.fields[field_name].widget.attrs for field_name in self._extra_datalist_fields]
-    datalist_ids = [attrs['id'] for attrs in extra_attrs]
+    related_fields = [
+      self.fields[field_name]
+      for field_name in self._extra_datalist_fields if self.fields[field_name].widget.use_dataset()
+    ]
+    datalist_ids = [field.widget.attrs['id'] for field in related_fields]
 
     return datalist_ids

@@ -17,9 +17,12 @@ class Datalist(forms.Select):
     context = super().get_context(name, value, attrs)
     context['widget']['type'] = 'text'
     context['widget']['id'] = self.input_list if self.input_list else f'{name}_datalist'
-    context['widget']['use_dataset'] = bool(self.use_dataset_attr)
+    context['widget']['use_dataset'] = self.use_dataset()
 
     return context
+
+  def use_dataset(self):
+    return bool(self.use_dataset_attr)
 
 class DatalistField(forms.ChoiceField):
   widget = Datalist

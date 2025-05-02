@@ -14,6 +14,17 @@ class _BaseModelFormWithCSS(ModelFormBasedOnUser):
       field.widget.attrs['class'] = f'{_classes} form-control'
       field.widget.attrs['placeholder'] = field.help_text
 
+class CashForm(_BaseModelFormWithCSS):
+  class Meta:
+    model = models.Cash
+    fields = ('balance', 'registered_date')
+    widgets = {
+      'registered_date': forms.DateInput(attrs={
+        'id': 'registered-date-id',
+        'class': 'datetimepicker-input',
+      }),
+    }
+
 class PurchasedStockForm(ModelDatalistFormMixin, _BaseModelFormWithCSS):
   class Meta:
     model = models.PurchasedStock
@@ -42,13 +53,7 @@ class PurchasedStockForm(ModelDatalistFormMixin, _BaseModelFormWithCSS):
   def stock_choices(self):
     return self.fields['stock'].queryset.values('pk', 'name', 'code').order_by('pk')
 
-class CashForm(_BaseModelFormWithCSS):
+class SnapshotForm(_BaseModelFormWithCSS):
   class Meta:
-    model = models.Cash
-    fields = ('balance', 'registered_date')
-    widgets = {
-      'registered_date': forms.DateInput(attrs={
-        'id': 'registered-date-id',
-        'class': 'datetimepicker-input',
-      }),
-    }
+    model = models.Snapshot
+    fields = ('title',)

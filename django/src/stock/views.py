@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView, ListView, DetailView
+from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy
 from django.urls import reverse_lazy
@@ -10,13 +10,53 @@ from utils.views import (
 from account.views import Index
 from . import models, forms
 
-class Dashboard(LoginRequiredMixin, TemplateView, DjangoBreadcrumbsMixin):
+class Dashboard(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = models.Snapshot
   template_name = 'stock/dashboard.html'
+  context_object_name = 'snapshots'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:dashboard',
     title=gettext_lazy('Dashboard'),
     parent_view_class=Index,
   )
+
+  def get_queryset(self):
+    user = self.request.user
+    queryset = user.snapshots.all()
+
+    return queryset
+
+class ListCash(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = models.Cash
+  template_name = 'stock/cashes.html'
+  paginate_by = 10
+  context_object_name = 'cashes'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:list_cash',
+    title=gettext_lazy('Cash list'),
+    parent_view_class=Index,
+  )
+
+  def get_queryset(self):
+    user = self.request.user
+    queryset = user.cashes.all()
+
+    return queryset
+
+class RegisterCash(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = models.Cash
+  form_class = forms.CashForm
+  template_name = 'stock/cash_form.html'
+  success_url = reverse_lazy('stock:list_cash')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:register_cash',
+    title=gettext_lazy('Register cash'),
+    parent_view_class=ListCash,
+  )
+
+class DeleteCash(CustomDeleteView, DjangoBreadcrumbsMixin):
+  model = models.Cash
+  success_url = reverse_lazy('stock:list_cash')
 
 class ListPurchasedStock(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
@@ -50,34 +90,28 @@ class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
   success_url = reverse_lazy('stock:list_purchased_stock')
 
-class ListCash(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
-  model = models.Cash
-  template_name = 'stock/cashes.html'
+class ListSnapshot(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = models.Snapshot
+  template_name = 'stock/snapshots.html'
   paginate_by = 10
-  context_object_name = 'cashes'
+  context_object_name = 'snapshots'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
-    url_name='stock:list_cash',
-    title=gettext_lazy('Cash list'),
+    url_name='stock:list_snapshot',
+    title=gettext_lazy('Snapshot list'),
     parent_view_class=Index,
   )
 
-  def get_queryset(self):
-    user = self.request.user
-    queryset = user.cashes.all()
-
-    return queryset
-
-class RegisterCash(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
-  model = models.Cash
-  form_class = forms.CashForm
-  template_name = 'stock/cash_form.html'
-  success_url = reverse_lazy('stock:list_cash')
+class RegisterSnapshot(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = models.Snapshot
+  form_class = forms.SnapshotForm
+  template_name = 'stock/snapshot_form.html'
+  success_url = reverse_lazy('stock:list_snapshot')
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
-    url_name='stock:register_cash',
-    title=gettext_lazy('Register cash'),
-    parent_view_class=ListCash,
+    url_name='stock:register_snapshot',
+    title=gettext_lazy('Register snapshot'),
+    parent_view_class=ListSnapshot,
   )
 
-class DeleteCash(CustomDeleteView, DjangoBreadcrumbsMixin):
-  model = models.Cash
-  success_url = reverse_lazy('stock:list_cash')
+class DeleteSnapshot(CustomDeleteView, DjangoBreadcrumbsMixin):
+  model = models.Snapshot
+  success_url = reverse_lazy('stock:list_snapshot')

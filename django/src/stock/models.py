@@ -4,9 +4,11 @@ from django.core.validators import MinValueValidator, ValidationError
 from django.utils.translation import gettext_lazy
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.html import json_script
 from zoneinfo import ZoneInfo
 import re
 import json
+import uuid
 
 UserModel = get_user_model()
 
@@ -213,6 +215,11 @@ class Snapshot(models.Model):
   class Meta:
     ordering = ('-created_at', )
 
+  uuid = models.UUIDField(
+    primary_key=False,
+    default=uuid.uuid4,
+    editable=False,
+  )
   user = models.ForeignKey(
     UserModel,
     verbose_name=gettext_lazy('Owner'),
@@ -249,5 +256,11 @@ class Snapshot(models.Model):
   def __str__(self):
     target_time = convert_timezone(self.created_at, is_string=True)
     out = f'{self.title}({target_time})'
-    
+
+    return out
+
+  def get_jsonfield(self):
+    data = json.loads(self.detail)
+    out = json_script(data, self.uuid)
+
     return out

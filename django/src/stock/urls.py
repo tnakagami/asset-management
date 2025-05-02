@@ -13,4 +13,8 @@ urlpatterns = [
   path('list/purchased-stocks', views.ListPurchasedStock.as_view(), name='list_purchased_stock'),
   path('register/purchased-stock', views.RegisterPurchasedStock.as_view(), name='register_purchased_stock'),
   path('delete/purchased-stock/<int:pk>', views.DeletePurchasedStock.as_view(), name='delete_purchased_stock'),
+  # Snapshot
+  path('list/snapshots', views.ListSnapshot.as_view(), name='list_snapshot'),
+  path('register/snapshot', views.RegisterSnapshot.as_view(), name='register_snapshot'),
+  path('delete/snapshot/<int:pk>', views.DeleteSnapshot.as_view(), name='delete_snapshot'),
 ]
