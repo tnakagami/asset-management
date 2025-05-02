@@ -73,6 +73,7 @@ TEMPLATES = [
             ],
             'libraries': {
                 'custom_tags': 'custom_templatetags.custom_tags',
+                'utils_extras': 'utils.templatetags.utils_extras',
             },
         },
     },

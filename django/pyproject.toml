@@ -44,7 +44,6 @@ DJANGO_EXECUTABLE_TYPE = "release"
 [tool.pytest.ini_options]
 addopts = "-vv --rootdir=/opt/app --cov=. --cov-report=xml --cov-report=html --cov-config=.coveragerc"
 DJANGO_SETTINGS_MODULE = "config.settings.release"
-DJANGO_LANGUAGE_CODE = "en"
 testpaths = ["app_tests"]
 python_files = ["test_*.py", "tests.py", "*_test.py"]
 markers = [

@@ -1,4 +1,4 @@
-<input type="{{ widget.type }}" list="{{ widget.id }}" name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %} />
+<input type="{{ widget.type }}" list="{{ widget.id }}" name="{{ widget.name }}" {% if widget.initial %}value="{{ widget.initial }}" disabled readonly{% endif %} {% include "django/forms/widgets/attrs.html" %} />
 <datalist id="{{ widget.id }}">
 {% for group_name, group_choices, group_index in widget.optgroups %}
   {% if group_name %}

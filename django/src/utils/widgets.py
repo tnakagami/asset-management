@@ -9,13 +9,15 @@ class Datalist(forms.Select):
 
   def __init__(self, attrs=None):
     if attrs is not None:
+      self.input_type = attrs.get('type', self.input_type)
       self.input_list = attrs.pop('list', self.input_list)
       self.use_dataset_attr = attrs.pop('use-dataset', self.use_dataset_attr)
     super().__init__(attrs)
 
   def get_context(self, name, value, attrs):
     context = super().get_context(name, value, attrs)
-    context['widget']['type'] = 'text'
+    context['widget']['initial'] = value
+    context['widget']['type'] = self.input_type
     context['widget']['id'] = self.input_list if self.input_list else f'{name}_datalist'
     context['widget']['use_dataset'] = self.use_dataset()
 

@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-{% include 'breadcrumbs.html' with title=_("Register purchsed stock") %}
+{% include 'breadcrumbs.html' with title=_("Register/Update purchsed stock") %}
 <div class="row justify-content-center">
   <div class="col">
     <div class="card">
@@ -37,7 +37,7 @@
                 type="submit"
                 class="btn btn-primary w-100 custom-boxshadow"
               >
-                {% trans "Register" %}
+                {% trans "Register/Update" %}
               </button>
             </div>
             <div class="col">
@@ -94,9 +94,6 @@
       create: false,
       maxItems: 1,
       maxOptions: null,
-      onInitialize: function () {
-        this.setValue([0]);
-      },
       onFocus: function () {
         this.clear();
       },
@@ -122,6 +119,10 @@
       controller.setValue([targetOption.pk]);
       event.target.value = targetOption.text;
     });
+    if (stockInputElement.value) {
+      const element = document.querySelector('#stock-helper');
+      element.disabled = true;
+    }
   };
   // Define initialization function
   const init = () => {

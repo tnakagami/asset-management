@@ -56,4 +56,14 @@ class PurchasedStockForm(ModelDatalistFormMixin, _BaseModelFormWithCSS):
 class SnapshotForm(_BaseModelFormWithCSS):
   class Meta:
     model = models.Snapshot
-    fields = ('title',)
+    fields = ('title', 'start_date', 'end_date')
+    widgets = {
+      'start_date': forms.DateInput(attrs={
+        'id': 'from-date-id',
+        'class': 'datetimepicker-input',
+      }),
+      'end_date': forms.DateInput(attrs={
+        'id': 'to-date-id',
+        'class': 'datetimepicker-input',
+      }),
+    }

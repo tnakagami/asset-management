@@ -29,26 +29,26 @@
           <button
             type="button"
             class="flex-md-fill text-md-center nav-link active"
-            id="asset-ratio-tab"
+            id="portfolio-tab"
             data-bs-toggle="tab"
-            data-bs-target="#asset-ratio-tab-pane"
+            data-bs-target="#portfolio-tab-pane"
             role="tab"
-            aria-controls="asset-ratio-tab-pane"
+            aria-controls="portfolio-tab-pane"
             aria-selected="true"
           >
-            {% trans "Asset ratio" %}
+            {% trans "Portfolio" %}
           </button>
           <button
             type="button"
             class="flex-md-fill text-md-center nav-link"
-            id="industry-ratio-tab"
+            id="sector-tab"
             data-bs-toggle="tab"
-            data-bs-target="#industry-ratio-tab-pane"
+            data-bs-target="#sector-tab-pane"
             role="tab"
-            aria-controls="industry-ratio-tab-pane"
+            aria-controls="sector-tab-pane"
             aria-selected="false"
           >
-            {% trans "Industry ratio" %}
+            {% trans "Sector" %}
           </button>
           <button
             type="button"
@@ -62,14 +62,26 @@
           >
             {% trans "Economic trend" %}
           </button>
+          <button
+            type="button"
+            class="flex-md-fill text-md-center nav-link"
+            id="all-assets-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#all-assets-tab-pane"
+            role="tab"
+            aria-controls="all-assets-tab-pane"
+            aria-selected="false"
+          >
+            {% trans "Assets" %}
+          </button>
         </div>
       </nav>
-      <div class="tab-content mt-2 pt-1 border-top border-2" id="management-content">
+      <div class="tab-content my-2 pt-1 border-top border-2" id="management-content">
         <div
           class="tab-pane fade show active"
-          id="asset-ratio-tab-pane"
+          id="portfolio-tab-pane"
           role="tabpanel"
-          aria-labelledby="asset-ratio-tab"
+          aria-labelledby="portfolio-tab"
           tabindex="0"
         >
           <div class="row row-cols-1 row-cols-md-2 g-2">
@@ -83,17 +95,17 @@
         </div>
         <div
           class="tab-pane fade"
-          id="industry-ratio-tab-pane"
+          id="sector-tab-pane"
           role="tabpanel"
-          aria-labelledby="industry-ratio-tab"
+          aria-labelledby="sector-tab"
           tabindex="0"
         >
           <div class="row row-cols-1 row-cols-md-2 g-2">
             <div class="col">
-              <canvas id="industry-count-chart" class="w-100"></canvas>
+              <canvas id="sector-count-chart" class="w-100"></canvas>
             </div>
             <div class="col">
-              <canvas id="industry-price-chart" class="w-100"></canvas>
+              <canvas id="sector-price-chart" class="w-100"></canvas>
             </div>
           </div>
         </div>
@@ -104,12 +116,47 @@
           aria-labelledby="economic-trend-tab"
           tabindex="0"
         >
-          <div class="row">
+          <div class="row row-cols-1 row-cols-md-2 g-2">
             <div class="col">
               <canvas id="trend-count-chart" class="w-100"></canvas>
             </div>
             <div class="col">
               <canvas id="trend-price-chart" class="w-100"></canvas>
+            </div>
+          </div>
+        </div>
+        <div
+          class="tab-pane fade"
+          id="all-assets-tab-pane"
+          role="tabpanel"
+          aria-labelledby="all-assets-tab"
+          tabindex="0"
+        >
+          <div class="row">
+            <div class="col">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th scope="col">{% trans "No." %}</th>
+                      <th scope="col">{% trans "Code" %}</th>
+                      <th scope="col">{% trans "Name" %}</th>
+                      <th scope="col">{% trans "Industry" %}</th>
+                      <th scope="col">{% trans "Value" %}</th>
+                      <th scope="col">{% trans "Count" %}</th>
+                    </tr>
+                  </thead>
+                  <tbody id="all-assets-list" class="table-group-divider">
+                  </tbody>
+                  <tfoot class="table-group-divider text-left" id="asset-totals">
+                    <tr>
+                      <th scope="row" colspan="4" class="text-center">{% trans "Total" %}</th>
+                      <th name="total-value"></th>
+                      <th name="total-count"></th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -129,10 +176,23 @@
   {% endif %}
   </div>
 </div>
+
+<template id="tbody-template">
+<tr>
+  <td scope="row" class="asset-idx"></td>
+  <td class="asset-code"></td>
+  <td class="asset-name"></td>
+  <td class="asset-industry"></td>
+  <td class="asset-value"></td>
+  <td class="asset-count"></td>
+</tr>
+</template>
 {% endblock %}
 
 {% block bodyjs %}
-{% for instance in snapshots %}{{ instance.get_jsonfield }}{% endfor %}
+{% for instance in snapshots %}
+  {{ instance.get_jsonfield }}
+{% endfor %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
         integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -141,15 +201,16 @@
   const createChartData = (data, sortCallback) => {
     const _getValArr = (arr) => arr.map((item) => item.value);
     const _stockValSum = (arr, initVal=0.0) => _getValArr(arr).reduce((acc, val) => acc + val, initVal);
-    const lightGrey = '#c9cbcf';
-    const colorPalette = Object.freeze([
-      '#36a2eb', // light-blue
-      '#ff6384', // light-red
-      '#4bc0c0', // light-green
-      '#ff9f40', // light-orange
-      '#9966ff', // light-purple
-      '#ffcd56', // light-yellow
-    ]);
+    const _generateColorPalette = (len, offset=180) => {
+      const hueArray = (() => {
+        const scaler = (len > 360) ? 1.0 : 360.0 / len;
+
+        return [...Array(len)].map((_, idx) => Math.floor(idx * scaler + offset) % 360);
+      })();
+      const colors = hueArray.map((val) => `hsla(${val}, 82%, 71%, 0.85)`);
+
+      return colors;
+    };
     const cash = data.cash.balance;
     const originalStocks = data.purchased_stocks.map((record) => {
       return {
@@ -163,13 +224,14 @@
     });
     const stocks = (() => {
       const _dict = {};
-      const _calcValue = (item) => item.price * item.count;
+      const _calcValue = (item) => Math.floor(item.price * item.count);
 
       for (const item of originalStocks) {
         const code = item.code;
 
         if (Object.hasOwn(_dict, code)) {
           _dict[code].value += _calcValue(item);
+          _dict[code].count += item.count;
         }
         else {
           _dict[code] = {
@@ -178,6 +240,7 @@
             industry: item.industry,
             isDefensive: item.isDefensive,
             value: _calcValue(item),
+            count: item.count,
           };
         }
       }
@@ -186,27 +249,35 @@
     })();
     const records = [{
       name: '{% trans "Cash" %}',
-      code: 'cash',
+      code: '-',
       industry: '-',
       isDefensive: undefined,
       value: cash,
+      count: 1,
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
-    const industryNameList = Object.keys(stocks.reduce((_dict, item) => {
+    const sectorNameList = Object.keys(stocks.reduce((_dict, item) => {
       _dict[item.industry] = item.code; return _dict;
     }, {}));
     const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
     // Define color dictionaries
-    const stockColorDict = stockNameList.slice(1).reduce((_dict, name, currentIndex) => {
-      _dict[name] = colorPalette[currentIndex % colorPalette.length]; return _dict;
-    }, {[records[0].name]: lightGrey});
-    const industryColorDict = industryNameList.reduce((_dict, name, currentIndex) => {
-      _dict[name] = colorPalette[currentIndex % colorPalette.length]; return _dict;
-    }, {});
+    const stockColorDict = (() => {
+      const arr = stockNameList.slice(1);
+      const palette = _generateColorPalette(arr.length);
+      const lightGrey = '#C9CBCF';
+      const initVal = {[records[0].name]: lightGrey};
+
+      return arr.reduce((_dict, name, idx) => {_dict[name] = palette[idx]; return _dict; }, initVal);
+    })();
+    const sectorColorDict = (() => {
+      const palette = _generateColorPalette(sectorNameList.length);
+
+      return sectorNameList.reduce((_dict, name, idx) => {_dict[name] = palette[idx]; return _dict;}, {});
+    })();
     const trendColorDict = {
-      [trendNameList[0]]: colorPalette[0],
-      [trendNameList[1]]: colorPalette[1],
+      [trendNameList[0]]: 'rgba(136, 200, 244, 0.9)',
+      [trendNameList[1]]: 'rgba(243, 136, 158, 0.9)',
     };
 
     const pairs = {
@@ -228,13 +299,13 @@
           data: _getValArr(records.slice(1)),
         }],
       },
-      industryCountData: {
-        title: '{% trans "Industry distribution (count)" %}',
-        labels: industryNameList,
-        colors: industryColorDict,
+      sectorCountData: {
+        title: '{% trans "Sector distribution (count)" %}',
+        labels: sectorNameList,
+        colors: sectorColorDict,
         datasets: [{
           label: '{% trans "Count" %}',
-          data: industryNameList.map((name) => {
+          data: sectorNameList.map((name) => {
             const targets = records.filter((item) => item.industry === name);
             const num = targets.length;
 
@@ -242,13 +313,13 @@
           }),
         }],
       },
-      industryPriceData: {
-        title: '{% trans "Industry distribution (price)" %}',
-        labels: industryNameList,
-        colors: industryColorDict,
+      sectorPriceData: {
+        title: '{% trans "Sector distribution (price)" %}',
+        labels: sectorNameList,
+        colors: sectorColorDict,
         datasets: [{
           label: '{% trans "Price" %}',
-          data: industryNameList.map((name) => {
+          data: sectorNameList.map((name) => {
             const targets = records.filter((item) => item.industry === name);
             const score = _stockValSum(targets);
 
@@ -303,8 +374,41 @@
 
       return _dict;
     }, {});
+    output.records = records;
 
     return output;
+  };
+  const updateTable = (records) => {
+    const tbody = document.querySelector('#all-assets-list');
+    const tfoot = document.querySelector('#asset-totals');
+    const template = document.querySelector('#tbody-template');
+    const nodeList = {
+      'idx': (_, idx) => idx,
+      'code': (val, _) => val,
+      'name': (val, _) => val,
+      'industry': (val, _) => val,
+      'value': (val, _) => val.toLocaleString(),
+      'count': (val, _) => val.toLocaleString(),
+    };
+    const totals = {
+      value: 0,
+      count: 0,
+    };
+    tbody.innerHTML = '';
+
+    records.forEach((item, idx) => {
+      const clone = template.content.cloneNode(true);
+
+      for (const [key, callback] of Object.entries(nodeList)) {
+        const element = clone.querySelector(`.asset-${key}`);
+        element.textContent = callback(item[key], idx + 1);
+      }
+      totals.value += item.value;
+      totals.count += item.count;
+      tbody.appendChild(clone);
+    });
+    tfoot.querySelector('th[name="total-value"]').textContent = totals.value.toLocaleString();
+    tfoot.querySelector('th[name="total-count"]').textContent = totals.count.toLocaleString();
   };
   const drawChart = (chart, target, asset) => {
     const context = document.querySelector(`#${target}`);
@@ -323,8 +427,7 @@
         maintainAspectRatio: true,
         plugins: {
           legend: {
-            display: true,
-            position: 'bottom',
+            display: false,
           },
           title: {
             display: true,
@@ -376,22 +479,24 @@
     // Define chart's variables
     let allPortfolioChart = null;
     let stockPortfolioChart = null;
-    let industryCountChart = null;
-    let industryPriceChart = null;
+    let sectorCountChart = null;
+    let sectorPriceChart = null;
     let trendCountChart = null;
     let trendPriceChart = null;
     // Define callback
     const _callback = (snapshot, sortType) => {
       const uuid = snapshot.value;
-      const data = JSON.parse(document.querySelector(`#${uuid}`).textContent);
+      const data = JSON.parse(document.getElementById(uuid).textContent);
       const sortFunction = _sortAlgorithm(sortType.value);
       // Create relevant data
       const output = createChartData(data, sortFunction);
+      // Update table
+      updateTable(output.records);
       // Draw charts
       allPortfolioChart = drawChart(allPortfolioChart, 'all-portfolio-chart', output.allPortfolioData);
       stockPortfolioChart = drawChart(stockPortfolioChart, 'stock-portfolio-chart', output.stockPortfolioData);
-      industryCountChart = drawChart(industryCountChart, 'industry-count-chart', output.industryCountData);
-      industryPriceChart = drawChart(industryPriceChart, 'industry-price-chart', output.industryPriceData);
+      sectorCountChart = drawChart(sectorCountChart, 'sector-count-chart', output.sectorCountData);
+      sectorPriceChart = drawChart(sectorPriceChart, 'sector-price-chart', output.sectorPriceData);
       trendCountChart = drawChart(trendCountChart, 'trend-count-chart', output.trendCountData);
       trendPriceChart = drawChart(trendPriceChart, 'trend-price-chart', output.trendPriceData);
     };

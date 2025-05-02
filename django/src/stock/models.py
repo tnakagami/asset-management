@@ -129,9 +129,24 @@ class Stock(models.Model):
   def __str__(self):
     return f'{self.name}({self.code})'
 
+class CashQuerySet(models.QuerySet):
+  def selected_range(self, from_date=None, to_date=None):
+    if from_date and to_date:
+      queryset = self.filter(registered_date__range=[from_date, to_date])
+    elif from_date:
+      queryset = self.filter(registered_date__gte=from_date)
+    elif to_date:
+      queryset = self.filter(registered_date__lte=to_date)
+    else:
+      queryset = self
+
+    return queryset
+
 class Cash(models.Model):
   class Meta:
     ordering = ('-registered_date',)
+
+  objects = CashQuerySet.as_manager()
 
   user = models.ForeignKey(
     UserModel,
@@ -160,12 +175,30 @@ class Cash(models.Model):
 
     return out
 
+class PurchasedStockQuerySet(models.QuerySet):
+  def older(self):
+    return self.order_by('purchase_date')
+
+  def selected_range(self, from_date=None, to_date=None):
+    if from_date and to_date:
+      queryset = self.filter(purchase_date__range=[from_date, to_date])
+    elif from_date:
+      queryset = self.filter(purchase_date__gte=from_date)
+    elif to_date:
+      queryset = self.filter(purchase_date__lte=to_date)
+    else:
+      queryset = self
+
+    return queryset
+
 class PurchasedStock(models.Model):
   class Meta:
     ordering = ('-purchase_date', 'stock__code')
     constraints = [
       models.CheckConstraint(condition=models.Q(price__gte=0), name='price_gte_0_in_purchased_stock'),
     ]
+
+  objects = PurchasedStockQuerySet.as_manager()
 
   user = models.ForeignKey(
     UserModel,
@@ -237,14 +270,33 @@ class Snapshot(models.Model):
     help_text=gettext_lazy('Relevant asset list as of created time (json format).'),
     blank=True,
   )
+  start_date = models.DateTimeField(
+    verbose_name=gettext_lazy('Start date'),
+    blank=True,
+  )
+  end_date = models.DateTimeField(
+    verbose_name=gettext_lazy('End date'),
+    default=timezone.now,
+  )
   created_at = models.DateTimeField(
     verbose_name=gettext_lazy('Creation time'),
     default=timezone.now,
   )
 
   def save(self, *args, **kwargs):
-    _cash = self.user.cashes.all().first()
-    _purchased_stocks = self.user.purchased_stocks.all()
+    if not self.start_date:
+      oldest_record = self.user.purchased_stocks.older().first()
+
+      if oldest_record:
+        start_date = oldest_record.purchase_date
+      else:
+        start_date = self.end_date
+    else:
+      start_date = self.start_date
+    # Collect cash and purchased stocks
+    _cash = self.user.cashes.selected_range(from_date=self.start_date, to_date=self.end_date).first()
+    _purchased_stocks = self.user.purchased_stocks.selected_range(from_date=self.start_date, to_date=self.end_date)
+    self.start_date = start_date
     detail_dict = {
       'cash': _cash.get_dict() if _cash is not None else {},
       'purchased_stocks': [instance.get_dict() for instance in _purchased_stocks],

@@ -21,24 +21,34 @@
           <table class="table table-hover">
             <thead>
               <tr>
+                <th scope="col">{% trans "No." %}</th>
                 <th scope="col">{% trans "Code" %}</th>
                 <th scope="col">{% trans "Stock name" %}</th>
                 <th scope="col">{% trans "Industry" %}</th>
                 <th scope="col">{% trans "Trade date" %}</th>
                 <th scope="col">{% trans "Average trade price" %}</th>
                 <th scope="col">{% trans "Count" %}</th>
-                <th scope="col">{% trans "Delete" %}</th>
+                <th colspan="2">{% trans "Operate" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
               {% for instance in pstocks %}
               <tr>
-                <td scope="row">{{ instance.stock.code }}</td>
+                <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                <td>{{ instance.stock.code }}</td>
                 <td>{{ instance.stock.name }}</td>
                 <td>{{ instance.stock.industry }}</td>
                 <td>{{ instance.purchase_date|date:"Y-m-d" }}</td>
                 <td>{{ instance.price|intcomma }}</td>
                 <td>{{ instance.count }}</td>
+                <td>
+                  <a
+                    href="{% url 'stock:update_purchased_stock' pk=instance.pk %}"
+                    class="text-success link-underline link-underline-opacity-0"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </a>
+                </td>
                 <td>
                   <div
                     class="text-danger delete-target-record"
@@ -56,6 +66,9 @@
         {% else %}
         <span>{% trans "There is no purchased stocks. Please add the items from the above button." %}</span>
         {% endif %}
+      </div>
+      <div class="col">
+      {% include "renderer/custom_pagenate.html" with page_obj=page_obj %}
       </div>
     </div>
   </div>
