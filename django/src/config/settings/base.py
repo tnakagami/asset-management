@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from django.conf.global_settings import DATETIME_INPUT_FORMATS, DATE_INPUT_FORMATS
 from django.utils.translation import gettext_lazy
 import os
 import django
@@ -34,9 +35,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'django.forms',
     # apps
     'account.apps.AccountConfig',
+    'stock.apps.StockConfig',
 ]
 
 MIDDLEWARE = [
@@ -56,7 +59,11 @@ FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates'), os.path.join(django.__path__[0], 'forms/templates')],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(BASE_DIR, 'utils', 'templates'),
+            os.path.join(django.__path__[0], 'forms/templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -66,6 +73,7 @@ TEMPLATES = [
             ],
             'libraries': {
                 'custom_tags': 'custom_templatetags.custom_tags',
+                'utils_extras': 'utils.templatetags.utils_extras',
             },
         },
     },
@@ -132,6 +140,12 @@ LOCALE_PATHS = (
     os.path.join(BASE_DIR, 'locale'),
 )
 
+DATETIME_INPUT_FORMATS += ['%Y/%m/%d']
+DATE_INPUT_FORMATS += [
+    '%Y/%m/%d',
+    '%Y/%m/%d %H:%M:%S',
+]
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -156,6 +170,9 @@ LOGIN_URL = 'account:login'
 LOGIN_REDIRECT_URL = 'account:index'
 LOGOUT_URL = 'account:logout'
 LOGOUT_REDIRECT_URL = 'account:index'
+
+# Define comma interval to use human readable expression
+NUMBER_GROUPING = 3
 
 # Log setting
 LOGGING = {

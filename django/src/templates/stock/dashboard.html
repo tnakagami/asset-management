@@ -1,0 +1,514 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Dashboard") %}
+<div class="row justify-content-center">
+  <div class="col">
+  {% if snapshots %}
+  <div class="row row-cols-1 g-2">
+    <div class="col">
+      <p class="fs-5">{% trans "Target snapshot" %}</p>
+      <select name="snapshot" id="all-snapshots" class="form-control">
+        {% for instance in snapshots %}
+        <option value="{{ instance.uuid }}" {% if forloop.first %}selected{% endif %}>{{ instance.title }}({{ instance.created_at|date:'Y-m-d' }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col">
+      <p class="fs-5">{% trans "Sort type" %}</p>
+      <select name="sortType" id="sort-type" class="form-control">
+        <option value="none" selected>{% trans "Without sorting" %}</option>
+        <option value="asc">{% trans "Ascending order" %}</option>
+        <option value="desc">{% trans "Descending order" %}</option>
+      </select>
+    </div>
+    <div class="col">
+      <nav>
+        <div class="nav nav-pills flex-column flex-md-row" id="management-tab" role="tablist">
+          <button
+            type="button"
+            class="flex-md-fill text-md-center nav-link active"
+            id="portfolio-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#portfolio-tab-pane"
+            role="tab"
+            aria-controls="portfolio-tab-pane"
+            aria-selected="true"
+          >
+            {% trans "Portfolio" %}
+          </button>
+          <button
+            type="button"
+            class="flex-md-fill text-md-center nav-link"
+            id="sector-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#sector-tab-pane"
+            role="tab"
+            aria-controls="sector-tab-pane"
+            aria-selected="false"
+          >
+            {% trans "Sector" %}
+          </button>
+          <button
+            type="button"
+            class="flex-md-fill text-md-center nav-link"
+            id="economic-trend-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#economic-trend-tab-pane"
+            role="tab"
+            aria-controls="economic-trend-tab-pane"
+            aria-selected="false"
+          >
+            {% trans "Economic trend" %}
+          </button>
+          <button
+            type="button"
+            class="flex-md-fill text-md-center nav-link"
+            id="all-assets-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#all-assets-tab-pane"
+            role="tab"
+            aria-controls="all-assets-tab-pane"
+            aria-selected="false"
+          >
+            {% trans "Assets" %}
+          </button>
+        </div>
+      </nav>
+      <div class="tab-content my-2 pt-1 border-top border-2" id="management-content">
+        <div
+          class="tab-pane fade show active"
+          id="portfolio-tab-pane"
+          role="tabpanel"
+          aria-labelledby="portfolio-tab"
+          tabindex="0"
+        >
+          <div class="row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <canvas id="all-portfolio-chart" class="w-100"></canvas>
+            </div>
+            <div class="col">
+              <canvas id="stock-portfolio-chart" class="w-100"></canvas>
+            </div>
+          </div>
+        </div>
+        <div
+          class="tab-pane fade"
+          id="sector-tab-pane"
+          role="tabpanel"
+          aria-labelledby="sector-tab"
+          tabindex="0"
+        >
+          <div class="row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <canvas id="sector-count-chart" class="w-100"></canvas>
+            </div>
+            <div class="col">
+              <canvas id="sector-price-chart" class="w-100"></canvas>
+            </div>
+          </div>
+        </div>
+        <div
+          class="tab-pane fade"
+          id="economic-trend-tab-pane"
+          role="tabpanel"
+          aria-labelledby="economic-trend-tab"
+          tabindex="0"
+        >
+          <div class="row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <canvas id="trend-count-chart" class="w-100"></canvas>
+            </div>
+            <div class="col">
+              <canvas id="trend-price-chart" class="w-100"></canvas>
+            </div>
+          </div>
+        </div>
+        <div
+          class="tab-pane fade"
+          id="all-assets-tab-pane"
+          role="tabpanel"
+          aria-labelledby="all-assets-tab"
+          tabindex="0"
+        >
+          <div class="row">
+            <div class="col">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th scope="col">{% trans "No." %}</th>
+                      <th scope="col">{% trans "Code" %}</th>
+                      <th scope="col">{% trans "Name" %}</th>
+                      <th scope="col">{% trans "Industry" %}</th>
+                      <th scope="col">{% trans "Value" %}</th>
+                      <th scope="col">{% trans "Count" %}</th>
+                    </tr>
+                  </thead>
+                  <tbody id="all-assets-list" class="table-group-divider">
+                  </tbody>
+                  <tfoot class="table-group-divider text-left" id="asset-totals">
+                    <tr>
+                      <th scope="row" colspan="4" class="text-center">{% trans "Total" %}</th>
+                      <th name="total-value"></th>
+                      <th name="total-count"></th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p>{% trans "There is no snapshots. Please add your snapshots in the following link." %}</p>
+  <p>
+    <a
+      href="{% url 'stock:register_snapshot' %}"
+      class="btn btn-outline-primary w-100 custom-boxshadow"
+    >
+      {% trans "Register snapshot" %}
+    </a>
+  </p>
+  {% endif %}
+  </div>
+</div>
+
+<template id="tbody-template">
+<tr>
+  <td scope="row" class="asset-idx"></td>
+  <td class="asset-code"></td>
+  <td class="asset-name"></td>
+  <td class="asset-industry"></td>
+  <td class="asset-value"></td>
+  <td class="asset-count"></td>
+</tr>
+</template>
+{% endblock %}
+
+{% block bodyjs %}
+{% for instance in snapshots %}
+  {{ instance.get_jsonfield }}
+{% endfor %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
+        integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function () {
+  const createChartData = (data, sortCallback) => {
+    const _getValArr = (arr) => arr.map((item) => item.value);
+    const _stockValSum = (arr, initVal=0.0) => _getValArr(arr).reduce((acc, val) => acc + val, initVal);
+    const _generateColorPalette = (len, offset=180) => {
+      const hueArray = (() => {
+        const scaler = (len > 360) ? 1.0 : 360.0 / len;
+
+        return [...Array(len)].map((_, idx) => Math.floor(idx * scaler + offset) % 360);
+      })();
+      const colors = hueArray.map((val) => `hsla(${val}, 82%, 71%, 0.85)`);
+
+      return colors;
+    };
+    const cash = data.cash.balance;
+    const originalStocks = data.purchased_stocks.map((record) => {
+      return {
+        name: record.stock.name,
+        code: record.stock.code,
+        industry: record.stock.industry.name,
+        isDefensive: record.stock.industry.is_defensive,
+        price: record.price,
+        count: record.count,
+      };
+    });
+    const stocks = (() => {
+      const _dict = {};
+      const _calcValue = (item) => Math.floor(item.price * item.count);
+
+      for (const item of originalStocks) {
+        const code = item.code;
+
+        if (Object.hasOwn(_dict, code)) {
+          _dict[code].value += _calcValue(item);
+          _dict[code].count += item.count;
+        }
+        else {
+          _dict[code] = {
+            name: item.name,
+            code: code,
+            industry: item.industry,
+            isDefensive: item.isDefensive,
+            value: _calcValue(item),
+            count: item.count,
+          };
+        }
+      }
+
+      return Object.values(_dict);
+    })();
+    const records = [{
+      name: '{% trans "Cash" %}',
+      code: '-',
+      industry: '-',
+      isDefensive: undefined,
+      value: cash,
+      count: 1,
+    }].concat(stocks);
+    // Define name lists
+    const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
+    const sectorNameList = Object.keys(stocks.reduce((_dict, item) => {
+      _dict[item.industry] = item.code; return _dict;
+    }, {}));
+    const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
+    // Define color dictionaries
+    const stockColorDict = (() => {
+      const arr = stockNameList.slice(1);
+      const palette = _generateColorPalette(arr.length);
+      const lightGrey = '#C9CBCF';
+      const initVal = {[records[0].name]: lightGrey};
+
+      return arr.reduce((_dict, name, idx) => {_dict[name] = palette[idx]; return _dict; }, initVal);
+    })();
+    const sectorColorDict = (() => {
+      const palette = _generateColorPalette(sectorNameList.length);
+
+      return sectorNameList.reduce((_dict, name, idx) => {_dict[name] = palette[idx]; return _dict;}, {});
+    })();
+    const trendColorDict = {
+      [trendNameList[0]]: 'rgba(136, 200, 244, 0.9)',
+      [trendNameList[1]]: 'rgba(243, 136, 158, 0.9)',
+    };
+
+    const pairs = {
+      allPortfolioData: {
+        title: '{% trans "Portfolio (all)" %}',
+        labels: stockNameList,
+        colors: stockColorDict,
+        datasets: [{
+          label: '{% trans "Price" %}',
+          data: _getValArr(records),
+        }],
+      },
+      stockPortfolioData: {
+        title: '{% trans "Portfolio (without cash)" %}',
+        labels: stockNameList.slice(1),
+        colors: stockColorDict,
+        datasets: [{
+          label: '{% trans "Price" %}',
+          data: _getValArr(records.slice(1)),
+        }],
+      },
+      sectorCountData: {
+        title: '{% trans "Sector distribution (count)" %}',
+        labels: sectorNameList,
+        colors: sectorColorDict,
+        datasets: [{
+          label: '{% trans "Count" %}',
+          data: sectorNameList.map((name) => {
+            const targets = records.filter((item) => item.industry === name);
+            const num = targets.length;
+
+            return num;
+          }),
+        }],
+      },
+      sectorPriceData: {
+        title: '{% trans "Sector distribution (price)" %}',
+        labels: sectorNameList,
+        colors: sectorColorDict,
+        datasets: [{
+          label: '{% trans "Price" %}',
+          data: sectorNameList.map((name) => {
+            const targets = records.filter((item) => item.industry === name);
+            const score = _stockValSum(targets);
+
+            return score;
+          }),
+        }],
+      },
+      trendCountData: {
+        title: '{% trans "Economic trend (count)" %}',
+        labels: trendNameList,
+        colors: trendColorDict,
+        datasets: [{
+          label: '{% trans "Count" %}',
+          data: [true, false].map((isDefensive) => {
+            const targets = records.filter((item) => item.isDefensive === isDefensive);
+            const num = targets.length;
+
+            return num;
+          }),
+        }],
+      },
+      trendPriceData: {
+        title: '{% trans "Economic trend (price)" %}',
+        labels: trendNameList,
+        colors: trendColorDict,
+        datasets: [{
+          label: '{% trans "Price" %}',
+          data: [true, false].map((isDefensive) => {
+            const targets = records.filter((item) => item.isDefensive === isDefensive);
+            const score = _stockValSum(targets);
+
+            return score;
+          }),
+        }],
+      }
+    };
+    const output = Object.entries(pairs).reduce((_dict, [key, item]) => {
+      const dataset = item.datasets[0];
+      const target = dataset.data;
+      const indices = target.map((_, idx) => idx);
+      const sortedIndices = (sortCallback) ? indices.sort((li, ri) => sortCallback(target[li], target[ri])) : indices;
+      const newItem = {
+        title: item.title,
+        labels: sortedIndices.map((idx) => item.labels[idx]),
+        datasets: [{
+          label: dataset.label,
+          data: sortedIndices.map((idx) => target[idx]),
+          backgroundColor: sortedIndices.map((idx) => item.colors[item.labels[idx]]),
+        }],
+      };
+      _dict[key] = newItem;
+
+      return _dict;
+    }, {});
+    output.records = records;
+
+    return output;
+  };
+  const updateTable = (records) => {
+    const tbody = document.querySelector('#all-assets-list');
+    const tfoot = document.querySelector('#asset-totals');
+    const template = document.querySelector('#tbody-template');
+    const nodeList = {
+      'idx': (_, idx) => idx,
+      'code': (val, _) => val,
+      'name': (val, _) => val,
+      'industry': (val, _) => val,
+      'value': (val, _) => val.toLocaleString(),
+      'count': (val, _) => val.toLocaleString(),
+    };
+    const totals = {
+      value: 0,
+      count: 0,
+    };
+    tbody.innerHTML = '';
+
+    records.forEach((item, idx) => {
+      const clone = template.content.cloneNode(true);
+
+      for (const [key, callback] of Object.entries(nodeList)) {
+        const element = clone.querySelector(`.asset-${key}`);
+        element.textContent = callback(item[key], idx + 1);
+      }
+      totals.value += item.value;
+      totals.count += item.count;
+      tbody.appendChild(clone);
+    });
+    tfoot.querySelector('th[name="total-value"]').textContent = totals.value.toLocaleString();
+    tfoot.querySelector('th[name="total-count"]').textContent = totals.count.toLocaleString();
+  };
+  const drawChart = (chart, target, asset) => {
+    const context = document.querySelector(`#${target}`);
+
+    if (chart) {
+      chart.destroy();
+    }
+    chart = new Chart(context, {
+      type: 'pie',
+      data: {
+        labels: asset.labels,
+        datasets: asset.datasets,
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: false,
+          },
+          title: {
+            display: true,
+            text: asset.title,
+          },
+          tooltip: {
+            callbacks: {
+              label: function (tooltipItem) {
+                const hiddens = Object.entries(tooltipItem.chart._hiddenIndices)
+                                      .filter(([key, value]) => value)
+                                      .map(([idx, _]) => Number(idx));
+                const targets = tooltipItem.dataset.data.filter((_, idx) => !hiddens.includes(idx));
+                const total = targets.reduce((acc, val) => acc + val, 0.0);
+                const ratio = (tooltipItem.raw + 0.0) / total * 100.0;
+                const score = `${tooltipItem.formattedValue}(${ratio.toFixed(2)}%)`;
+                const out = `${tooltipItem.dataset.label}: ${score}`;
+
+                return out;
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return chart;
+  };
+
+  const init = () => {
+    const _sortAlgorithm = (sortType) => {
+      const types = {
+        none: undefined,
+        asc: 1,
+        desc: -1,
+      };
+      const sign = types[sortType];
+
+      if (sign === undefined) {
+        return null;
+      }
+      else {
+        return (lv, rv) => { // lv: left-value, rv: right-value
+          if      (lv > rv) { return  sign; }
+          else if (lv < rv) { return -sign; }
+          else              { return 0; }
+        };
+      }
+    };
+    // Define chart's variables
+    let allPortfolioChart = null;
+    let stockPortfolioChart = null;
+    let sectorCountChart = null;
+    let sectorPriceChart = null;
+    let trendCountChart = null;
+    let trendPriceChart = null;
+    // Define callback
+    const _callback = (snapshot, sortType) => {
+      const uuid = snapshot.value;
+      const data = JSON.parse(document.getElementById(uuid).textContent);
+      const sortFunction = _sortAlgorithm(sortType.value);
+      // Create relevant data
+      const output = createChartData(data, sortFunction);
+      // Update table
+      updateTable(output.records);
+      // Draw charts
+      allPortfolioChart = drawChart(allPortfolioChart, 'all-portfolio-chart', output.allPortfolioData);
+      stockPortfolioChart = drawChart(stockPortfolioChart, 'stock-portfolio-chart', output.stockPortfolioData);
+      sectorCountChart = drawChart(sectorCountChart, 'sector-count-chart', output.sectorCountData);
+      sectorPriceChart = drawChart(sectorPriceChart, 'sector-price-chart', output.sectorPriceData);
+      trendCountChart = drawChart(trendCountChart, 'trend-count-chart', output.trendCountData);
+      trendPriceChart = drawChart(trendPriceChart, 'trend-price-chart', output.trendPriceData);
+    };
+    // Get element
+    const snapshot = document.querySelector('#all-snapshots');
+    const sortType = document.querySelector('#sort-type');
+    snapshot.addEventListener('change', () => _callback(snapshot, sortType));
+    sortType.addEventListener('change', () => _callback(snapshot, sortType));
+    snapshot.dispatchEvent(new Event('change'));
+  };
+  // Add DOM event
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+{% endblock %}

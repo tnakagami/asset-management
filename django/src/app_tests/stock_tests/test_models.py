@@ -1,0 +1,937 @@
+import pytest
+import json
+import re
+from django.db.utils import IntegrityError, DataError
+from django.core.validators import ValidationError
+from django.utils import timezone as djangoTimeZone
+from django.contrib.auth import get_user_model
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+from decimal import Decimal
+from stock import models
+from . import factories
+
+UserModel = get_user_model()
+
+@pytest.fixture
+def get_judgement_funcs():
+  def collector(classname, exclude=None):
+    ignores = ['id'] if exclude is None else ['id'] + exclude
+    return [field.name for field in classname._meta.fields if field.name not in ignores]
+  def compare_keys(targets, exacts):
+    return (len(targets) == len(exacts)) and all([name == exact_name for name, exact_name in zip(targets, exacts)])
+  def compare_values(fields, targets, instance):
+    _convertor = lambda val: float(val) if isinstance(val, Decimal) else val
+    out = [targets[key] == _convertor(getattr(instance, key)) for key in fields]
+    ret= all(out)
+    print(ret, out)
+
+    return ret
+
+  return collector, compare_keys, compare_values
+
+@pytest.fixture(params=[
+  ('UTC',        datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-15'),
+  ('Asia/Tokyo', datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-16'),
+], ids=lambda xs: '+'.join([xs[0], xs[1].strftime('%Y%m%d-%H:%M:%S'), xs[2]]))
+def pseudo_date(request):
+  yield request.param
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_industry():
+  industry = factories.IndustryFactory()
+
+  assert isinstance(industry, models.Industry)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_snapshot():
+  snapshot = factories.SnapshotFactory()
+
+  assert isinstance(snapshot, models.Snapshot)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_stock():
+  stock = factories.StockFactory()
+
+  assert isinstance(stock, models.Stock)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_cash():
+  cash = factories.CashFactory()
+
+  assert isinstance(cash, models.Cash)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_purchased_stock():
+  purchased_stock = factories.PurchasedStockFactory()
+
+  assert isinstance(purchased_stock, models.PurchasedStock)
+
+# ================
+# Global functions
+# ================
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'this_timezone',
+  'target',
+  'is_string',
+  'strformat',
+  'expected',
+], [
+  ('UTC', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), False, '', datetime(2000,1,2,10,0,0, tzinfo=ZoneInfo('UTC'))),
+  ('UTC', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), True, '%Y-%m-%d %H:%M', '2000-01-02 10:00'),
+  ('Asia/Tokyo', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), False, '', datetime(2000,1,2,19,0,0, tzinfo=ZoneInfo('Asia/Tokyo'))),
+  ('Asia/Tokyo', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), True, '%Y-%m-%d %H:%M', '2000-01-02 19:00'),
+], ids=[
+  'to-utc-datetime',
+  'to-utc-string',
+  'to-asia-tokyo-datetime',
+  'to-asia-tokyo-string',
+])
+def test_check_convert_timezone(settings, this_timezone, target, is_string, strformat, expected):
+  settings.TIME_ZONE = this_timezone
+  output = models.convert_timezone(target, is_string=is_string, strformat=strformat)
+
+  assert output == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'code',
+], [
+  ('1234', ),
+  ('ABCD', ),
+  ('xyzw', ),
+  ('ABxy', ),
+  ('A7890', ),
+  ('a3456', ),
+  ('', ),
+], ids=[
+  'only-numbers',
+  'only-alphabets-of-capital-letter',
+  'only-alphabets-of-small-letter',
+  'only-alphabets-of-both-capital-and-small-letter',
+  'both-numbers-and-capital-letter',
+  'both-numbers-and-small-letter',
+  'code-is-blank',
+])
+def test_check_valid_code_of_validate_code(code):
+  try:
+    models._validate_code(code)
+  except Exception as ex:
+    pytest.fail(f'Unexpected Error({code}): {ex}')
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'code',
+], [
+  ('a-123', ),
+  ('1.23', ),
+  ('2+ab0', ),
+  ('3@aB', ),
+  ('4#Ab', ),
+  ('5$AB', ),
+  ('6!23A', ),
+  ('7&23b', ),
+  ('-1234', ),
+  ('1234-', ),
+], ids=[
+  'exists-hyphen',
+  'exists-period',
+  'exists-plus-mark',
+  'exists-at-mark',
+  'exists-sharp',
+  'exists-dollar-mark',
+  'exists-exclamation-mark',
+  'exists-ampersand',
+  'exists-top-symbol',
+  'exists-last-symbol',
+])
+def test_check_invalid_code_of_validate_code(code):
+  with pytest.raises(ValidationError) as ex:
+    models._validate_code(code)
+  assert 'either alphabets or numbers' in str(ex.value)
+
+# ========
+# Industry
+# ========
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'name',
+  'is_defensive',
+  'original_type',
+], [
+  ('same-industry', True, True),
+  ('same-industry', True, False),
+  ('same-industry', False, True),
+  ('same-industry', False, False),
+], ids=[
+  'both-are-defensive',
+  'new-one-is-defensive',
+  'new-one-is-not-defensive',
+  'both-are-not-defensive',
+])
+def test_add_same_name_in_industry(name, is_defensive, original_type):
+  _ = models.Industry.objects.create(name=name, is_defensive=original_type)
+
+  with pytest.raises(IntegrityError) as ex:
+    _ = models.Industry.objects.create(
+      name=name,
+      is_defensive=is_defensive,
+    )
+  assert 'unique constraint' in str(ex.value)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_get_dict_function_of_industry(get_judgement_funcs):
+  collector, compare_keys, compare_values = get_judgement_funcs
+  instance = factories.IndustryFactory()
+  out_dict = instance.get_dict()
+  fields = collector(models.Industry)
+
+  assert compare_keys(list(out_dict.keys()), fields)
+  assert compare_values(fields, out_dict, instance)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_industry_str_function():
+  instance = factories.IndustryFactory()
+  out = str(instance)
+
+  assert out == instance.name
+
+# =====
+# Stock
+# =====
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'code',
+], [
+  ('1234', ),
+  ('abcd', ),
+  ('ABCD', ),
+  ('12ab', ),
+  ('12AB', ),
+], ids=[
+  'only-numbers',
+  'only-small-letters',
+  'only-capital-letters',
+  'both-numbers-and-small-letters',
+  'both-numbers-and-capital-letters',
+])
+def test_add_same_code_in_stock(code):
+  _ = factories.StockFactory(code=code)
+
+  with pytest.raises(ValidationError) as ex:
+    _ = factories.StockFactory(code=code)
+  assert 'Stock code already exists' in str(ex.value)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'options',
+], [
+  ({}, ),
+  ({'price': 0}, ),
+  ({'price': 99999999.99}, ),
+  ({'dividend': 0}, ),
+  ({'dividend': 99999.99}, ),
+  ({'per': 0}, ),
+  ({'per': 99999.99}, ),
+  ({'pbr': 0}, ),
+  ({'pbr': 99999.99}, ),
+  ({'eps': 0}, ),
+  ({'eps': 99999.99}, ),
+], ids=[
+  'valid-values',
+  'min-value-of-price',
+  'max-value-of-price',
+  'min-value-of-dividend',
+  'max-value-of-dividend',
+  'min-value-of-per',
+  'max-value-of-per',
+  'min-value-of-pbr',
+  'max-value-of-pbr',
+  'min-value-of-eps',
+  'max-value-of-eps',
+])
+def test_check_valid_inputs_of_stock(options):
+  kwargs = {
+    'price':    Decimal('1.23'),
+    'dividend': Decimal('12.0'),
+    'per':      Decimal('1.07'),
+    'pbr':      Decimal('2.0'),
+    'eps':      Decimal('1.12'),
+  }
+  kwargs.update(options)
+
+  try:
+    _ = models.Stock.objects.create(
+      code='1234',
+      name='sample',
+      industry=factories.IndustryFactory(),
+      **kwargs,
+    )
+  except ValidationError as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'options',
+  'err_idx',
+  'digit',
+], [
+  ({'price':    -0.01}, 0, 10), ({'price':    78.991}, 1, 2), ({'price':    100000000.00}, 2, 8),
+  ({'dividend': -0.01}, 0,  7), ({'dividend': 78.991}, 1, 2), ({'dividend':   1000000.00}, 2, 5),
+  ({'per':      -0.01}, 0,  7), ({'per':      78.991}, 1, 2), ({'per':        1000000.00}, 2, 5),
+  ({'pbr':      -0.01}, 0,  7), ({'pbr':      78.991}, 1, 2), ({'pbr':        1000000.00}, 2, 5),
+  ({'eps':      -0.01}, 0,  7), ({'eps':      78.991}, 1, 2), ({'eps':        1000000.00}, 2, 5),
+], ids=[
+  'negative-price',    'invalid-decimal-part-of-price',    'invalid-max-digits-of-price',
+  'negative-dividend', 'invalid-decimal-part-of-dividend', 'invalid-max-digits-of-dividend',
+  'negative-per',      'invalid-decimal-part-of-per',      'invalid-max-digits-of-per',
+  'negative-pbr',      'invalid-decimal-part-of-pbr',      'invalid-max-digits-of-pbr',
+  'negative-eps',      'invalid-decimal-part-of-eps',      'invalid-max-digits-of-eps',
+])
+def test_check_invalid_inputs_of_stock(options, err_idx, digit):
+  err_types = [
+    'digits in total',
+    'decimal places',
+    'digits before the decimal point',
+  ]
+  _type = err_types[err_idx]
+  err_msg = f'Ensure that there are no more than {digit} {_type}'
+
+  with pytest.raises(ValidationError) as ex:
+    _ = models.Stock.objects.create(
+      code='1234',
+      name='sample',
+      industry=factories.IndustryFactory(),
+      **options,
+    )
+  assert err_msg in str(ex.value)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_get_dict_function_of_stock(get_judgement_funcs):
+  collector, compare_keys, compare_values = get_judgement_funcs
+  instance = factories.StockFactory()
+  out_dict = instance.get_dict()
+  fields = collector(models.Stock, exclude=['industry'])
+  _industry = out_dict.pop('industry', None)
+
+  assert _industry is not None
+  assert compare_keys(list(out_dict.keys()), fields)
+  assert compare_values(fields, out_dict, instance)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_stock_str_function():
+  code = 1234
+  name = 'X'
+  instance = factories.StockFactory(code=code, name=name)
+  out = str(instance)
+  expected = f'{name}({code})'
+
+  assert out == expected
+
+# ====
+# Cash
+# ====
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'balance',
+], [
+  (0, ),
+  (1, ),
+  (2147483647, ),
+], ids=[
+  'is-zero',
+  'is-one',
+  'is-max',
+])
+def test_check_valid_balance_value(balance):
+  user = factories.UserFactory()
+
+  try:
+    _ = models.Cash.objects.create(
+      user=user,
+      balance=balance,
+      registered_date=djangoTimeZone.now(),
+    )
+  except IntegrityError as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'balance',
+  'exception_type',
+  'err_msg',
+], [
+  (-1, IntegrityError, 'violates check constraint'),
+  (2147483647 + 1, DataError, 'integer out of range'),
+], ids=[
+  'is-negative',
+  'is-overflow',
+])
+def test_check_invalid_balance_value(balance, exception_type, err_msg):
+  user = factories.UserFactory()
+
+  with pytest.raises(exception_type) as ex:
+    _ = models.Cash.objects.create(
+      user=user,
+      balance=balance,
+      registered_date=djangoTimeZone.now(),
+    )
+  assert err_msg in str(ex.value)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_get_dict_function_of_cash(get_judgement_funcs):
+  collector, compare_keys, compare_values = get_judgement_funcs
+  target_date = datetime(2022,3,4,10,9,1, tzinfo=timezone.utc)
+  instance = factories.CashFactory(
+    registered_date=target_date,
+  )
+  out_dict = instance.get_dict()
+  fields = collector(models.Cash, exclude=['user', 'registered_date'])
+  _registered_date = out_dict.pop('registered_date', None)
+
+  assert _registered_date is not None
+  assert compare_keys(list(out_dict.keys()), fields)
+  assert compare_values(fields, out_dict, instance)
+  assert _registered_date == models.convert_timezone(target_date, is_string=True)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_cash_str_function(settings, pseudo_date):
+  this_timezone, target_date, exact_date = pseudo_date
+  settings.TIME_ZONE = this_timezone
+  instance = factories.CashFactory(
+    user=factories.UserFactory(),
+    balance=12345,
+    registered_date=target_date,
+  )
+  out = str(instance)
+  expected = f'{instance.balance}({exact_date})'
+
+  assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'from_day',
+  'to_day',
+  'count',
+  'first_day',
+  'last_day',
+], [
+  (10, 15, 4, 14, 10),
+  (None, 9, 5, 7, 1),
+  (25, None, 3, 30, 25),
+  (None, None, 17, 30, 1),
+], ids=[
+  'both-date-are-given',
+  'from-date-is-empty',
+  'to-date-is-empty',
+  'both-date-are-empty',
+])
+def test_selected_range_queryset_of_cash(from_day, to_day, count, first_day, last_day):
+  get_date = lambda day: datetime(2023,5,day,5,6,7, tzinfo=timezone.utc)
+  user, other = factories.UserFactory.create_batch(2)
+  from_date = get_date(from_day) if from_day else None
+  to_date = get_date(to_day) if to_day else None
+  first_date = get_date(first_day)
+  last_date = get_date(last_day)
+  # Create records
+  for _day in [1, 3, 5, 6, 7, 10, 11, 13, 14, 16, 17, 19, 20, 22, 25, 29, 30]:
+    _ = factories.CashFactory(user=user, registered_date=get_date(_day))
+  for _day in [9, 10, 14, 15, 16, 25, 26]:
+    _ = factories.CashFactory(user=other, registered_date=get_date(_day))
+  # Collect relevant queryset (order: '-registered_date')
+  queryset = user.cashes.selected_range(from_date, to_date)
+  _first = queryset.first()
+  _last = queryset.last()
+
+  assert len(queryset) == count
+  assert all([record.user == user for record in queryset])
+  assert _first.registered_date == first_date
+  assert _last.registered_date == last_date
+
+# ==============
+# PurchasedStock
+# ==============
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'options',
+], [
+  ({}, ),
+  ({'price': 0}, ),
+  ({'price': 999999999.99}, ),
+  ({'count': 0}, ),
+  ({'count': 2147483647}, ),
+], ids=[
+  'valid-values',
+  'min-value-of-price',
+  'max-value-of-price',
+  'min-value-of-count',
+  'max-value-of-count',
+])
+def test_check_valid_inputs_of_purchased_stock(options):
+  kwargs = {
+    'price': Decimal('1.23'),
+    'count': 100,
+  }
+  kwargs.update(options)
+
+  try:
+    _ = models.PurchasedStock.objects.create(
+      user=factories.UserFactory(),
+      stock=factories.StockFactory(),
+      purchase_date=datetime(1999,1,2,3,4,5, tzinfo=timezone.utc),
+      **kwargs,
+    )
+  except ValidationError as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'options',
+  'exception_type',
+  'err_msg',
+], [
+  ({'price':          -0.01}, ValidationError, '11 digits in total'),
+  ({'price':         12.991}, ValidationError, '2 decimal places'),
+  ({'price':  1000000000.00}, ValidationError, '9 digits before the decimal point'),
+  ({'count':             -1}, ValidationError, 'greater than or equal to 0'),
+  ({'count': 2147483647 + 1}, ValidationError, 'less than or equal to 2147483647'),
+], ids=[
+  'negative-purchased-price',
+  'invalid-decimal-part-of-purchased-price',
+  'invalid-max-digits-of-purchased-price',
+  'is-negative-count',
+  'is-overflow-count',
+])
+def test_check_invalid_inputs_of_purchased_stock(options, exception_type, err_msg):
+  kwargs = {
+    'price': Decimal('1.23'),
+    'count': 100,
+  }
+  kwargs.update(options)
+
+  with pytest.raises(exception_type) as ex:
+    _ = models.PurchasedStock.objects.create(
+      user=factories.UserFactory(),
+      stock=factories.StockFactory(),
+      purchase_date=datetime(1999,1,2,3,4,5, tzinfo=timezone.utc),
+      **kwargs,
+    )
+  assert err_msg in str(ex.value)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_get_dict_function_of_purchased_stock(get_judgement_funcs):
+  collector, compare_keys, compare_values = get_judgement_funcs
+  target_date = datetime(2022,3,4,10,9,1, tzinfo=timezone.utc)
+  instance = factories.PurchasedStockFactory(
+    purchase_date=target_date,
+  )
+  out_dict = instance.get_dict()
+  fields = collector(models.PurchasedStock, exclude=['user', 'stock', 'purchase_date'])
+  _stock = out_dict.pop('stock', None)
+  _purchase_date = out_dict.pop('purchase_date', None)
+
+  assert _stock is not None
+  assert _purchase_date is not None
+  assert compare_keys(list(out_dict.keys()), fields)
+  assert compare_values(fields, out_dict, instance)
+  assert _purchase_date == models.convert_timezone(target_date, is_string=True)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_purchased_stock_str_function(settings, pseudo_date):
+  this_timezone, target_date, exact_date = pseudo_date
+  settings.TIME_ZONE = this_timezone
+  instance = factories.PurchasedStockFactory(
+    user=factories.UserFactory(),
+    stock=factories.StockFactory(),
+    purchase_date=target_date,
+    count=100,
+  )
+  out = str(instance)
+  expected = f'{instance.stock.name}({exact_date},{instance.count})'
+
+  assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_older_queryset_of_purchased_stock():
+  user, other = factories.UserFactory.create_batch(2)
+  get_date = lambda _day: datetime(2024,3,_day,1,2,3, tzinfo=timezone.utc)
+
+  # 24/3/20, 24/3/19, 24/3/18
+  exact0318 = get_date(18)
+  exact0319 = get_date(19)
+  exact0320 = get_date(20)
+  _ = factories.PurchasedStockFactory(user=user, purchase_date=exact0320)
+  _ = factories.PurchasedStockFactory(user=user, purchase_date=exact0319)
+  _ = factories.PurchasedStockFactory(user=user, purchase_date=exact0318)
+  _ = factories.PurchasedStockFactory(user=other, purchase_date=exact0319)
+  # Collect relevant queryset (order: 'purchase_date')
+  queryset = user.purchased_stocks.older()
+
+  assert len(queryset) == 3
+  assert all([record.user == user for record in queryset])
+  assert queryset[0].purchase_date == exact0318
+  assert queryset[1].purchase_date == exact0319
+  assert queryset[2].purchase_date == exact0320
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'from_day',
+  'to_day',
+  'count',
+  'first_day',
+  'last_day',
+], [
+  (10, 15, 4, 14, 10),
+  (None, 9, 5, 7, 1),
+  (25, None, 3, 30, 25),
+  (None, None, 17, 30, 1),
+], ids=[
+  'both-date-are-given',
+  'from-date-is-empty',
+  'to-date-is-empty',
+  'both-date-are-empty',
+])
+def test_selected_range_queryset_of_purchased_stock(from_day, to_day, count, first_day, last_day):
+  get_date = lambda day: datetime(2023,5,day,5,6,7, tzinfo=timezone.utc)
+  user, other = factories.UserFactory.create_batch(2)
+  from_date = get_date(from_day) if from_day else None
+  to_date = get_date(to_day) if to_day else None
+  first_date = get_date(first_day)
+  last_date = get_date(last_day)
+  # Create records
+  for _day in [1, 3, 5, 6, 7, 10, 11, 13, 14, 16, 17, 19, 20, 22, 25, 29, 30]:
+    _ = factories.PurchasedStockFactory(user=user, purchase_date=get_date(_day))
+  for _day in [9, 10, 14, 15, 16, 25, 26]:
+    _ = factories.PurchasedStockFactory(user=other, purchase_date=get_date(_day))
+  # Collect relevant queryset (order: '-purchase_date')
+  queryset = user.purchased_stocks.selected_range(from_date, to_date)
+  _first = queryset.first()
+  _last = queryset.last()
+
+  assert len(queryset) == count
+  assert all([record.user == user for record in queryset])
+  assert _first.purchase_date == first_date
+  assert _last.purchase_date == last_date
+
+# ========
+# Snapshot
+# ========
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_that_json_field_is_empty_in_snapshot():
+  instance = models.Snapshot.objects.create(
+    user=factories.UserFactory(),
+    title='Detail field is empty',
+  )
+  out_dict = json.loads(instance.detail)
+
+  assert all(key in out_dict.keys() for key in ['cash', 'purchased_stocks'])
+  assert len(out_dict['cash']) == 0
+  assert len(out_dict['purchased_stocks']) == 0
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'balances',
+  'months_days',
+  'exact_idx',
+], [
+  ([123], [(2,10)], 0),
+  ([123, 456], [(1,30), (2,9)], 1),
+  ([123, 789, 456], [(2,1), (2,15), (1,30)], 1),
+], ids=[
+  'only-one-cash-is-recorded',
+  'multi-cashes-are-recorded',
+  'newest-record-is-mixed',
+])
+def test_check_that_cashes_exist_in_snapshot(balances, months_days, exact_idx):
+  user = factories.UserFactory()
+
+  for balance, month_day in zip(balances, months_days):
+    target_date = datetime(2024,*month_day,1,2,3, tzinfo=timezone.utc)
+    _ = factories.CashFactory(
+      user=user,
+      balance=balance,
+      registered_date=target_date
+    )
+
+  instance = models.Snapshot.objects.create(
+    user=user,
+    title="User's cashes exist",
+  )
+  out_dict = json.loads(instance.detail)
+  # Create exact data
+  expected_balance = balances[exact_idx]
+  expected_date = models.convert_timezone(
+    datetime(2024,*(months_days[exact_idx]),1,2,3, tzinfo=timezone.utc),
+    is_string=True,
+  )
+
+  assert all(key in out_dict.keys() for key in ['cash', 'purchased_stocks'])
+  assert len(out_dict['cash']) == 2
+  assert len(out_dict['purchased_stocks']) == 0
+  assert out_dict['cash']['balance'] == expected_balance
+  assert out_dict['cash']['registered_date'] == expected_date
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'number_of_purchased_stocks',
+], [
+  (1, ),
+  (3, ),
+], ids=[
+  'only-one-purchased_stock-exists',
+  'multi-purchased_stocks-exist',
+])
+def test_check_that_purchased_stocks_exist_in_snapshot(number_of_purchased_stocks):
+  user = factories.UserFactory()
+  purchased_stocks = sorted(
+    factories.PurchasedStockFactory.create_batch(number_of_purchased_stocks, user=user),
+    key=lambda obj: obj.purchase_date,
+    reverse=True,
+  )
+  instance = models.Snapshot.objects.create(
+    user=user,
+    title="User's purchsed stocks exist",
+  )
+  out_dict = json.loads(instance.detail)
+
+  assert all(key in out_dict.keys() for key in ['cash', 'purchased_stocks'])
+  assert len(out_dict['cash']) == 0
+  assert len(out_dict['purchased_stocks']) == number_of_purchased_stocks
+  assert all([
+    all([
+      extracted['stock']['name'] == exact_val.stock.name,
+      extracted['price'] == float(exact_val.price),
+      extracted['purchase_date'] == models.convert_timezone(exact_val.purchase_date, is_string=True),
+      extracted['count'] == exact_val.count,
+    ])
+    for extracted, exact_val in zip(out_dict['purchased_stocks'], purchased_stocks)
+  ])
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_general_pattern_in_snapshot():
+  user = factories.UserFactory()
+  cashes = factories.CashFactory.create_batch(4, user=user)
+  purchased_stocks = sorted(
+    factories.PurchasedStockFactory.create_batch(4, user=user),
+    key=lambda obj: obj.purchase_date,
+    reverse=True,
+  )
+  instance = models.Snapshot.objects.create(
+    user=user,
+    title="It's general pattern",
+  )
+  out_dict = json.loads(instance.detail)
+  # Create expected data
+  exact_cash_idx, cash_date = 0, cashes[0].registered_date
+  for idx, _cash in enumerate(cashes[1:], 1):
+    if cash_date < _cash.registered_date:
+      exact_cash_idx, cash_date = idx, _cash.registered_date
+
+  assert all(key in out_dict.keys() for key in ['cash', 'purchased_stocks'])
+  assert len(out_dict['cash']) == 2
+  assert len(out_dict['purchased_stocks']) == 4
+  assert out_dict['cash']['balance'] == cashes[exact_cash_idx].balance
+  assert out_dict['cash']['registered_date'] == models.convert_timezone(cashes[exact_cash_idx].registered_date, is_string=True)
+  assert all([
+    all([
+      extracted['stock']['name'] == exact_val.stock.name,
+      extracted['purchase_date'] == models.convert_timezone(exact_val.purchase_date, is_string=True),
+      extracted['count'] == exact_val.count,
+    ])
+    for extracted, exact_val in zip(out_dict['purchased_stocks'], purchased_stocks)
+  ])
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_snapshot_str_function(settings, pseudo_date):
+  this_timezone, target_date, exact_date = pseudo_date
+  settings.TIME_ZONE = this_timezone
+  instance = factories.SnapshotFactory(
+    user=factories.UserFactory(),
+    title='sample-title',
+    detail='{"key1":3,"key2":"a","key3":4}',
+    created_at=target_date,
+  )
+  out = str(instance)
+  expected = f'{instance.title}({exact_date})'
+
+  assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'start_day',
+  'end_day',
+  'num_purchased_stock',
+  'expected_start_day',
+  'expected_end_day',
+], [
+  (10, 15, 0, 10, 15),   # same as definition date
+  (None, None, 0, 25, 25), # same as timezone.now
+  (None, 15, 0, 15, 15), # same as end_date
+  (None, 15, 2, 10, 15), # same as oldest date of purchased stock record
+  (12, None, 0, 12, 25), # same as definition date
+], ids=[
+  'both-dates-exist',
+  'both-dates-donot-exist',
+  'start-date-and-purchased-stock-are-none',
+  'start-date-is-none',
+  'end-date-is-none',
+])
+def test_range_patterns_in_snapshot(mocker, start_day, end_day, num_purchased_stock, expected_start_day, expected_end_day):
+  get_date = lambda day: datetime(2024,3,day,1,2,3, tzinfo=timezone.utc)
+  # Calculate expected value
+  expected_start_date = get_date(expected_start_day)
+  expected_end_date = get_date(expected_end_day)
+  mocker.patch(
+    'stock.models.Snapshot.end_date',
+    new_callable=mocker.PropertyMock,
+    return_value=expected_end_date,
+  )
+  # Define arguments
+  options = {
+    'title': 'sample',
+    'start_date': get_date(start_day) if start_day else None,
+  }
+  if end_day:
+    options['end_date'] = get_date(end_day)
+  # Create instance
+  user = factories.UserFactory()
+  for _day in range(num_purchased_stock):
+    purchase_date = get_date(10 + _day) # oldest day: 2024/3/10
+    _ = factories.PurchasedStockFactory(user=user, purchase_date=purchase_date)
+  instance = models.Snapshot.objects.create(
+    user=user,
+    **options,
+  )
+  # Compare
+  assert instance.start_date == expected_start_date
+  assert instance.end_date == expected_end_date
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'json_data',
+], [
+  ({'cash': {}, 'purchased_stocks': []},),
+  ({'cash': {}, 'purchased_stocks': ['key0', 'something']},),
+  ({'cash': {'key1': 'something'}, 'purchased_stocks': []},),
+  ({'cash': {'key1': 'anything'}, 'purchased_stocks': ['key2']},),
+], ids=[
+  'both-are-empty',
+  'cash-is-empty',
+  'purchased-stock-is-empty',
+  'both-are-included',
+])
+def test_get_jsonfield_function_of_snapshot(mocker, json_data):
+  instance = factories.SnapshotFactory()
+  mocker.patch.object(instance, 'detail', json.dumps(json_data))
+  output = instance.get_jsonfield()
+  extracted_uuid = re.search('(?<=id=")(.*?)(?=")', output).group(1)
+  extracted_code = re.search('<script[^>]*?>(.*)</script>', output).group(1)
+  extracted_json = json.loads(extracted_code)
+  cash_key = 'cash'
+  pstock_key = 'purchased_stocks'
+
+  assert extracted_uuid == str(instance.uuid)
+  assert all([key in extracted_json.keys() for key in json_data.keys()])
+  assert all([len(extracted_json[key]) == len(val) for key, val in json_data.items()])
+  assert all([extracted_json[cash_key][key] == exact_val] for key, exact_val in json_data[cash_key].items())
+  assert all([estimated == exact_val for estimated, exact_val in zip(extracted_json[pstock_key], json_data[pstock_key])])
+
+# ======================
+# Delete related records
+# ======================
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'basename',
+  'base_factory',
+  'base_model',
+  'target_factory',
+  'target_model',
+], [
+  ('industry', factories.IndustryFactory, models.Industry, factories.StockFactory, models.Stock),
+  ('user', factories.UserFactory, UserModel, factories.CashFactory, models.Cash),
+  ('user', factories.UserFactory, UserModel, factories.PurchasedStockFactory, models.PurchasedStock),
+  ('stock', factories.StockFactory, models.Stock, factories.PurchasedStockFactory, models.PurchasedStock),
+], ids=[
+  'industry-stock-pair',
+  'user-cach-pair',
+  'user-purchased-stock-pair',
+  'stock-purchased-stock-pair',
+])
+def test_delete_related_records(basename, base_factory, base_model, target_factory, target_model):
+  expected_counts = 3
+  instances = base_factory.create_batch(2)
+  _ = target_factory.create_batch(5, **{basename: instances[0]})
+  _ = target_factory.create_batch(expected_counts, **{basename: instances[1]})
+  # Delete instance
+  base_model.objects.get(pk=instances[0].pk).delete()
+  rest_counts = target_model.objects.all().count()
+
+  assert rest_counts == expected_counts

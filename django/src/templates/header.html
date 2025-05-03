@@ -14,18 +14,14 @@
       <li class="nav-item dropdown">
         <a
           href="#"
-          class="dropdown-toggle d-flex align-items-center"
-          data-mdb-dropdown-init
-          id="dropdown-language-menu"
+          class="nav-link dropdown-toggle d-flex align-items-center"
           role="button"
           aria-expanded="false"
+          data-bs-toggle="dropdown"
         >
           <span>Language</span>
         </a>
-        <ul
-          class="dropdown-menu"
-          aria-labelledby="dropdown-language-menu"
-        >
+        <ul class="dropdown-menu">
           {% get_available_languages as LANGUAGES %}
           {% get_language_info_list for LANGUAGES as languages %}
           {% for language in languages %}
@@ -47,18 +43,16 @@
       <div class="dropdown">
         <a
           href="#"
-          class="dropdown-toggle d-flex align-items-center hidden-arrow"
-          data-mdb-dropdown-init
-          id="dropdown-avatar-menu"
+          class="dropdown-toggle d-flex align-items-center hidden-arrow "
           role="button"
           aria-expanded="false"
+          data-bs-toggle="dropdown"
         >
-          <i class="fa-solid fa-circle-user fa-2xl"></i>
+          <span class="text-primary opacity-75">
+            <i class="far fa-circle-user fa-2x"></i>
+          </span>
         </a>
-        <ul
-          class="dropdown-menu dropdown-menu-end"
-          aria-labelledby="dropdown-avatar-menu"
-        >
+        <ul class="dropdown-menu dropdown-menu-end">
           {# User profile #}
           <li>
             <a class="dropdown-item" href="{% url 'account:user_profile' pk=user.pk %}">

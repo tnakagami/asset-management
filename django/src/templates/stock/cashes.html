@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Cashes") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="row row-cols-1 g-2">
+      <div class="col">
+        <a
+          href="{% url 'stock:register_cash' %}"
+          class="btn btn-primary w-100 custom-boxshadow"
+        >
+          {% trans "Register cash" %}
+        </a>
+      </div>
+      <div class="col">
+        {% if cashes %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">{% trans "No." %}</th>
+                <th scope="col">{% trans "Balance" %}</th>
+                <th scope="col">{% trans "Registered date" %}</th>
+                <th colspan="2">{% trans "Operate" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider">
+              {% for instance in cashes %}
+              <tr>
+                <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                <td>{{ instance.balance|intcomma }}</td>
+                <td>{{ instance.registered_date|date:"Y-m-d" }}</td>
+                <td>
+                  <a
+                    href="{% url 'stock:update_cash' pk=instance.pk %}"
+                    class="text-success link-underline link-underline-opacity-0"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </a>
+                </td>
+                <td>
+                  <div
+                    class="text-danger delete-target-record"
+                    data-name="[{{ instance.registered_date|date:'Y-m-d' }}] {{ instance.balance|intcomma }}"
+                    data-url="{% url 'stock:delete_cash' pk=instance.pk %}"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <span>{% trans "There is no cashes. Please add the items from the above button." %}</span>
+        {% endif %}
+      </div>
+      <div class="col">
+      {% include "renderer/custom_pagenate.html" with page_obj=page_obj %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include "delete_modal_form.html" with modal_id="delete-modal" form_id="delete-form" %}
+{% endblock %}
+
+{% block bodyjs %}
+{{ block.super }}
+<script>
+(function () {
+  g_registerDeleteModalEvent({
+    targetCSS: 'delete-target-record',
+    formID: 'delete-form',
+    modalID: 'delete-modal',
+  });
+})();
+</script>
+{% endblock %}

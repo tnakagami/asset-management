@@ -1,0 +1,33 @@
+{% load i18n %}
+
+<div class="modal" id="{{ modal_id }}" tabindex="-1" aria-labelledby="deletion-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title fs-5" id="deletion-label">{% trans "Confirmation of deletion" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-danger"><strong>{% trans "May I really delete this record?" %}</strong></p>
+        <p>{% trans "target" %}: <span id="target-name" class="text-break"></span></p>
+      </div>
+      <div class="modal-footer">
+        <form method="POST" action="" id="{{ form_id }}" class="w-100">
+          {% csrf_token %}
+          <div class="row g-2">
+            <div class="col-12 col-md-6">
+              <button type="submit" class="btn btn-danger w-100 custom-boxshadow">
+                {% trans "Accept" %}
+              </button>
+            </div>
+            <div class="col-12 col-md-6">
+              <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+                {% trans "Close" %}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

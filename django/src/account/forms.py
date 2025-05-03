@@ -4,6 +4,8 @@ from django.utils.translation import gettext_lazy
 from . import models
 
 class LoginForm(AuthenticationForm):
+  template_name = 'renderer/custom_form.html'
+
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
@@ -11,6 +13,8 @@ class LoginForm(AuthenticationForm):
       field.widget.attrs['class'] = 'form-control'
 
 class UserProfileForm(forms.ModelForm):
+  template_name = 'renderer/custom_form.html'
+
   class Meta:
     model = models.User
     fields = ('screen_name', )

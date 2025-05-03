@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block header %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Register/Update purchsed stock") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" id="purchased-stock-form">
+          {% csrf_token %}
+
+          {{ form }}
+
+          <div class="mt-2 row">
+            <div class="col">
+              <button
+                type="button"
+                id="stock-helper"
+                class="btn btn-outline-primary w-100 custom-boxshadow"
+                data-bs-toggle="modal"
+                data-bs-target="#stock-helper-modal"
+              >
+                {% trans "Stock (Helper)" %}
+              </button>
+            </div>
+          </div>
+
+          {# Register or cancel #}
+          <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <button
+                type="submit"
+                class="btn btn-primary w-100 custom-boxshadow"
+              >
+                {% trans "Register/Update" %}
+              </button>
+            </div>
+            <div class="col">
+              <a
+                href="{% url 'stock:list_purchased_stock' %}"
+                class="btn btn-secondary w-100 custom-boxshadow"
+              >
+                {% trans "Cancel" %}
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="stock-helper-modal" tabindex="-1" aria-labelledby="stock-helper-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title h3" id="stock-helper-label">{% trans "Stock helper" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <select name="stockListOfModal" id="stock-list-of-modal" class="form-control"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Close" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block bodyjs %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+{% include form.datalist_template_name with form_id='purchased-stock-form' datalist_ids=form.datalist_ids %}
+{{ block.super }}
+<script>
+(function () {
+  const setupStockField = (stockInputElement) => {
+    // Process of stock field
+    const _getTargetOption = (options, keyName, key) => {
+      const targetOption = Object.values(options).find((_option) => _option[keyName] === key);
+      const ret = (targetOption) ? targetOption : options[0];
+
+      return ret;
+    };
+    const stockModalElement = document.querySelector('#stock-list-of-modal');
+    const controller = new TomSelect(stockModalElement, {
+      allowEmptyOption: true,
+      closeAfterSelect: true,
+      create: false,
+      maxItems: 1,
+      maxOptions: null,
+      onFocus: function () {
+        this.clear();
+      },
+      onChange: function (pk) {
+        const targetOption = _getTargetOption(this.options, 'pk', Number(pk));
+        stockInputElement.value = targetOption.text;
+      },
+      onDropdownClose: function (dropdown) {
+        stockModalElement.focus();
+      },
+      valueField: 'pk',
+      labelField: 'label',
+      searchField: 'text',
+      options: Object.freeze([
+        {pk: 0, label: '{% trans "Please select an option." %}', text: ''},
+        {% for option in form.stock_choices %}{pk: {{ option.pk }}, label: '{{ option.name }}({{ option.code }})', text: '{{ option.name }}({{ option.code }})'},
+        {% endfor %}
+      ]),
+    });
+    stockInputElement.addEventListener('focusout', (event) => {
+      const selectedLabel = event.target.value.trim();
+      const targetOption = _getTargetOption(controller.options, 'label', selectedLabel);
+      controller.setValue([targetOption.pk]);
+      event.target.value = targetOption.text;
+    });
+    if (stockInputElement.value) {
+      const element = document.querySelector('#stock-helper');
+      element.disabled = true;
+    }
+  };
+  // Define initialization function
+  const init = () => {
+    g_setupPicker(document.querySelector('#purchase-date-id'));
+    setupStockField(document.querySelector('#stock-id'));
+  };
+  // Add DOM event
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+{% endblock %}
