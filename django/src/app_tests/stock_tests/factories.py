@@ -1,4 +1,5 @@
 import factory
+import uuid
 from django.utils import timezone
 from faker import Factory as FakerFactory
 from stock import models
@@ -21,14 +22,6 @@ class IndustryFactory(factory.django.DjangoModelFactory):
 
   name = factory.LazyAttribute(lambda instance: _clip(faker.name(), 64))
   is_defensive = faker.pybool()
-
-class SnapshotFactory(factory.django.DjangoModelFactory):
-  class Meta:
-    model = models.Snapshot
-
-  user = factory.SubFactory(UserFactory)
-  title = factory.LazyAttribute(lambda instance: _clip(faker.name(), 255))
-  created_at = factory.LazyFunction(timezone.now)
 
 class StockFactory(factory.django.DjangoModelFactory):
   class Meta:
@@ -90,3 +83,13 @@ class PurchasedStockFactory(factory.django.DjangoModelFactory):
   price = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.price_params))
   purchase_date = factory.LazyFunction(timezone.now)
   count = factory.LazyAttribute(lambda instance: faker.pyint(**instance.count_params))
+
+class SnapshotFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = models.Snapshot
+
+  user = factory.SubFactory(UserFactory)
+  uuid = factory.LazyFunction(uuid.uuid4)
+  title = factory.LazyAttribute(lambda instance: _clip(faker.name(), 255))
+  end_date = factory.LazyFunction(timezone.now)
+  created_at = factory.LazyFunction(timezone.now)

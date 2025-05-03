@@ -1,5 +1,6 @@
 import pytest
 import json
+import re
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
 from django.utils import timezone as djangoTimeZone
@@ -32,7 +33,7 @@ def get_judgement_funcs():
 @pytest.fixture(params=[
   ('UTC',        datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-15'),
   ('Asia/Tokyo', datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-16'),
-])
+], ids=lambda xs: '+'.join([xs[0], xs[1].strftime('%Y%m%d-%H:%M:%S'), xs[2]]))
 def pseudo_date(request):
   yield request.param
 
@@ -445,6 +446,48 @@ def test_check_cash_str_function(settings, pseudo_date):
 
   assert out == expected
 
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'from_day',
+  'to_day',
+  'count',
+  'first_day',
+  'last_day',
+], [
+  (10, 15, 4, 14, 10),
+  (None, 9, 5, 7, 1),
+  (25, None, 3, 30, 25),
+  (None, None, 17, 30, 1),
+], ids=[
+  'both-date-are-given',
+  'from-date-is-empty',
+  'to-date-is-empty',
+  'both-date-are-empty',
+])
+def test_selected_range_queryset_of_cash(from_day, to_day, count, first_day, last_day):
+  get_date = lambda day: datetime(2023,5,day,5,6,7, tzinfo=timezone.utc)
+  user, other = factories.UserFactory.create_batch(2)
+  from_date = get_date(from_day) if from_day else None
+  to_date = get_date(to_day) if to_day else None
+  first_date = get_date(first_day)
+  last_date = get_date(last_day)
+  # Create records
+  for _day in [1, 3, 5, 6, 7, 10, 11, 13, 14, 16, 17, 19, 20, 22, 25, 29, 30]:
+    _ = factories.CashFactory(user=user, registered_date=get_date(_day))
+  for _day in [9, 10, 14, 15, 16, 25, 26]:
+    _ = factories.CashFactory(user=other, registered_date=get_date(_day))
+  # Collect relevant queryset (order: '-registered_date')
+  queryset = user.cashes.selected_range(from_date, to_date)
+  _first = queryset.first()
+  _last = queryset.last()
+
+  assert len(queryset) == count
+  assert all([record.user == user for record in queryset])
+  assert _first.registered_date == first_date
+  assert _last.registered_date == last_date
+
 # ==============
 # PurchasedStock
 # ==============
@@ -555,6 +598,72 @@ def test_check_purchased_stock_str_function(settings, pseudo_date):
   expected = f'{instance.stock.name}({exact_date},{instance.count})'
 
   assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_older_queryset_of_purchased_stock():
+  user, other = factories.UserFactory.create_batch(2)
+  get_date = lambda _day: datetime(2024,3,_day,1,2,3, tzinfo=timezone.utc)
+
+  # 24/3/20, 24/3/19, 24/3/18
+  exact0318 = get_date(18)
+  exact0319 = get_date(19)
+  exact0320 = get_date(20)
+  _ = factories.PurchasedStockFactory(user=user, purchase_date=exact0320)
+  _ = factories.PurchasedStockFactory(user=user, purchase_date=exact0319)
+  _ = factories.PurchasedStockFactory(user=user, purchase_date=exact0318)
+  _ = factories.PurchasedStockFactory(user=other, purchase_date=exact0319)
+  # Collect relevant queryset (order: 'purchase_date')
+  queryset = user.purchased_stocks.older()
+
+  assert len(queryset) == 3
+  assert all([record.user == user for record in queryset])
+  assert queryset[0].purchase_date == exact0318
+  assert queryset[1].purchase_date == exact0319
+  assert queryset[2].purchase_date == exact0320
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'from_day',
+  'to_day',
+  'count',
+  'first_day',
+  'last_day',
+], [
+  (10, 15, 4, 14, 10),
+  (None, 9, 5, 7, 1),
+  (25, None, 3, 30, 25),
+  (None, None, 17, 30, 1),
+], ids=[
+  'both-date-are-given',
+  'from-date-is-empty',
+  'to-date-is-empty',
+  'both-date-are-empty',
+])
+def test_selected_range_queryset_of_purchased_stock(from_day, to_day, count, first_day, last_day):
+  get_date = lambda day: datetime(2023,5,day,5,6,7, tzinfo=timezone.utc)
+  user, other = factories.UserFactory.create_batch(2)
+  from_date = get_date(from_day) if from_day else None
+  to_date = get_date(to_day) if to_day else None
+  first_date = get_date(first_day)
+  last_date = get_date(last_day)
+  # Create records
+  for _day in [1, 3, 5, 6, 7, 10, 11, 13, 14, 16, 17, 19, 20, 22, 25, 29, 30]:
+    _ = factories.PurchasedStockFactory(user=user, purchase_date=get_date(_day))
+  for _day in [9, 10, 14, 15, 16, 25, 26]:
+    _ = factories.PurchasedStockFactory(user=other, purchase_date=get_date(_day))
+  # Collect relevant queryset (order: '-purchase_date')
+  queryset = user.purchased_stocks.selected_range(from_date, to_date)
+  _first = queryset.first()
+  _last = queryset.last()
+
+  assert len(queryset) == count
+  assert all([record.user == user for record in queryset])
+  assert _first.purchase_date == first_date
+  assert _last.purchase_date == last_date
 
 # ========
 # Snapshot
@@ -708,6 +817,90 @@ def test_check_snapshot_str_function(settings, pseudo_date):
   expected = f'{instance.title}({exact_date})'
 
   assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'start_day',
+  'end_day',
+  'num_purchased_stock',
+  'expected_start_day',
+  'expected_end_day',
+], [
+  (10, 15, 0, 10, 15),   # same as definition date
+  (None, None, 0, 25, 25), # same as timezone.now
+  (None, 15, 0, 15, 15), # same as end_date
+  (None, 15, 2, 10, 15), # same as oldest date of purchased stock record
+  (12, None, 0, 12, 25), # same as definition date
+], ids=[
+  'both-dates-exist',
+  'both-dates-donot-exist',
+  'start-date-and-purchased-stock-are-none',
+  'start-date-is-none',
+  'end-date-is-none',
+])
+def test_range_patterns_in_snapshot(mocker, start_day, end_day, num_purchased_stock, expected_start_day, expected_end_day):
+  get_date = lambda day: datetime(2024,3,day,1,2,3, tzinfo=timezone.utc)
+  # Calculate expected value
+  expected_start_date = get_date(expected_start_day)
+  expected_end_date = get_date(expected_end_day)
+  mocker.patch(
+    'stock.models.Snapshot.end_date',
+    new_callable=mocker.PropertyMock,
+    return_value=expected_end_date,
+  )
+  # Define arguments
+  options = {
+    'title': 'sample',
+    'start_date': get_date(start_day) if start_day else None,
+  }
+  if end_day:
+    options['end_date'] = get_date(end_day)
+  # Create instance
+  user = factories.UserFactory()
+  for _day in range(num_purchased_stock):
+    purchase_date = get_date(10 + _day) # oldest day: 2024/3/10
+    _ = factories.PurchasedStockFactory(user=user, purchase_date=purchase_date)
+  instance = models.Snapshot.objects.create(
+    user=user,
+    **options,
+  )
+  # Compare
+  assert instance.start_date == expected_start_date
+  assert instance.end_date == expected_end_date
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'json_data',
+], [
+  ({'cash': {}, 'purchased_stocks': []},),
+  ({'cash': {}, 'purchased_stocks': ['key0', 'something']},),
+  ({'cash': {'key1': 'something'}, 'purchased_stocks': []},),
+  ({'cash': {'key1': 'anything'}, 'purchased_stocks': ['key2']},),
+], ids=[
+  'both-are-empty',
+  'cash-is-empty',
+  'purchased-stock-is-empty',
+  'both-are-included',
+])
+def test_get_jsonfield_function_of_snapshot(mocker, json_data):
+  instance = factories.SnapshotFactory()
+  mocker.patch.object(instance, 'detail', json.dumps(json_data))
+  output = instance.get_jsonfield()
+  extracted_uuid = re.search('(?<=id=")(.*?)(?=")', output).group(1)
+  extracted_code = re.search('<script[^>]*?>(.*)</script>', output).group(1)
+  extracted_json = json.loads(extracted_code)
+  cash_key = 'cash'
+  pstock_key = 'purchased_stocks'
+
+  assert extracted_uuid == str(instance.uuid)
+  assert all([key in extracted_json.keys() for key in json_data.keys()])
+  assert all([len(extracted_json[key]) == len(val) for key, val in json_data.items()])
+  assert all([extracted_json[cash_key][key] == exact_val] for key, exact_val in json_data[cash_key].items())
+  assert all([estimated == exact_val for estimated, exact_val in zip(extracted_json[pstock_key], json_data[pstock_key])])
 
 # ======================
 # Delete related records
