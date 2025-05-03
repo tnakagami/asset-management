@@ -8,6 +8,8 @@ omit =
   config/asgi.py
   config/wsgi.py
   config/define_module.py
+  utils/admin.py
+  utils/apps.py
   app_tests/**
   */migrations/*
 
