@@ -48,11 +48,13 @@ testpaths = ["app_tests"]
 python_files = ["test_*.py", "tests.py", "*_test.py"]
 markers = [
   "customtag: mark tests as custom_tags",
+  "widget: mark tests as widget",
   "model: mark tests as Django Model",
   "form: mark tests as Django Form",
   "view: mark tests as Django View",
   "account: mark tests as account application",
   "stock: mark tests as stock application",
+  "utils: mark tests as utils",
 ]
 cache_dir = "/opt/home/.cache"
 asyncio_default_fixture_loop_scope = "session"
