@@ -32,10 +32,10 @@
               {% for instance in snapshots %}
               <tr>
                 <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                <td>{{ instance.title }}</td>
-                <td>{{ instance.start_date|date:"Y-m-d" }}</td>
-                <td>{{ instance.end_date|date:"Y-m-d" }}</td>
-                <td>
+                <td data-type="title">{{ instance.title }}</td>
+                <td data-type="startDate">{{ instance.start_date|date:"Y-m-d" }}</td>
+                <td data-type="endDate">{{ instance.end_date|date:"Y-m-d" }}</td>
+                <td data-operate="edit">
                   <a
                     href="{% url 'stock:update_snapshot' pk=instance.pk %}"
                     class="text-success link-underline link-underline-opacity-0"
@@ -43,7 +43,7 @@
                     <i class="fas fa-edit"></i>
                   </a>
                 </td>
-                <td>
+                <td data-operate="delete">
                   <div
                     class="text-danger delete-target-record"
                     data-name="[{{ instance.created_at|date:'Y-m-d' }}] {{ instance.title }}"

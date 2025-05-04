@@ -55,6 +55,7 @@ markers = [
   "account: mark tests as account application",
   "stock: mark tests as stock application",
   "utils: mark tests as utils",
+  "webtest: mark tests as django-webtest",
 ]
 cache_dir = "/opt/home/.cache"
 asyncio_default_fixture_loop_scope = "session"
