@@ -5,7 +5,7 @@
 {% include 'breadcrumbs.html' with title=_("Update user profile") %}
 <div class="row justify-content-center">
   <div class="col">
-    <form method="POST">
+    <form method="POST" id="user-profile-form">
       {% csrf_token %}
 
       {{ form }}
