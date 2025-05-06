@@ -5,6 +5,7 @@ app_name = 'stock'
 
 urlpatterns = [
   path('', views.Dashboard.as_view(), name='dashboard'),
+  path('ajax/stock', views.StockAjaxResponse.as_view(), name='ajax_stock'),
   # Cash
   path('list/cashes', views.ListCash.as_view(), name='list_cash'),
   path('register/cash', views.RegisterCash.as_view(), name='register_cash'),

@@ -1,6 +1,7 @@
 from django import forms
 
 class Datalist(forms.Select):
+  _has_error = False
   input_type = 'text'
   input_list = ''
   use_dataset_attr = False
@@ -16,6 +17,7 @@ class Datalist(forms.Select):
 
   def get_context(self, name, value, attrs):
     context = super().get_context(name, value, attrs)
+    context['widget']['has_error'] = self._has_error
     context['widget']['initial'] = value
     context['widget']['type'] = self.input_type
     context['widget']['id'] = self.input_list if self.input_list else f'{name}_datalist'
@@ -25,6 +27,13 @@ class Datalist(forms.Select):
 
   def use_dataset(self):
     return bool(self.use_dataset_attr)
+
+  @property
+  def has_error(self):
+    raise AttributeError('Invalid data access')
+  @has_error.setter
+  def has_error(self, value):
+    self._has_error = True
 
 class DatalistField(forms.ChoiceField):
   widget = Datalist

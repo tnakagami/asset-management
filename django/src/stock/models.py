@@ -114,6 +114,10 @@ class Stock(models.Model):
     self.full_clean()
     super().save(*args, **kwargs)
 
+  @classmethod
+  def get_choices_as_list(cls):
+    return list(cls.objects.all().values('pk', 'name', 'code').order_by('pk'))
+
   def get_dict(self):
     return {
       'code': self.code,

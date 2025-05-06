@@ -17,14 +17,17 @@ class ModelFormBasedOnUser(forms.ModelForm):
     return instance
 
 class BaseModelDatalistForm(forms.BaseForm):
+  field_class = ModelDatalistField
+
   class Meta:
     datalist_fields = []
     datalist_kwargs = {}
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, field_class=None, **kwargs):
     super().__init__(*args, **kwargs)
 
     _meta = getattr(self, 'Meta', None)
+    field_class = field_class or self.field_class
     datalist_fields = getattr(_meta, 'datalist_fields', [])
     datalist_kwargs = getattr(_meta, 'datalist_kwargs', {})
     widgets = getattr(_meta, 'widgets', {})
@@ -33,7 +36,7 @@ class BaseModelDatalistForm(forms.BaseForm):
     for field_name in datalist_fields:
       widget = widgets.get(field_name, None)
       options = datalist_kwargs.get(field_name, {'queryset': empty_qs})
-      dynamic_fields[field_name] = ModelDatalistField(widget=widget, **options)
+      dynamic_fields[field_name] = field_class(widget=widget, **options)
     # Update declared_fields
     self.declared_fields.update(dynamic_fields)
     self._extra_datalist_fields = [item for item in datalist_fields]
