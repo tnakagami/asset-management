@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'django.forms',
+    'django_celery_results',
     # apps
     'account.apps.AccountConfig',
     'stock.apps.StockConfig',
@@ -160,6 +161,26 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ============================================
 # === Custom settings defined by developer ===
 # ============================================
+# Define cach setting
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': '{host}://{host}:6379'.format(host=os.getenv('REDIS_HOST', 'redis')),
+    }
+}
+
+# Define Celery configuration options
+CELERY_TIMEZONE = os.getenv('DJANGO_TIME_ZONE', 'UTC')
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')
+CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv('CELERY_WORKER_PREFETCH_MULTIPLIER', 4))
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_EXTENDED = True
+
 # Define custom user model
 AUTH_USER_MODEL = 'account.User'
 AUTHENTICATION_BACKENDS = [

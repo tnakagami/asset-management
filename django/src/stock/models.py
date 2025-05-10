@@ -12,6 +12,14 @@ import uuid
 
 UserModel = get_user_model()
 
+def bind_user_function(callback):
+  def wrapper(**kwargs):
+    return callback(**kwargs)
+  # Set function name
+  wrapper.__name__ = 'as_udf' # user-defined function of asset-management
+
+  return wrapper
+
 def convert_timezone(target, is_string=False, strformat='%Y-%m-%d'):
   timezone = ZoneInfo(settings.TIME_ZONE)
   output = target.astimezone(timezone)
@@ -55,7 +63,6 @@ class Stock(models.Model):
       models.CheckConstraint(condition=models.Q(dividend__gte=0), name='dividend_gte_0_in_stock'),
       models.CheckConstraint(condition=models.Q(per__gte=0),      name='per_gte_0_in_stock'),
       models.CheckConstraint(condition=models.Q(pbr__gte=0),      name='pbr_gte_0_in_stock'),
-      models.CheckConstraint(condition=models.Q(eps__gte=0),      name='eps_gte_0_in_stock'),
     ]
 
   code = models.CharField(
@@ -109,6 +116,27 @@ class Stock(models.Model):
     help_text=gettext_lazy('Earnings Per Share'),
     default=0,
   )
+  bps = models.DecimalField(
+    max_digits=7,
+    decimal_places=2,
+    verbose_name=gettext_lazy('BPS'),
+    help_text=gettext_lazy('Book value Per Share'),
+    default=0,
+  )
+  roe = models.DecimalField(
+    max_digits=6,
+    decimal_places=2,
+    verbose_name=gettext_lazy('ROE'),
+    help_text=gettext_lazy('Return On Equity'),
+    default=0,
+  )
+  er = models.DecimalField(
+    max_digits=5,
+    decimal_places=2,
+    verbose_name=gettext_lazy('ER'),
+    help_text=gettext_lazy('Equity Ratio'),
+    default=0,
+  )
 
   def save(self, *args, **kwargs):
     self.full_clean()
@@ -128,6 +156,9 @@ class Stock(models.Model):
       'per': float(self.per),
       'pbr': float(self.pbr),
       'eps': float(self.eps),
+      'bps': float(self.bps),
+      'roe': float(self.roe),
+      'er': float(self.er),
     }
 
   def __str__(self):
