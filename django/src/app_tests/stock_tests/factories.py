@@ -3,6 +3,8 @@ import uuid
 from django.utils import timezone
 from faker import Factory as FakerFactory
 from stock import models
+from django_celery_results.models import TaskResult
+from celery import states
 from app_tests.account_tests import factories as account_factories
 
 faker = FakerFactory.create()
@@ -93,3 +95,11 @@ class SnapshotFactory(factory.django.DjangoModelFactory):
   title = factory.LazyAttribute(lambda instance: _clip(faker.name(), 255))
   end_date = factory.LazyFunction(timezone.now)
   created_at = factory.LazyFunction(timezone.now)
+
+class TaskResultFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = TaskResult
+
+  task_id = factory.LazyFunction(lambda: str(uuid.uuid4()))
+  task_name = factory.LazyAttribute(lambda instance: f'task{instance.task_id}')
+  status = states.PENDING

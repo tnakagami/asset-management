@@ -1,7 +1,9 @@
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy
+from django.http import JsonResponse
 from django.urls import reverse_lazy
+from django.views.generic import View
 from utils.views import (
   CreateViewBasedOnUser,
   UpdateViewBasedOnUser,
@@ -26,6 +28,16 @@ class Dashboard(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
     queryset = user.snapshots.all()
 
     return queryset
+
+class StockAjaxResponse(View):
+  raise_exception = True
+  http_method_names = ['get']
+
+  def get(self, request, *args, **kwargs):
+    data = models.Stock.get_choices_as_list()
+    response = JsonResponse({'qs': data})
+
+    return response
 
 class ListCash(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.Cash
@@ -110,6 +122,12 @@ class UpdatePurchasedStock(UpdateViewBasedOnUser, DjangoBreadcrumbsMixin):
     parent_view_class=ListPurchasedStock,
     url_keys=['pk'],
   )
+
+  def get_form(self):
+    form = super().get_form()
+    form.update_queryset(self.kwargs['pk'])
+
+    return form
 
 class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock

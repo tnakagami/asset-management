@@ -45,11 +45,10 @@ services:
     container_name: django.asset-management
     restart: always
     env_file:
+      - ./env_files/django/docker.env
       - ./env_files/django/.env
       - ./env_files/postgres/.env
     environment:
-      - DJANGO_DATABASE_HOST=postgres
-      - DJANGO_DATABASE_PORT=5432
       - DJANGO_LANGUAGE_CODE=${ASSETMGMT_LANGCODE:-en}
       - DJANGO_TIME_ZONE=${ASSETMGMT_TZ:-UTC}
     volumes:
@@ -65,6 +64,50 @@ services:
       - postgres
     networks:
       - frontend-link
+      - backend-link
+
+  celery:
+    image: django.asset-management
+    container_name: celery.asset-management
+    restart: always
+    env_file:
+      - ./env_files/django/docker.env
+      - ./env_files/django/.env
+      - ./env_files/postgres/.env
+    environment:
+      - NUM_CPUS=1
+    working_dir: /opt
+    entrypoint: /opt/entrypoint.sh
+    volumes:
+      - ./celery/entrypoint.sh:/opt/entrypoint.sh:ro
+      - ./celery/show-log.sh:/opt/show-log.sh:ro
+      - ./django/src:/opt/app:ro
+      - ./django/bashrc:/opt/home/.bashrc:ro
+    logging: *json-logging
+    depends_on:
+      redis:
+        condition: service_started
+      django:
+        condition: service_started
+    networks:
+      - backend-link
+
+  redis:
+    build:
+      context: ./redis
+      dockerfile: Dockerfile
+      args:
+        - ARCHITECTURE=${ASSETMGMT_ARCH:-arm32v7}
+    image: redis.asset-management
+    container_name: redis.asset-management
+    restart: always
+    privileged: true
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    logging: *json-logging
+    expose:
+      - 6379
+    networks:
       - backend-link
 
   postgres:

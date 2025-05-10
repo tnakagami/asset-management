@@ -8,6 +8,8 @@ class Datalist(forms.Select):
   option_template_name = 'widgets/custom_datalist_option.html'
 
   def __init__(self, attrs=None):
+    self._has_error = False
+
     if attrs is not None:
       self.input_type = attrs.get('type', self.input_type)
       self.input_list = attrs.pop('list', self.input_list)
@@ -16,6 +18,7 @@ class Datalist(forms.Select):
 
   def get_context(self, name, value, attrs):
     context = super().get_context(name, value, attrs)
+    context['widget']['has_error'] = self._has_error
     context['widget']['initial'] = value
     context['widget']['type'] = self.input_type
     context['widget']['id'] = self.input_list if self.input_list else f'{name}_datalist'
@@ -25,6 +28,13 @@ class Datalist(forms.Select):
 
   def use_dataset(self):
     return bool(self.use_dataset_attr)
+
+  @property
+  def has_error(self):
+    raise AttributeError('Invalid data access')
+  @has_error.setter
+  def has_error(self, value):
+    self._has_error = True
 
 class DatalistField(forms.ChoiceField):
   widget = Datalist

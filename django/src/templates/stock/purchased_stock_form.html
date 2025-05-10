@@ -24,6 +24,7 @@
                 class="btn btn-outline-primary w-100 custom-boxshadow"
                 data-bs-toggle="modal"
                 data-bs-target="#stock-helper-modal"
+                disabled
               >
                 {% trans "Stock (Helper)" %}
               </button>
@@ -87,41 +88,83 @@
 
       return ret;
     };
-    const stockModalElement = document.querySelector('#stock-list-of-modal');
-    const controller = new TomSelect(stockModalElement, {
-      allowEmptyOption: true,
-      closeAfterSelect: true,
-      create: false,
-      maxItems: 1,
-      maxOptions: null,
-      onFocus: function () {
-        this.clear();
-      },
-      onChange: function (pk) {
-        const targetOption = _getTargetOption(this.options, 'pk', Number(pk));
-        stockInputElement.value = targetOption.text;
-      },
-      onDropdownClose: function (dropdown) {
-        stockModalElement.focus();
-      },
-      valueField: 'pk',
-      labelField: 'label',
-      searchField: 'text',
-      options: Object.freeze([
-        {pk: 0, label: '{% trans "Please select an option." %}', text: ''},
-        {% for option in form.stock_choices %}{pk: {{ option.pk }}, label: '{{ option.name }}({{ option.code }})', text: '{{ option.name }}({{ option.code }})'},
-        {% endfor %}
-      ]),
-    });
-    stockInputElement.addEventListener('focusout', (event) => {
-      const selectedLabel = event.target.value.trim();
-      const targetOption = _getTargetOption(controller.options, 'label', selectedLabel);
-      controller.setValue([targetOption.pk]);
-      event.target.value = targetOption.text;
-    });
-    if (stockInputElement.value) {
+    const getStocks = async () => {
+      const url = "{% url 'stock:ajax_stock' %}";
+      const response = await fetch(url, {method: 'GET'});
+      const data = await response.json();
+      const queryset = data.qs;
+
+      return queryset;
+    };
+    const createOptions = (queryset) => {
+      const emptypOption = [{pk: 0, label: '{% trans "Please select an option." %}', text: ''}];
+      const originalOptions = queryset.map((record) => {
+        const message = `${record.name}(${record.code})`;
+        const _option = {pk: record.pk, label: message, text: message};
+
+        return _option;
+      });
+      const options = emptypOption.concat(originalOptions);
+
+      return options;
+    };
+    const createDOMOptionElement = (options) => {
+      const datalist = stockInputElement.getAttribute('list');
+      const parent = document.querySelector(`#${datalist}`);
+      // Remove all children
+      while (parent.firstChild) {
+        parent.removeChild(parent.firstChild);
+      }
+
+      for (const _option of options) {
+        const element = document.createElement('OPTION');
+        element.setAttribute('data-value', _option.pk);
+        const text = document.createTextNode(_option.text);
+        element.appendChild(text);
+        parent.appendChild(element);
+      }
+    };
+    // In the case of that create view is called
+    if (!stockInputElement.value) {
+      getStocks().then((queryset) => {
+        const freezedOptions = Object.freeze(createOptions(queryset));
+        createDOMOptionElement(freezedOptions);
+        const stockModalElement = document.querySelector('#stock-list-of-modal');
+        // Create controller instance
+        const controller = new TomSelect(stockModalElement, {
+          allowEmptyOption: true,
+          closeAfterSelect: true,
+          create: false,
+          maxItems: 1,
+          maxOptions: null,
+          onFocus: function () {
+            this.clear();
+          },
+          onChange: function (pk) {
+            const targetOption = _getTargetOption(this.options, 'pk', Number(pk));
+            stockInputElement.value = targetOption.text;
+          },
+          onDropdownClose: function (dropdown) {
+            stockModalElement.focus();
+          },
+          valueField: 'pk',
+          labelField: 'label',
+          searchField: 'text',
+          options: freezedOptions,
+        });
+        // Add event
+        stockInputElement.addEventListener('focusout', (event) => {
+          const selectedLabel = event.target.value.trim();
+          const targetOption = _getTargetOption(controller.options, 'label', selectedLabel);
+          controller.setValue([targetOption.pk]);
+          event.target.value = targetOption.text;
+        });
+      }).catch((err) => {
+        console.error(err);
+      });
+      // Update DOM element status
       const element = document.querySelector('#stock-helper');
-      element.disabled = true;
+      element.disabled = false;
     }
   };
   // Define initialization function

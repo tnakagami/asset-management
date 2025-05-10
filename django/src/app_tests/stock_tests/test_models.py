@@ -24,7 +24,6 @@ def get_judgement_funcs():
     _convertor = lambda val: float(val) if isinstance(val, Decimal) else val
     out = [targets[key] == _convertor(getattr(instance, key)) for key in fields]
     ret= all(out)
-    print(ret, out)
 
     return ret
 
@@ -80,6 +79,18 @@ def test_purchased_stock():
 # ================
 # Global functions
 # ================
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_bind_function():
+  @models.bind_user_function
+  def target_function():
+    return 0
+
+  ret = target_function()
+
+  assert target_function.__name__ == 'as_udf'
+  assert ret == 0
+
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.parametrize([
@@ -259,8 +270,8 @@ def test_add_same_code_in_stock(code):
   ({'per': 99999.99}, ),
   ({'pbr': 0}, ),
   ({'pbr': 99999.99}, ),
-  ({'eps': 0}, ),
-  ({'eps': 99999.99}, ),
+  ({'eps': -99999.99}, ),
+  ({'eps':  99999.99}, ),
 ], ids=[
   'valid-values',
   'min-value-of-price',
@@ -302,11 +313,11 @@ def test_check_valid_inputs_of_stock(options):
   'err_idx',
   'digit',
 ], [
-  ({'price':    -0.01}, 0, 10), ({'price':    78.991}, 1, 2), ({'price':    100000000.00}, 2, 8),
-  ({'dividend': -0.01}, 0,  7), ({'dividend': 78.991}, 1, 2), ({'dividend':   1000000.00}, 2, 5),
-  ({'per':      -0.01}, 0,  7), ({'per':      78.991}, 1, 2), ({'per':        1000000.00}, 2, 5),
-  ({'pbr':      -0.01}, 0,  7), ({'pbr':      78.991}, 1, 2), ({'pbr':        1000000.00}, 2, 5),
-  ({'eps':      -0.01}, 0,  7), ({'eps':      78.991}, 1, 2), ({'eps':        1000000.00}, 2, 5),
+  ({'price':          -0.01}, 0, 10), ({'price':    78.991}, 1, 2), ({'price':    100000000.00}, 2, 8),
+  ({'dividend':       -0.01}, 0,  7), ({'dividend': 78.991}, 1, 2), ({'dividend':   1000000.00}, 2, 5),
+  ({'per':            -0.01}, 0,  7), ({'per':      78.991}, 1, 2), ({'per':        1000000.00}, 2, 5),
+  ({'pbr':            -0.01}, 0,  7), ({'pbr':      78.991}, 1, 2), ({'pbr':        1000000.00}, 2, 5),
+  ({'eps':      -1000000.00}, 2,  5), ({'eps':      78.991}, 1, 2), ({'eps':        1000000.00}, 2, 5),
 ], ids=[
   'negative-price',    'invalid-decimal-part-of-price',    'invalid-max-digits-of-price',
   'negative-dividend', 'invalid-decimal-part-of-dividend', 'invalid-max-digits-of-dividend',
@@ -357,6 +368,26 @@ def test_check_stock_str_function():
   expected = f'{name}({code})'
 
   assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_check_choices_as_list_method():
+  stocks = [
+    factories.StockFactory(name='stock1', code='0101'),
+    factories.StockFactory(name='stock2', code='0202'),
+  ]
+  data = models.Stock.get_choices_as_list()
+  keys = ['pk', 'name', 'code']
+
+  assert all([
+    all([key in item.keys() for key in keys]) for item in data
+  ])
+  assert len(stocks) == len(data)
+  assert all([
+    all([getattr(_stock, key) == item[key] for key in keys])
+    for _stock, item in zip(stocks, data)
+  ])
 
 # ====
 # Cash

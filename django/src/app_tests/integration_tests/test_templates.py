@@ -818,7 +818,10 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
     'screen_name': 'sample-user',
   }
   user = UserModel.objects.create_user(**user_params)
-  stocks = factories.StockFactory.create_batch(128)[:5]
+  industries = factories.IndustryFactory.create_batch(16)
+  # Create stocks by using each industry
+  for industry in industries:
+    stocks = factories.StockFactory.create_batch(8, industry=industry)
   status_codes = []
   results = []
 

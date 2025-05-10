@@ -8,6 +8,7 @@ omit =
   config/asgi.py
   config/wsgi.py
   config/define_module.py
+  stock/user_tasks.py
   utils/admin.py
   utils/apps.py
   app_tests/**

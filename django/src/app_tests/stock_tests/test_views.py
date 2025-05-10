@@ -1,4 +1,5 @@
 import pytest
+import json
 from django.urls import reverse
 from app_tests import status
 from datetime import datetime, timezone
@@ -94,6 +95,32 @@ def test_without_authentication_for_dashboard(client):
 
   assert response.status_code == status.HTTP_302_FOUND
   assert response['Location'] == expected
+
+# ========
+# AjaxView
+# ========
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_ajaxview(client):
+  stocks = [
+    factories.StockFactory(name='stock01', code='0001'),
+    factories.StockFactory(name='stock02', code='0002'),
+  ]
+  url = reverse('stock:ajax_stock')
+  response = client.get(url)
+  query = json.loads(response.content)
+  data = query['qs']
+  keys = ['pk', 'name', 'code']
+
+  assert all([
+    all([key in item.keys() for key in keys]) for item in data
+  ])
+  assert len(stocks) == len(data)
+  assert all([
+    all([getattr(_stock, key) == item[key] for key in keys])
+    for _stock, item in zip(stocks, data)
+  ])
 
 # ========
 # ListView

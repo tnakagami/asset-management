@@ -22,6 +22,9 @@ uWSGI = "^2.0.29"
 psycopg = { version="^3.2.6", extras=["c", "pool"] }
 crumbles = "^0.1.2"
 PyYAML = "^6.0.2"
+celery = { extras = ["redis"], version = "^5.5.2" }
+django-celery-results = "^2.6.0"
+beautifulsoup4 = "^4.13.4"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.5"

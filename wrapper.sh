@@ -1,6 +1,7 @@
 #!/bin/bash
 
 readonly DJANGO_CONTAINER_NAME=django.asset-management
+readonly CELERY_CONTAINER_NAME=celery.asset-management
 
 function Usage() {
 cat <<- _EOF
@@ -28,11 +29,17 @@ Enabled commands:
   logs
     Show logs of each container
 
+  celery-log
+    Show log data of celery container
+
   migrate
     Execute database migration of Django in the docker environment
 
   loaddata
     Load yaml data to Django's database
+
+  command
+    Execute specific command
 
   test
     Execute pytest
@@ -134,6 +141,12 @@ while [ -n "$1" ]; do
       shift
       ;;
 
+    celery-log )
+      docker exec ${CELERY_CONTAINER_NAME} /opt/show-log.sh
+
+      shift
+      ;;
+
     migrate )
       docker-compose up -d
       apps=$(find django/src -type f | grep -oP "(?<=/)([a-zA-Z]+)(?=/apps.py$)" | tr '\n' ' ')
@@ -147,6 +160,20 @@ while [ -n "$1" ]; do
       docker-compose up -d
       xml_file_path='stock/fixtures/${DJANGO_LANGUAGE_CODE}/*.yaml'
       docker exec ${DJANGO_CONTAINER_NAME} bash -c "python manage.py loaddata ${xml_file_path}"
+
+      shift
+      ;;
+
+    command )
+      # In the case of that the 2nd argument has a hyphen as the 1st charactor (= str.startswith('-'))
+      if [[ "$2" =~ ^-([a-z0-9]+) ]]; then
+        command=${BASH_REMATCH[1]}
+        shift
+      # Otherwise
+      else
+        command="exec_job"
+      fi
+      docker exec -it ${DJANGO_CONTAINER_NAME} python manage.py ${command}
 
       shift
       ;;

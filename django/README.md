@@ -6,6 +6,10 @@ Migrations are how Django stores changes to your models and Django manages your 
 ```bash
 # In the host environment
 ./wrapper.sh migrate
+docker-compose run --rm django bash
+
+# In the docker environment
+python manage.py migrate django_celery_results
 ```
 
 Please remember the two-step guides to making model changes:

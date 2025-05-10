@@ -102,3 +102,35 @@ def test_check_lacking_variables_of_datalist_form():
   assert     isinstance(form.fields['other'].queryset, EmptyQuerySet)
   assert len(datalist_ids) == 1
   assert 'stock-id' in datalist_ids
+
+class CustomModelDatalistField(widgets.ModelDatalistField):
+  pass
+
+class CustomFieldSampleForm(forms.BaseModelDatalistForm, DjangoForms.ModelForm):
+  class Meta:
+    model = models.PurchasedStock
+    fields = ('stock',)
+    widgets = {
+      'stock': widgets.Datalist(attrs={
+        'id': 'stock-id',
+        'use-dataset': True,
+      }),
+    }
+    datalist_fields = ['stock']
+    datalist_kwargs = {
+      'stock': {
+        'label': 'Stock',
+        'queryset': models.Stock.objects.none(),
+      },
+    }
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, field_class=CustomModelDatalistField, **kwargs)
+
+@pytest.mark.utils
+@pytest.mark.form
+def test_check_using_custom_modeldatalist_form():
+  form = CustomFieldSampleForm()
+  name = form.fields['stock'].__class__.__name__
+
+  assert name == 'CustomModelDatalistField'
