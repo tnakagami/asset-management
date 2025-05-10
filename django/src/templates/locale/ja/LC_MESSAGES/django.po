@@ -1,0 +1,382 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-05-10 15:45+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+#: templates/403.html:5
+msgid "403 Forbidden"
+msgstr "403 Forbidden"
+
+#: templates/403.html:9
+msgid "You don't have permission to access the requested page."
+msgstr "リクエストページへのアクセスは禁止されています。"
+
+#: templates/404.html:5
+msgid "404 Page Not Found"
+msgstr "404 Page Not Found"
+
+#: templates/404.html:10
+msgid "Requested URL is not found."
+msgstr "リクエストURLは見つかりません。"
+
+#: templates/405.html:5
+msgid "405 Method Not Allowed"
+msgstr "405 Method Not Allowed"
+
+#: templates/405.html:9
+msgid "Requested HTTP Method is not allowd."
+msgstr "リクエストされたHTTP methodは許可されていません。"
+
+#: templates/500.html:5
+msgid "500 Internal Server Error"
+msgstr "500 Internal Server Error"
+
+#: templates/500.html:9
+msgid "Internal Server Error: Please contact the administrator."
+msgstr "内部サーバエラー：管理者に連絡してください。"
+
+#: templates/account/index.html:5
+msgid "Index"
+msgstr "インデックス"
+
+#: templates/account/index.html:11
+msgid "Please login from above link."
+msgstr "上記のリンクからログインしてください。"
+
+#: templates/account/index.html:18 templates/stock/dashboard.html:5
+msgid "Dashboard"
+msgstr "ダッシュボード"
+
+#: templates/account/index.html:19
+msgid "Show your assets."
+msgstr "資産を表示する。"
+
+#: templates/account/index.html:28
+msgid "Snapshot list"
+msgstr "特定時点の資産一覧"
+
+#: templates/account/index.html:29
+msgid "Register/Check/Delete snapshots"
+msgstr "特定時点の資産の登録/確認/削除"
+
+#: templates/account/index.html:38
+msgid "Cash list"
+msgstr "口座残高一覧"
+
+#: templates/account/index.html:39
+msgid "Register/Check/Delete cashes"
+msgstr "口座残高の登録/確認/削除"
+
+#: templates/account/index.html:48
+msgid "Purchased stock list"
+msgstr "購入済み株式一覧"
+
+#: templates/account/index.html:49
+msgid "Register/Check/Delete purchsed sotcks"
+msgstr "購入済み株式の登録/確認/削除"
+
+#: templates/account/login.html:5 templates/account/login.html:21
+#: templates/header.html:73
+msgid "Login"
+msgstr "ログイン"
+
+#: templates/account/login.html:29 templates/account/profile_form.html:27
+#: templates/stock/cash_form.html:30
+#: templates/stock/purchased_stock_form.html:49
+#: templates/stock/snapshot_form.html:30
+msgid "Cancel"
+msgstr "キャンセル"
+
+#: templates/account/profile_form.html:5 templates/account/user_profile.html:38
+msgid "Update user profile"
+msgstr "ユーザプロフィールの更新"
+
+#: templates/account/profile_form.html:20
+msgid "Update"
+msgstr "更新"
+
+#: templates/account/user_profile.html:5
+msgid "User profile"
+msgstr "ユーザプロフィール"
+
+#: templates/account/user_profile.html:14
+msgid "Element"
+msgstr "項目"
+
+#: templates/account/user_profile.html:15 templates/stock/dashboard.html:145
+msgid "Value"
+msgstr "値"
+
+#: templates/account/user_profile.html:20
+msgid "screen name"
+msgstr "表示名"
+
+#: templates/account/user_profile.html:24
+msgid "UID"
+msgstr "ユーザID"
+
+#: templates/account/user_profile.html:46
+msgid "Back"
+msgstr "戻る"
+
+#: templates/delete_modal_form.html:7
+msgid "Confirmation of deletion"
+msgstr "削除の確認"
+
+#: templates/delete_modal_form.html:11
+msgid "May I really delete this record?"
+msgstr "本当に、このデータを削除しても良いですか？"
+
+#: templates/delete_modal_form.html:12
+msgid "target"
+msgstr "対象"
+
+#: templates/delete_modal_form.html:20
+msgid "Accept"
+msgstr "許可"
+
+#: templates/delete_modal_form.html:25
+#: templates/stock/purchased_stock_form.html:70
+msgid "Close"
+msgstr "閉じる"
+
+#: templates/err_base.html:30
+msgid "Redirect to the top page after 3 seconds."
+msgstr "3秒後にトップページに戻ります。"
+
+#: templates/header.html:8
+msgid "Asset Management"
+msgstr "資産管理"
+
+#: templates/header.html:59
+msgid "User Profile"
+msgstr "ユーザプロフィール"
+
+#: templates/header.html:67
+msgid "Logout"
+msgstr "ログアウト"
+
+#: templates/stock/cash_form.html:5
+msgid "Register/Update cash"
+msgstr "口座残高の登録/更新"
+
+#: templates/stock/cash_form.html:22
+#: templates/stock/purchased_stock_form.html:41
+#: templates/stock/snapshot_form.html:22
+msgid "Register/Update"
+msgstr "登録/更新"
+
+#: templates/stock/cashes.html:6
+msgid "Cashes"
+msgstr "口座残高"
+
+#: templates/stock/cashes.html:15
+msgid "Register cash"
+msgstr "口座残高の登録"
+
+#: templates/stock/cashes.html:24 templates/stock/dashboard.html:141
+#: templates/stock/purchased_stocks.html:24 templates/stock/snapshots.html:24
+msgid "No."
+msgstr "No."
+
+#: templates/stock/cashes.html:25
+msgid "Balance"
+msgstr "口座残高"
+
+#: templates/stock/cashes.html:26
+msgid "Registered date"
+msgstr "登録日"
+
+#: templates/stock/cashes.html:27 templates/stock/purchased_stocks.html:31
+#: templates/stock/snapshots.html:28
+msgid "Operate"
+msgstr "操作"
+
+#: templates/stock/cashes.html:59
+msgid "There is no cashes. Please add the items from the above button."
+msgstr "口座残高の情報がありません。上記のボタンから登録してください。"
+
+#: templates/stock/dashboard.html:11
+msgid "Target snapshot"
+msgstr "対象の特定時点の資産"
+
+#: templates/stock/dashboard.html:19
+msgid "Sort type"
+msgstr "ソート形式"
+
+#: templates/stock/dashboard.html:21
+msgid "Without sorting"
+msgstr "ソートなし"
+
+#: templates/stock/dashboard.html:22
+msgid "Ascending order"
+msgstr "昇順"
+
+#: templates/stock/dashboard.html:23
+msgid "Descending order"
+msgstr "降順"
+
+#: templates/stock/dashboard.html:39
+msgid "Portfolio"
+msgstr "ポートフォリオ"
+
+#: templates/stock/dashboard.html:51
+msgid "Sector"
+msgstr "銘柄"
+
+#: templates/stock/dashboard.html:63
+msgid "Economic trend"
+msgstr "経済動向"
+
+#: templates/stock/dashboard.html:75
+msgid "Assets"
+msgstr "資産"
+
+#: templates/stock/dashboard.html:142 templates/stock/purchased_stocks.html:25
+msgid "Code"
+msgstr "株式コード"
+
+#: templates/stock/dashboard.html:143
+msgid "Name"
+msgstr "名称"
+
+#: templates/stock/dashboard.html:144 templates/stock/purchased_stocks.html:27
+msgid "Industry"
+msgstr "業種"
+
+#: templates/stock/dashboard.html:146 templates/stock/dashboard.html:307
+#: templates/stock/dashboard.html:335 templates/stock/purchased_stocks.html:30
+msgid "Count"
+msgstr "株式数"
+
+#: templates/stock/dashboard.html:153
+msgid "Total"
+msgstr "合計"
+
+#: templates/stock/dashboard.html:167
+msgid "There is no snapshots. Please add your snapshots in the following link."
+msgstr "特定時点の資産の情報がありません。下記のリンクから登録してください。"
+
+#: templates/stock/dashboard.html:173 templates/stock/snapshots.html:15
+msgid "Register snapshot"
+msgstr "特定時点の資産の登録"
+
+#: templates/stock/dashboard.html:251
+msgid "Cash"
+msgstr "口座残高"
+
+#: templates/stock/dashboard.html:263
+msgid "Defensive"
+msgstr "ディフェンシブ"
+
+#: templates/stock/dashboard.html:263
+msgid "Economically sensitive"
+msgstr "景気敏感"
+
+#: templates/stock/dashboard.html:285
+msgid "Portfolio (all)"
+msgstr "ポートフォリオ（すべて）"
+
+#: templates/stock/dashboard.html:289 templates/stock/dashboard.html:298
+#: templates/stock/dashboard.html:321 templates/stock/dashboard.html:349
+msgid "Price"
+msgstr "価格"
+
+#: templates/stock/dashboard.html:294
+msgid "Portfolio (without cash)"
+msgstr "ポートフォリオ（口座残高なし）"
+
+#: templates/stock/dashboard.html:303
+msgid "Sector distribution (count)"
+msgstr ""
+
+#: templates/stock/dashboard.html:317
+msgid "Sector distribution (price)"
+msgstr "銘柄分布（価格）"
+
+#: templates/stock/dashboard.html:331
+msgid "Economic trend (count)"
+msgstr "銘柄分布（件数）"
+
+#: templates/stock/dashboard.html:345
+msgid "Economic trend (price)"
+msgstr "経済動向（価格）"
+
+#: templates/stock/purchased_stock_form.html:9
+msgid "Register/Update purchsed stock"
+msgstr "購入済み株式の登録/更新"
+
+#: templates/stock/purchased_stock_form.html:29
+msgid "Stock (Helper)"
+msgstr "株式の選択"
+
+#: templates/stock/purchased_stock_form.html:63
+msgid "Stock helper"
+msgstr "株式検索の補助機能"
+
+#: templates/stock/purchased_stock_form.html:100
+msgid "Please select an option."
+msgstr "企業を選択"
+
+#: templates/stock/purchased_stocks.html:6
+msgid "Purchased stocks"
+msgstr "購入済み株式"
+
+#: templates/stock/purchased_stocks.html:15
+msgid "Register purchsed stock"
+msgstr "購入済み株式の登録"
+
+#: templates/stock/purchased_stocks.html:26
+msgid "Stock name"
+msgstr "株式会社名"
+
+#: templates/stock/purchased_stocks.html:28
+msgid "Trade date"
+msgstr "取引日"
+
+#: templates/stock/purchased_stocks.html:29
+msgid "Average trade price"
+msgstr "平均取引価格"
+
+#: templates/stock/purchased_stocks.html:67
+msgid ""
+"There is no purchased stocks. Please add the items from the above button."
+msgstr "購入済み株式の情報がありません。下記のボタンから登録してください。"
+
+#: templates/stock/snapshot_form.html:5
+msgid "Register/Update snapshot"
+msgstr "特定時点の資産の登録/更新"
+
+#: templates/stock/snapshots.html:6
+msgid "Snapshots"
+msgstr "特定時点の資産"
+
+#: templates/stock/snapshots.html:25
+msgid "Title"
+msgstr "タイトル"
+
+#: templates/stock/snapshots.html:26
+msgid "Start date"
+msgstr "集計開始日"
+
+#: templates/stock/snapshots.html:27
+msgid "End date"
+msgstr "集計終了日"
+
+#: templates/stock/snapshots.html:61
+msgid "There is no snapshots. Please add the items from the above button."
+msgstr "特定時点の資産の情報がありません。上記のボタンから登録してください。"

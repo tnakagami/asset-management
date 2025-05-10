@@ -30,6 +30,7 @@ class _DatalistInfo():
 def test_check_attrs_of_datalist(attrs, exact):
   instance = widgets.Datalist(attrs=attrs)
 
+  assert not instance._has_error
   assert instance.input_type == exact.input_type
   assert instance.input_list == exact.input_list
   assert instance.use_dataset_attr == exact.use_dataset_attr
@@ -48,11 +49,49 @@ def test_check_context_of_datalist(attrs, exact_id):
   context = instance.get_context('custom', 3, attrs=None)
   out_widget = context['widget']
 
-  assert all([key in out_widget.keys() for key in ['initial', 'type', 'id', 'use_dataset']])
+  assert all([key in out_widget.keys() for key in ['has_error', 'initial', 'type', 'id', 'use_dataset']])
+  assert not out_widget['has_error']
   assert out_widget['initial'] == 3
   assert out_widget['type'] == 'text'
   assert out_widget['id'] == exact_id
   assert not out_widget['use_dataset']
+
+@pytest.mark.utils
+@pytest.mark.widget
+@pytest.mark.parametrize([
+  'value',
+], [
+  (0, ),
+  ('a', ),
+  (True, ),
+  (False, ),
+  ({}, ),
+  ([], ),
+  (None, ),
+], ids=[
+  'is-number',
+  'is-string',
+  'is-True',
+  'is-False',
+  'is-empty-dict',
+  'is-empty-list',
+  'is-None',
+])
+def test_check_has_error_setter(value):
+  instance = widgets.Datalist(attrs=None)
+  instance.has_error = value
+
+  assert instance._has_error
+
+@pytest.mark.utils
+@pytest.mark.widget
+def test_check_has_error_getter():
+  instance = widgets.Datalist(attrs=None)
+
+  with pytest.raises(AttributeError) as ex:
+    _ = instance.has_error
+
+  assert 'Invalid data access' in str(ex.value)
 
 @pytest.mark.utils
 @pytest.mark.widget

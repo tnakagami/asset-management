@@ -1,7 +1,6 @@
 from django import forms
 
 class Datalist(forms.Select):
-  _has_error = False
   input_type = 'text'
   input_list = ''
   use_dataset_attr = False
@@ -9,6 +8,8 @@ class Datalist(forms.Select):
   option_template_name = 'widgets/custom_datalist_option.html'
 
   def __init__(self, attrs=None):
+    self._has_error = False
+
     if attrs is not None:
       self.input_type = attrs.get('type', self.input_type)
       self.input_list = attrs.pop('list', self.input_list)

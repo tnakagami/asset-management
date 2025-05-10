@@ -4,13 +4,14 @@ from celery.utils.log import get_task_logger
 from django_celery_results.models import TaskResult
 
 try:
-  from . import user_tasks
+  import stock.user_tasks as user_tasks
   _is_function = lambda target: isinstance(target, FunctionType) and (target.__name__ == 'as_udf')
   g_attrs = [attr for attr in dir(user_tasks) if _is_function(getattr(user_tasks, attr))]
 except:
+  user_tasks = None
   g_attrs = []
 
-# logger
+# Get logger
 g_logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
