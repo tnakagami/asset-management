@@ -17,3 +17,6 @@ class Command(BaseCommand):
         'total': total,
       }
       update_stock_records.apply_async(kwargs=kwargs)
+
+      if (idx % 100) == 0:
+        print(idx)

@@ -29,8 +29,9 @@ Enabled commands:
   logs
     Show logs of each container
 
-  celery-log
+  celery-log [-s]
     Show log data of celery container
+    By using option "-s", output becomes simple.
 
   migrate
     Execute database migration of Django in the docker environment
@@ -38,8 +39,13 @@ Enabled commands:
   loaddata
     Load yaml data to Django's database
 
-  command
+  command [-something]
     Execute specific command
+    By specifying string with starting a hyphen (e.g., -something), you can give a custom command to Django.
+    Default command is "exec_job".
+
+  cron
+    Execute specific command by using cron process
 
   test
     Execute pytest
@@ -142,7 +148,15 @@ while [ -n "$1" ]; do
       ;;
 
     celery-log )
-      docker exec ${CELERY_CONTAINER_NAME} /opt/show-log.sh
+      if [ "$2" = "-s" ]; then
+        filtering="MainProcess"
+        pattern='s|\[[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*\]||g'
+        shift
+      else
+        filtering="*"
+        pattern=''
+      fi
+      docker exec ${CELERY_CONTAINER_NAME} /opt/show-log.sh | grep -v "${filtering}" | sed -e "${pattern}"
 
       shift
       ;;
@@ -174,6 +188,12 @@ while [ -n "$1" ]; do
         command="exec_job"
       fi
       docker exec -it ${DJANGO_CONTAINER_NAME} python manage.py ${command}
+
+      shift
+      ;;
+
+    cron )
+      docker exec -i ${DJANGO_CONTAINER_NAME} python manage.py exec_job
 
       shift
       ;;

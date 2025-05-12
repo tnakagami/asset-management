@@ -16,6 +16,14 @@
         </a>
       </div>
       <div class="col">
+        <button
+          id="update-all-snapshots"
+          class="btn btn-success w-100 custom-boxshadow"
+        >
+          {% trans "Update all snapshots" %}
+        </button>
+      </div>
+      <div class="col">
         {% if snapshots %}
         <div class="table-responsive">
           <table class="table table-hover">
@@ -68,6 +76,31 @@
   </div>
 </div>
 
+{# Output modal #}
+<div class="modal" id="output-modal" tabindex="-1" aria-labelledby="message-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title fs-5" id="message-label">{% trans "Result of updating all snapshots" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-danger"><strong>{% trans "Failed to update some snapshots." %}</strong></p>
+      </div>
+      <div class="modal-footer">
+        <div class="row">
+          <div class="col-12">
+            <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+              {% trans "Close" %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Delete-modal #}
 {% include "delete_modal_form.html" with modal_id="delete-modal" form_id="delete-form" %}
 {% endblock %}
 
@@ -80,6 +113,30 @@
     formID: 'delete-form',
     modalID: 'delete-modal',
   });
+  const init = () => {
+    const updateSnapshots = document.querySelector('#update-all-snapshots');
+    updateSnapshots.addEventListener('click', async (event) => {
+      event.target.disabled = true;
+      const url = "{% url 'stock:update_all_snapshots' %}";
+      const csrfToken = g_getCookie('csrftoken');
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'X-CSRFToken': csrfToken,
+        },
+      });
+      const data = await response.json();
+
+      if (!data.status) {
+        const modal = new bootstrap.Modal('#output-modal');
+        modal.show();
+      }
+      event.target.disabled = false;
+    });
+  };
+  // Add DOM event
+  document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
 {% endblock %}

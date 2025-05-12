@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load utils_extras %}
 {% load i18n %}
 {% load humanize %}
 
@@ -28,6 +29,7 @@
                 <th scope="col">{% trans "Trade date" %}</th>
                 <th scope="col">{% trans "Average trade price" %}</th>
                 <th scope="col">{% trans "Count" %}</th>
+                <th scope="col">{% trans "Diff" %}</th>
                 <th colspan="2">{% trans "Operate" %}</th>
               </tr>
             </thead>
@@ -41,6 +43,9 @@
                 <td data-type="purchaseDate">{{ instance.purchase_date|date:"Y-m-d" }}</td>
                 <td data-type="price">{{ instance.price|intcomma }}</td>
                 <td data-type="count">{{ instance.count|intcomma }}</td>
+                {% with total=instance|get_total_diff %}
+                <td data-type="diff" {% if total|is_negative %}class="text-danger"{% endif %}>{{ total|intcomma }}</td>
+                {% endwith %}
                 <td data-operate="edit">
                   <a
                     href="{% url 'stock:update_purchased_stock' pk=instance.pk %}"

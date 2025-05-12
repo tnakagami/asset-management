@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: tnakagami\n"
-"POT-Creation-Date: 2025-05-10 15:45+0900\n"
+"POT-Creation-Date: 2025-05-11 01:10+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -18,10 +18,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: config/settings/base.py:130
-msgid "English"
-msgstr "English (en)"
-
-#: config/settings/base.py:131
-msgid "Japanese"
-msgstr "日本語 (ja)"
+#: utils/templates/renderer/custom_form.html:6
+msgid "Errors"
+msgstr "エラー"

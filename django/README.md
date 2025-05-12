@@ -35,7 +35,7 @@ Run the following commands to reflect translation messages.
 # 
 # If you need to create/update translated file, type the following commands and execute them.
 # # In the docker environment
-# django-admin makemessages -l your-language # e.g., ja
+# django-admin makemessages -l 'your-language' # e.g., django-admin makemessages -l ja
 # exit # or press Ctrl + D
 # #
 # # Edit .po files using your favorite editor (e.g. vim)

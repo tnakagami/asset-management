@@ -351,3 +351,10 @@ class Snapshot(models.Model):
     out = json_script(data, self.uuid)
 
     return out
+
+  @classmethod
+  def save_all(cls, user):
+    queryset = user.snapshots.all()
+
+    for instance in queryset:
+      instance.save()

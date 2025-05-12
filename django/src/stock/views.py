@@ -173,6 +173,20 @@ class UpdateSnapshot(UpdateViewBasedOnUser, DjangoBreadcrumbsMixin):
     url_keys=['pk'],
   )
 
-class DeleteSnapshot(CustomDeleteView, DjangoBreadcrumbsMixin):
+class DeleteSnapshot(CustomDeleteView):
   model = models.Snapshot
   success_url = reverse_lazy('stock:list_snapshot')
+
+class AjaxUpdateAllSnapshots(View):
+  raise_exception = True
+  http_method_names = ['post']
+
+  def post(self, request, *args, **kwargs):
+    try:
+      models.Snapshot.save_all(request.user)
+      data = {'status': True}
+    except:
+      data = {'status': False}
+    response = JsonResponse(data)
+
+    return response

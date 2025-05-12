@@ -144,6 +144,7 @@
                       <th scope="col">{% trans "Industry" %}</th>
                       <th scope="col">{% trans "Value" %}</th>
                       <th scope="col">{% trans "Count" %}</th>
+                      <th scope="col">{% trans "Diff" %}</th>
                     </tr>
                   </thead>
                   <tbody id="all-assets-list" class="table-group-divider">
@@ -153,6 +154,7 @@
                       <th scope="row" colspan="4" class="text-center">{% trans "Total" %}</th>
                       <th name="total-value" data-type="total"></th>
                       <th name="total-count" data-type="total"></th>
+                      <th name="total-diff" data-type="total"></th>
                     </tr>
                   </tfoot>
                 </table>
@@ -185,6 +187,7 @@
   <td class="asset-industry"></td>
   <td class="asset-value"></td>
   <td class="asset-count"></td>
+  <td class="asset-diff"></td>
 </tr>
 </template>
 {% endblock %}
@@ -213,6 +216,10 @@
     };
     const cash = data.cash.balance;
     const originalStocks = data.purchased_stocks.map((record) => {
+      const stockPrice = record.stock.price;
+      const pStockPrice = record.price;
+      const diff = Math.floor((stockPrice - pStockPrice) * record.count);
+
       return {
         name: record.stock.name,
         code: record.stock.code,
@@ -220,6 +227,7 @@
         isDefensive: record.stock.industry.is_defensive,
         price: record.price,
         count: record.count,
+        diff: diff,
       };
     });
     const stocks = (() => {
@@ -232,6 +240,7 @@
         if (Object.hasOwn(_dict, code)) {
           _dict[code].value += _calcValue(item);
           _dict[code].count += item.count;
+          _dict[code].diff += item.diff;
         }
         else {
           _dict[code] = {
@@ -241,6 +250,7 @@
             isDefensive: item.isDefensive,
             value: _calcValue(item),
             count: item.count,
+            diff: item.diff,
           };
         }
       }
@@ -252,8 +262,9 @@
       code: '-',
       industry: '-',
       isDefensive: undefined,
-      value: cash,
+      value: (cash || 0),
       count: 1,
+      diff: 0,
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
@@ -389,10 +400,12 @@
       'industry': (val, _) => val,
       'value': (val, _) => val.toLocaleString(),
       'count': (val, _) => val.toLocaleString(),
+      'diff': (val, _) => val.toLocaleString(),
     };
     const totals = {
       value: 0,
       count: 0,
+      diff: 0,
     };
     tbody.innerHTML = '';
 
@@ -401,14 +414,30 @@
 
       for (const [key, callback] of Object.entries(nodeList)) {
         const element = clone.querySelector(`.asset-${key}`);
-        element.textContent = callback(item[key], idx + 1);
+        const val = item[key];
+        element.textContent = callback(val, idx + 1);
+
+        if ((key === 'diff') && (val < 0)) {
+          element.classList.add('text-danger');
+        }
       }
       totals.value += item.value;
       totals.count += item.count;
+      totals.diff += item.diff;
       tbody.appendChild(clone);
     });
-    tfoot.querySelector('th[name="total-value"]').textContent = totals.value.toLocaleString();
-    tfoot.querySelector('th[name="total-count"]').textContent = totals.count.toLocaleString();
+    ['value', 'count', 'diff'].forEach((key) => {
+      const element = tfoot.querySelector(`th[name="total-${key}"]`);
+      const val = totals[key];
+      element.textContent = val.toLocaleString();
+
+      if ((key === 'diff') && (val < 0)) {
+        element.classList.add('text-danger');
+      }
+      else {
+        element.classList.remove('text-danger');
+      }
+    });
   };
   const drawChart = (chart, target, asset) => {
     const context = document.querySelector(`#${target}`);

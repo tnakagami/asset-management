@@ -75,7 +75,7 @@ services:
       - ./env_files/django/.env
       - ./env_files/postgres/.env
     environment:
-      - NUM_CPUS=1
+      - NUM_CPUS=2
     working_dir: /opt
     entrypoint: /opt/entrypoint.sh
     volumes:

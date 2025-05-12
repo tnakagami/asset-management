@@ -6,17 +6,18 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
-"Report-Msgid-Bugs-To: \n"
+"Project-Id-Version: asset-management 0.1.0\n"
+"Report-Msgid-Bugs-To: tnakagami\n"
 "POT-Creation-Date: 2025-05-10 15:45+0900\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"PO-Revision-Date:  2025-05-12 14:00+0900\n"
+"Last-Translator: tnakagami\n"
+"Language-Team: language-solo-team\n"
+"Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
 #: stock/forms.py:73
 msgid "Stock"
 msgstr "株式"
@@ -44,7 +45,8 @@ msgstr "株式コード"
 #: stock/models.py:71
 msgid ""
 "This field consists of either only numbers or both alphabets and numbers."
-msgstr "このフィールドは、数値のみまたは、アルファベットと数値のいずれからから成る。"
+msgstr ""
+"このフィールドは、数値のみまたは、アルファベットと数値のいずれからから成る。"
 
 #: stock/models.py:77
 msgid "Stock name"
