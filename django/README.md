@@ -34,14 +34,14 @@ Run the following commands to reflect translation messages.
 ```bash
 # 
 # If you need to create/update translated file, type the following commands and execute them.
-# # In the docker environment
-# django-admin makemessages -l 'your-language' # e.g., django-admin makemessages -l ja
-# exit # or press Ctrl + D
-# #
-# # Edit .po files using your favorite editor (e.g. vim)
-# #
-# # In the host environment
-# docker-compose run --rm django bash
+# In the docker environment
+django-admin makemessages -l ${DJANGO_LANGUAGE_CODE:-en}
+exit # or press Ctrl + D
+#
+# Edit .po files using your favorite editor (e.g. vim)
+#
+# In the host environment
+docker-compose run --rm django bash
 # 
 
 # In the docker environment

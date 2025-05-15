@@ -7,8 +7,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
-"Report-Msgid-Bugs-To: tnakagami\n"
-"POT-Creation-Date: 2025-05-10 15:45+0900\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-05-14 07:18+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -71,8 +71,6 @@ msgid "Snapshot list"
 msgstr "特定時点の資産一覧"
 
 #: templates/account/index.html:29
-#, fuzzy
-#| msgid "Register/Check/Delete snapshots"
 msgid "Check/Register/Update/Delete snapshots"
 msgstr "特定時点の資産の確認/登録/更新/削除"
 
@@ -81,8 +79,6 @@ msgid "Cash list"
 msgstr "口座残高一覧"
 
 #: templates/account/index.html:39
-#, fuzzy
-#| msgid "Register/Check/Delete cashes"
 msgid "Check/Register/Update/Delete cashes"
 msgstr "口座残高の確認/登録/更新/削除"
 
@@ -91,8 +87,6 @@ msgid "Purchased stock list"
 msgstr "購入済み株式一覧"
 
 #: templates/account/index.html:49
-#, fuzzy
-#| msgid "Register/Check/Delete purchsed sotcks"
 msgid "Check/Register/Update/Delete purchsed sotcks"
 msgstr "購入済み株式の確認/登録/更新/削除"
 
@@ -121,10 +115,12 @@ msgid "User profile"
 msgstr "ユーザプロフィール"
 
 #: templates/account/user_profile.html:14
+#: templates/stock/purchased_stocks.html:107
 msgid "Element"
 msgstr "項目"
 
-#: templates/account/user_profile.html:15 templates/stock/dashboard.html:145
+#: templates/account/user_profile.html:15 templates/stock/dashboard.html:170
+#: templates/stock/purchased_stocks.html:108
 msgid "Value"
 msgstr "値"
 
@@ -158,7 +154,7 @@ msgstr "許可"
 
 #: templates/delete_modal_form.html:25
 #: templates/stock/purchased_stock_form.html:70
-#: templates/stock/snapshots.html:94
+#: templates/stock/purchased_stocks.html:164 templates/stock/snapshots.html:94
 msgid "Close"
 msgstr "閉じる"
 
@@ -168,7 +164,7 @@ msgstr "3秒後にトップページに戻ります。"
 
 #: templates/header.html:8
 msgid "Asset Management"
-msgstr "資産管理"
+msgstr "Asset Management"
 
 #: templates/header.html:59
 msgid "User Profile"
@@ -196,7 +192,7 @@ msgstr "口座残高"
 msgid "Register cash"
 msgstr "口座残高の登録"
 
-#: templates/stock/cashes.html:24 templates/stock/dashboard.html:141
+#: templates/stock/cashes.html:24 templates/stock/dashboard.html:166
 #: templates/stock/purchased_stocks.html:25 templates/stock/snapshots.html:32
 msgid "No."
 msgstr "No."
@@ -250,83 +246,91 @@ msgstr "銘柄"
 msgid "Economic trend"
 msgstr "経済動向"
 
-#: templates/stock/dashboard.html:75
-msgid "Assets"
-msgstr "資産"
-
-#: templates/stock/dashboard.html:142 templates/stock/purchased_stocks.html:26
-msgid "Code"
-msgstr "株式コード"
-
-#: templates/stock/dashboard.html:143
-msgid "Name"
-msgstr "名称"
-
-#: templates/stock/dashboard.html:144 templates/stock/purchased_stocks.html:28
-msgid "Industry"
-msgstr "業種"
-
-#: templates/stock/dashboard.html:146 templates/stock/dashboard.html:318
-#: templates/stock/dashboard.html:346 templates/stock/purchased_stocks.html:31
-msgid "Count"
-msgstr "株式数"
-
-#: templates/stock/dashboard.html:147 templates/stock/purchased_stocks.html:32
+#: templates/stock/dashboard.html:75 templates/stock/dashboard.html:172
+#: templates/stock/dashboard.html:402 templates/stock/purchased_stocks.html:32
 msgid "Diff"
 msgstr "差分"
 
-#: templates/stock/dashboard.html:154
+#: templates/stock/dashboard.html:87
+msgid "Assets"
+msgstr "資産"
+
+#: templates/stock/dashboard.html:167 templates/stock/purchased_stocks.html:26
+#: templates/stock/purchased_stocks.html:113
+msgid "Code"
+msgstr "株式コード"
+
+#: templates/stock/dashboard.html:168 templates/stock/purchased_stocks.html:27
+#: templates/stock/purchased_stocks.html:117
+msgid "Stock name"
+msgstr "株式会社名"
+
+#: templates/stock/dashboard.html:169 templates/stock/purchased_stocks.html:28
+#: templates/stock/purchased_stocks.html:121
+msgid "Industry"
+msgstr "株式会社の業種"
+
+#: templates/stock/dashboard.html:171 templates/stock/dashboard.html:345
+#: templates/stock/dashboard.html:373 templates/stock/purchased_stocks.html:31
+msgid "Count"
+msgstr "株式数"
+
+#: templates/stock/dashboard.html:179
 msgid "Total"
 msgstr "合計"
 
-#: templates/stock/dashboard.html:169
+#: templates/stock/dashboard.html:194
 msgid "There is no snapshots. Please add your snapshots in the following link."
 msgstr "特定時点の資産の情報がありません。下記のリンクから登録してください。"
 
-#: templates/stock/dashboard.html:175 templates/stock/snapshots.html:15
+#: templates/stock/dashboard.html:200 templates/stock/snapshots.html:15
 msgid "Register snapshot"
 msgstr "特定時点の資産の登録"
 
-#: templates/stock/dashboard.html:261
+#: templates/stock/dashboard.html:287
 msgid "Cash"
 msgstr "口座残高"
 
-#: templates/stock/dashboard.html:274
+#: templates/stock/dashboard.html:300
 msgid "Defensive"
 msgstr "ディフェンシブ"
 
-#: templates/stock/dashboard.html:274
+#: templates/stock/dashboard.html:300
 msgid "Economically sensitive"
 msgstr "景気敏感"
 
-#: templates/stock/dashboard.html:296
+#: templates/stock/dashboard.html:323
 msgid "Portfolio (all)"
 msgstr "ポートフォリオ（すべて）"
 
-#: templates/stock/dashboard.html:300 templates/stock/dashboard.html:309
-#: templates/stock/dashboard.html:332 templates/stock/dashboard.html:360
+#: templates/stock/dashboard.html:327 templates/stock/dashboard.html:336
+#: templates/stock/dashboard.html:359 templates/stock/dashboard.html:387
 msgid "Price"
 msgstr "価格"
 
-#: templates/stock/dashboard.html:305
+#: templates/stock/dashboard.html:332
 msgid "Portfolio (without cash)"
 msgstr "ポートフォリオ（口座残高なし）"
 
-#: templates/stock/dashboard.html:314
+#: templates/stock/dashboard.html:341
 msgid "Sector distribution (count)"
 msgstr "銘柄分布（件数）"
 
-#: templates/stock/dashboard.html:328
+#: templates/stock/dashboard.html:355
 msgid "Sector distribution (price)"
 msgstr "銘柄分布（価格）"
 
-#: templates/stock/dashboard.html:342
+#: templates/stock/dashboard.html:369
 msgid "Economic trend (count)"
 msgstr "経済動向（件数）"
 
-#: templates/stock/dashboard.html:356
+#: templates/stock/dashboard.html:383
 msgid "Economic trend (price)"
 msgstr "経済動向（価格）"
+
+#: templates/stock/dashboard.html:397
+msgid "Difference between stock price and purchased price"
+msgstr "株価と購入済み価格の差分"
 
 #: templates/stock/purchased_stock_form.html:9
 msgid "Register/Update purchsed stock"
@@ -352,10 +356,6 @@ msgstr "購入済み株式"
 msgid "Register purchsed stock"
 msgstr "購入済み株式の登録"
 
-#: templates/stock/purchased_stocks.html:27
-msgid "Stock name"
-msgstr "株式会社名"
-
 #: templates/stock/purchased_stocks.html:29
 msgid "Trade date"
 msgstr "取引日"
@@ -364,10 +364,46 @@ msgstr "取引日"
 msgid "Average trade price"
 msgstr "平均取引価格"
 
-#: templates/stock/purchased_stocks.html:72
+#: templates/stock/purchased_stocks.html:84
 msgid ""
 "There is no purchased stocks. Please add the items from the above button."
 msgstr "購入済み株式の情報がありません。下記のボタンから登録してください。"
+
+#: templates/stock/purchased_stocks.html:99
+msgid "Detail of target stock"
+msgstr "対象銘柄の詳細"
+
+#: templates/stock/purchased_stocks.html:125
+msgid "Stock price"
+msgstr "株価"
+
+#: templates/stock/purchased_stocks.html:129
+msgid "Dividend"
+msgstr "配当金"
+
+#: templates/stock/purchased_stocks.html:133
+msgid "Price Earnings Ratio"
+msgstr "株価収益率"
+
+#: templates/stock/purchased_stocks.html:137
+msgid "Price Book-value Ratio"
+msgstr "株価純資産倍率"
+
+#: templates/stock/purchased_stocks.html:141
+msgid "Earnings Per Share"
+msgstr "1株当たり純利益"
+
+#: templates/stock/purchased_stocks.html:145
+msgid "Book value Per Share"
+msgstr "1株当たりの純資産"
+
+#: templates/stock/purchased_stocks.html:149
+msgid "Return On Equity"
+msgstr "自己資本利益率"
+
+#: templates/stock/purchased_stocks.html:153
+msgid "Equity Ratio"
+msgstr "自己資本比率"
 
 #: templates/stock/snapshot_form.html:5
 msgid "Register/Update snapshot"
@@ -378,8 +414,6 @@ msgid "Snapshots"
 msgstr "特定時点の資産"
 
 #: templates/stock/snapshots.html:23
-#, fuzzy
-#| msgid "Register/Update snapshot"
 msgid "Update all snapshots"
 msgstr "特定時点の資産の一括更新"
 
@@ -400,14 +434,15 @@ msgid "There is no snapshots. Please add the items from the above button."
 msgstr "特定時点の資産の情報がありません。上記のボタンから登録してください。"
 
 #: templates/stock/snapshots.html:84
-#, fuzzy
-#| msgid "Register/Update snapshot"
 msgid "Result of updating all snapshots"
 msgstr "特定時点の資産の一括更新結果"
 
 #: templates/stock/snapshots.html:88
 msgid "Failed to update some snapshots."
 msgstr "特定時点の資産の情報更新に失敗しました。"
+
+#~ msgid "Name"
+#~ msgstr "名称"
 
 #~ msgid "Stock (Helper)"
 #~ msgstr "株式の選択"

@@ -6,7 +6,7 @@ import random
 class Command(BaseCommand):
   def handle(self, *args, **options):
     random.seed()
-    queryset = Stock.objects.all().order_by('?')
+    queryset = Stock.objects.select_targets().order_by('?')
     total = queryset.count()
 
     for idx, instance in enumerate(queryset, 1):

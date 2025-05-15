@@ -55,6 +55,12 @@ def _validate_code(code):
   if invalid_match:
     raise ValidationError(gettext_lazy('You need to set either alphabets or numbers to this field.'))
 
+class StockQuerySet(models.QuerySet):
+  def select_targets(self):
+    queryset = self.filter(skip_task=False)
+
+    return queryset
+
 class Stock(models.Model):
   class Meta:
     ordering = ('code',)
@@ -64,6 +70,8 @@ class Stock(models.Model):
       models.CheckConstraint(condition=models.Q(per__gte=0),      name='per_gte_0_in_stock'),
       models.CheckConstraint(condition=models.Q(pbr__gte=0),      name='pbr_gte_0_in_stock'),
     ]
+
+  objects = StockQuerySet.as_manager()
 
   code = models.CharField(
     max_length=16,
@@ -136,6 +144,10 @@ class Stock(models.Model):
     verbose_name=gettext_lazy('ER'),
     help_text=gettext_lazy('Equity Ratio'),
     default=0,
+  )
+  skip_task = models.BooleanField(
+    verbose_name=gettext_lazy('Skip executing user task'),
+    default=False,
   )
 
   def save(self, *args, **kwargs):
