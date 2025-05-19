@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy
 from django.http import JsonResponse
 from django.urls import reverse_lazy
-from django.views.generic import View
+from django.views.generic import View, FormView
 from utils.views import (
   CreateViewBasedOnUser,
   UpdateViewBasedOnUser,
@@ -12,6 +12,7 @@ from utils.views import (
 )
 from account.views import Index
 from . import models, forms
+import urllib.parse
 
 class Dashboard(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.Snapshot
@@ -190,3 +191,36 @@ class AjaxUpdateAllSnapshots(View):
     response = JsonResponse(data)
 
     return response
+
+class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
+  raise_exception = True
+  http_method_names = ['get']
+  model = models.Stock
+  template_name = 'stock/stocks.html'
+  form_class = forms.StockSearchForm
+  paginate_by = 150
+  context_object_name = 'stocks'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:list_stock',
+    title=gettext_lazy('Stock list'),
+    parent_view_class=Index,
+  )
+
+  def get_queryset(self):
+    initial = self.request.GET.copy() or {}
+    # Convert message
+    for key, vals in initial.items():
+      if isinstance(vals, list) and isinstance(vals[0], str):
+        utf8str = vals[0].encode('utf-8', 'ignore')
+        initial[key] = urllib.parse.unquote(utf8str)
+    # Create form
+    self.form = self.form_class(initial)
+    queryset = self.form.get_queryset_with_condition()
+
+    return queryset
+
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    context['form'] = self.form
+
+    return context

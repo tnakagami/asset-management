@@ -51,6 +51,16 @@
           </div>
         </a>
       </div>
+      <div class="col">
+        <a href="{% url 'stock:list_stock' %}" class="link-underline link-underline-opacity-0">
+          <div class="card custom-boxshadow">
+            <div class="card-body">
+              <p class="card-title h3">{% trans "Stock list" %}</p>
+              <p class="card-text">{% trans "Check sotcks" %}</p>
+            </div>
+          </div>
+        </a>
+      </div>
       {% endif %}
     </div>
   </div>

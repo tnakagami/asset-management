@@ -22,4 +22,6 @@ urlpatterns = [
   path('update/snapshot/<int:pk>', views.UpdateSnapshot.as_view(), name='update_snapshot'),
   path('delete/snapshot/<int:pk>', views.DeleteSnapshot.as_view(), name='delete_snapshot'),
   path('update/all-snapshots', views.AjaxUpdateAllSnapshots.as_view(), name='update_all_snapshots'),
+  # Stock
+  path('list/stocks', views.ListStock.as_view(), name='list_stock'),
 ]
