@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Explanation") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th scope="col">{% trans "Item" %}</th>
+            <th scope="col">{% trans "Detail" %}</th>
+          </tr>
+        </thead>
+        <tbody class="table-group-divider">
+          <tr>
+            <td scope="row">{% trans "Price Earnings Ratio (PER)" %}</td>
+            <td>
+              <p>{% trans "Indicates up to what multiple of earning per share the stock is bought." %}</p>
+              <p>{% trans "A high PER indicates that the stock is overvalued, while a low PER indicates that the stock is undervalued." %}</p>
+            </td>
+          </tr>
+          <tr>
+            <td scope="row">{% trans "Price Book-value Ratio (PBR)" %}</td>
+            <td>
+              <p>{% trans "The ratio of the stock price to the value of the company's assets." %}</p>
+              <p>{% trans "A high PER indicates that the stock is overvalued relative to net assets, while a low PER indicates that the stock is undervalued relative to net assets." %}</p>
+            </td>
+          </tr>
+          <tr>
+            <td scope="row">{% trans "Earnings Per Share (EPS)" %}</td>
+            <td>
+              <p>{% trans "This is the portion of a company's profit allocated to each outstanding share of common stock, serving as a profitability indicator." %}</p>
+            </td>
+          </tr>
+          <tr>
+            <td scope="row">{% trans "Book value Per Share (BPS)" %}</td>
+            <td>
+              <p>{% trans "This is the per-share value of equity on an accrual accounting basis that belongs to the common shareholders of a company." %}</p>
+            </td>
+          </tr>
+          <tr>
+            <td scope="row">{% trans "Return On Equity (ROE)" %}</td>
+            <td>
+              <p>{% trans "A quantification of how much profit a company has made with the money invested by its shareholders." %}</p>
+              <p>{% trans "In other words, it is a financial indicator that shows how efficiently the company is earning money." %}</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

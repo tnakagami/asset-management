@@ -1,9 +1,8 @@
-from django.views.generic import ListView, DetailView
+from django.views.generic import TemplateView, ListView, DetailView, View, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy
 from django.http import JsonResponse
 from django.urls import reverse_lazy
-from django.views.generic import View, FormView
 from utils.views import (
   CreateViewBasedOnUser,
   UpdateViewBasedOnUser,
@@ -209,10 +208,9 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   def get_queryset(self):
     initial = self.request.GET.copy() or {}
     # Convert message
-    for key, vals in initial.items():
-      if isinstance(vals, list) and isinstance(vals[0], str):
-        utf8str = vals[0].encode('utf-8', 'ignore')
-        initial[key] = urllib.parse.unquote(utf8str)
+    for key, val in initial.items():
+      utf8str = val.encode('utf-8', 'ignore')
+      initial[key] = urllib.parse.unquote(utf8str)
     # Create form
     self.form = self.form_class(initial)
     queryset = self.form.get_queryset_with_condition()
@@ -224,3 +222,11 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
     context['form'] = self.form
 
     return context
+
+class ExplanationPage(LoginRequiredMixin, TemplateView, DjangoBreadcrumbsMixin):
+  template_name = 'stock/explanation.html'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:explanation',
+    title=gettext_lazy('Explanation'),
+    parent_view_class=Index,
+  )

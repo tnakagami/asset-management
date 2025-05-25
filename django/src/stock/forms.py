@@ -109,11 +109,42 @@ class SnapshotForm(_BaseModelFormWithCSS):
     }
 
 class _ValidateCondition(ast.NodeVisitor):
-  def __init__(self, fields, comp_ops, *args, **kwargs):
+  def __init__(self, *args, fields=None, comp_ops=None, **kwargs):
+    # Define stock fields to check right operand
+    _meta = models.Stock._meta
+    _stock_fields = {
+      'code': _meta.get_field('code'),
+      'name': _meta.get_field('name'),
+      'industry__name': models.Industry._meta.get_field('name'),
+      'price': _meta.get_field('price'),
+      'dividend': _meta.get_field('dividend'),
+      'per': _meta.get_field('per'),
+      'pbr': _meta.get_field('pbr'),
+      'eps': _meta.get_field('eps'),
+      'bps': _meta.get_field('bps'),
+      'roe': _meta.get_field('roe'),
+      'er': _meta.get_field('er'),
+    }
+    # Define comparison operators to check the relationship between variable and value
+    _for_str = [ast.Eq, ast.NotEq, ast.In, ast.NotIn]
+    _for_number = [ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE]
+    _stock_comp_ops = {
+      'code': _for_str,
+      'name': _for_str,
+      'industry__name': _for_str,
+      'price': _for_number,
+      'dividend': _for_number,
+      'per': _for_number,
+      'pbr': _for_number,
+      'eps': _for_number,
+      'bps': _for_number,
+      'roe': _for_number,
+      'er': _for_number,
+    }
     self._variables = {}
     self._operators = {}
-    self._fields = fields
-    self._comp_ops = comp_ops
+    self._fields = fields or _stock_fields
+    self._comp_ops = comp_ops or _stock_comp_ops
     self._stack = deque()
     super().__init__(*args, **kwargs)
 
@@ -129,7 +160,14 @@ class _ValidateCondition(ast.NodeVisitor):
         raise KeyError(gettext_lazy('%(key)s does not exist') % {'key': key})
 
       for value, operator in zip(vals, ops):
-        field.clean(f'{value}', None)
+        try:
+          field.clean(f'{value}', None)
+        except forms.ValidationError as ex:
+          raise forms.ValidationError(
+            gettext_lazy('Invalid data (%(key)s, %(value)s): %(ex)s'),
+            code='invalid_data',
+            params={'key': key, 'value': str(value), 'ex': str(ex)},
+          )
 
         if not any([isinstance(operator, _op) for _op in comp_ops]):
           raise forms.ValidationError(
@@ -137,6 +175,21 @@ class _ValidateCondition(ast.NodeVisitor):
             code='invalid_operator',
             params={'key': key, 'value': str(value)},
           )
+
+  def visit(self, node):
+    enable_classes = [
+      'Expression',
+      'BoolOp', 'And', 'Or',
+      'Compare', 'Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE', 'In', 'NotIn',
+      'Name',
+      'Constant',
+    ]
+    classname = node.__class__.__name__
+
+    if classname not in enable_classes:
+      raise SyntaxError(gettext_lazy('cannot use %(name)s in this application') % {'name': classname})
+
+    return super().visit(node)
 
   def visit_Expression(self, node):
     self._stack.clear()
@@ -179,53 +232,23 @@ class _ValidateCondition(ast.NodeVisitor):
 
 def validate_filtering_condition(value):
   condition = ' '.join(value.splitlines())
-  # Define stock fields to check right operand
-  _meta = models.Stock._meta
-  fields = {
-    'code': _meta.get_field('code'),
-    'name': _meta.get_field('name'),
-    'industry__name': models.Industry._meta.get_field('name'),
-    'price': _meta.get_field('price'),
-    'dividend': _meta.get_field('dividend'),
-    'per': _meta.get_field('per'),
-    'pbr': _meta.get_field('pbr'),
-    'eps': _meta.get_field('eps'),
-    'bps': _meta.get_field('bps'),
-    'roe': _meta.get_field('roe'),
-    'er': _meta.get_field('er'),
-  }
-  # Define comparison operators to check the relationship between variable and value
-  _for_str = [ast.Eq, ast.In, ast.NotIn]
-  _for_number = [ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE]
-  comp_ops = {
-    'code': _for_str,
-    'name': _for_str,
-    'industry__name': _for_str,
-    'price': _for_number,
-    'dividend': _for_number,
-    'per': _for_number,
-    'pbr': _for_number,
-    'eps': _for_number,
-    'bps': _for_number,
-    'roe': _for_number,
-    'er': _for_number,
-  }
-  visitor = _ValidateCondition(fields, comp_ops)
+  visitor = _ValidateCondition()
 
   try:
     tree = ast.parse(condition, mode='eval')
     visitor.visit(tree)
     visitor.validate()
-  except (SyntaxError, IndexError):
+  except (SyntaxError, IndexError) as ex:
     raise ValidationError(
-      gettext_lazy('Invalid syntax'),
+      gettext_lazy('Invalid syntax: %(ex)s'),
       code='invalid_syntax',
+      params={'ex': str(ex)},
     )
   except KeyError as ex:
     raise ValidationError(
       gettext_lazy('Invalid variable: %(ex)s'),
       code='invalid_variable',
-      params={'ex': ex},
+      params={'ex': str(ex)},
     )
 
 class StockSearchForm(forms.Form):
@@ -350,7 +373,8 @@ class StockSearchForm(forms.Form):
 
   def get_queryset_with_condition(self):
     if self.is_valid():
-      condition = self.cleaned_data.get('condition', '')
+      data = self.cleaned_data.get('condition', '')
+      condition = ' '.join(data.splitlines())
       # Convert python like script to abstract syntax tree
       tree = ast.parse(condition, mode='eval') if condition else None
     else:

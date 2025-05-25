@@ -1,6 +1,8 @@
 import pytest
 import json
 import re
+import ast
+from django.db.models import Q as dbQ
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
 from django.utils import timezone as djangoTimeZone
@@ -35,6 +37,37 @@ def get_judgement_funcs():
 ], ids=lambda xs: '+'.join([xs[0], xs[1].strftime('%Y%m%d-%H:%M:%S'), xs[2]]))
 def pseudo_date(request):
   yield request.param
+
+@pytest.fixture
+def pseudo_stock_data(django_db_blocker):
+  with django_db_blocker.unblock():
+    industries = [
+      factories.IndustryFactory(name='foo-bar'),
+      factories.IndustryFactory(name='foo'),
+      factories.IndustryFactory(name='hogehoge'),
+    ]
+    stock_params = [
+      {'code': '0010', 'name': 'sampel1', 'industry': 0, 'price': '1200', 'dividend': '15',
+        'per':  '0.2', 'pbr': '1.3', 'eps': '1.7', 'bps': '2.3', 'roe': '5.0', 'er': '23.2'},
+      {'code': '0012', 'name': 'alpha01', 'industry': 0, 'price': '800', 'dividend': '5',
+        'per':  '1.3', 'pbr': '2.5', 'eps': '0.25', 'bps': '1.1', 'roe': '5.3', 'er': '16'},
+      {'code': '0033', 'name': 'beta20', 'industry': 1, 'price': '2000', 'dividend': '15.1',
+        'per':  '2.2', 'pbr': '4.3', 'eps': '5.3', 'bps': '4.1', 'roe': '7.2', 'er': '12.7'},
+      {'code': '005A', 'name': 'kappa88', 'industry': 1, 'price': '1500', 'dividend': '5.2',
+        'per':  '5.7', 'pbr': '1.3', 'eps': '7.9', 'bps': '-5.6', 'roe': '2.1', 'er': '8'},
+      {'code': '040a', 'name': 'gamma_c', 'industry': 2, 'price': '1000', 'dividend': '9',
+        'per':  '1.7', 'pbr': '0.1', 'eps': '3.5', 'bps': '3.7', 'roe': '0.9', 'er': '7.2'},
+    ]
+    stocks = [
+      factories.StockFactory(
+        code=kwargs['code'], name=kwargs['name'], industry=industries[kwargs['industry']],
+        price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
+        per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
+        bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
+      ) for kwargs in stock_params
+    ]
+
+  return stocks
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -174,6 +207,77 @@ def test_check_invalid_code_of_validate_code(code):
   with pytest.raises(ValidationError) as ex:
     models._validate_code(code)
   assert 'either alphabets or numbers' in str(ex.value)
+
+# ===============
+# QmodelCondition
+# ===============
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'expression',
+  'expected',
+], [
+  ('code == "0010"',                         dbQ(code__exact="0010")),
+  ('code != "0010"',                        ~dbQ(code__exact="0010")),
+  ('code in "001"',                          dbQ(code__contains="001")),
+  ('code not in "001"',                     ~dbQ(code__contains="001")),
+  ('price <= 1000',                          dbQ(price__lte=1000)),
+  ('price < 1000',                           dbQ(price__lt=1000)),
+  ('price >= 1000',                          dbQ(price__gte=1000)),
+  ('price > 1000',                           dbQ(price__gt=1000)),
+  ('price > 2 and er < 5',                   dbQ() & dbQ(er__lt=5) & (dbQ(price__gt=2))),
+  ('price > 2 or er < 5',                    "(OR: (AND: ), (AND: ('er__lt', 5)), ('price__gt', 2))"),
+  ('price > 2.01',                           dbQ(price__gt=2.01)),
+  ('2.01 < price',                           dbQ(price__gt=2.01)),
+  ('2 < er < 3',                             dbQ(er__lt=3) & dbQ(er__gt=2)),
+  ('2 < er < 3 < bps < 5',                   dbQ(bps__lt=5) & dbQ(bps__gt=3) & dbQ(er__lt=3) & dbQ(er__gt=2)),
+  ('2<er<3',                                 dbQ(er__lt=3) & dbQ(er__gt=2)),
+  ('(price<5 or name in "001") and 2<er<3',  "(AND: ('er__lt', 3), ('er__gt', 2), (OR: (AND: ), (AND: ('name__contains', '001')), ('price__lt', 5)))"),
+], ids=[
+  'check-eq-exprn',
+  'check-not-eq-expr',
+  'check-include-expr',
+  'check-not-include-expr',
+  'check-lte-expr',
+  'check-lt-expr',
+  'check-gte-expr',
+  'check-gt-expr',
+  'check-and-expr',
+  'check-or-expr',
+  'check-decimal-point-expr',
+  'check-swap-name-and-constant-expr',
+  'check-python-specific-expr',
+  'check-python-specific-expr-for-multi-version',
+  'check-python-specific-without-spaces-expr',
+  'check-complex-expr',
+])
+def test_q_model_condition(expression, expected):
+  tree = ast.parse(expression, mode='eval')
+  visitor = models._AnalyzeAndCreateQmodelCondition()
+  visitor.visit(tree)
+  estimated = visitor.condition
+
+  assert str(estimated) == str(expected)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'condition',
+], [
+  ('price < 100',),
+  ('100 < price',),
+], ids=[
+  'no-swap-pattern',
+  'swap-pattern',
+])
+def test_no_pairs_for_q_model(condition):
+  visitor = models._AnalyzeAndCreateQmodelCondition()
+  visitor._comp_op_callbacks = {}
+  visitor._swap_pairs = {}
+  tree = ast.parse(condition, mode='eval')
+
+  with pytest.raises(IndexError):
+    visitor.visit(tree)
 
 # ========
 # Industry
@@ -375,6 +479,48 @@ def test_queryset_of_stock():
 
   assert all_counts == 7
   assert specific == 4
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'expression',
+  'indices',
+], [
+  ('code in "001"', [0, 1]),
+  ('name == "gamma_c"', [4]),
+  ('industry__name not in "foo"', [4]),
+  ('price <= 1000', [1, 4]),
+  ('dividend > 6', [0, 2, 4]),
+  ('1.1 < per < 2.5', [1, 2, 4]),
+  ('pbr > 10', []),
+  ('eps == 0.25', [1]),
+  ('bps <= 0', [3]),
+  ('roe < 2 or 5 < roe', [1, 2, 4]),
+  ('8 <= er and er <= 16', [1, 2, 3]),
+  ('code in "1" and price < 1000 or name in "_" or industry__name == "foo" or price > 1000', [0,1,2,3,4]),
+], ids=[
+  'based-on-code',
+  'based-on-name',
+  'based-on-industry',
+  'based-on-price',
+  'based-on-dividend',
+  'based-on-per',
+  'based-on-pbr',
+  'based-on-eps',
+  'based-on-bps',
+  'based-on-roe',
+  'based-on-er',
+  'complex-expression-by-using-several-columns',
+])
+def test_qs_of_stock_with_tree(pseudo_stock_data, expression, indices):
+  stock = pseudo_stock_data
+  tree = ast.parse(expression, mode='eval')
+  qs = models.Stock.objects.select_targets(tree=tree).order_by('pk')
+  expected = [stock[idx].pk for idx in indices]
+
+  assert qs.count() == len(expected)
+  assert all([record.pk == pk for record, pk in zip(qs, expected)])
 
 @pytest.mark.stock
 @pytest.mark.model

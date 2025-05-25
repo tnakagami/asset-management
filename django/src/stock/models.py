@@ -45,6 +45,12 @@ class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
       ast.In:    lambda name, val:  models.Q(**{f'{name}__contains': val}),
       ast.NotIn: lambda name, val: ~models.Q(**{f'{name}__contains': val}),
     }
+    self._swap_pairs = {
+      ast.Lt:  ast.Gt(),
+      ast.LtE: ast.GtE(),
+      ast.Gt:  ast.Lt(),
+      ast.GtE: ast.LtE(),
+    }
     super().__init__(*args, **kwargs)
 
   @property
@@ -77,11 +83,18 @@ class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
   def visit_Compare(self, node):
     _left = [node.left] + node.comparators[:-1]
     _right = list(node.comparators)
+    count = 0
 
     for left_item, comp_op, right_item in zip(_left, node.ops, _right):
       if isinstance(left_item, ast.Constant) and isinstance(right_item, ast.Name):
         # Swap each item
         left_item, right_item = right_item, left_item
+
+        for key, alter_op in self._swap_pairs.items():
+          if isinstance(comp_op, key):
+            comp_op = alter_op
+            break
+
       # Analysis each node
       self.visit(left_item)
       self.visit(right_item)
@@ -94,6 +107,15 @@ class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
           q_cond = callback(name, val)
           self._data_stack.append(q_cond)
           break
+      count = count + 1
+
+    q_cond = self._data_stack.pop()
+    # Bind multi comparison
+    for _ in range(count - 1):
+      _q_item = self._data_stack.pop()
+      q_cond &= _q_item
+    # Store added items
+    self._data_stack.append(q_cond)
 
     return node
 

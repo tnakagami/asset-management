@@ -46,12 +46,12 @@
                 <td data-type="code">{{ instance.code }}</td>
                 <td data-type="name">{{ instance.name }}</td>
                 <td data-type="industry">{{ instance.industry }}</td>
-                <td data-type="price" {% if instance.price|is_negative %}class="text-danger"{% endif %}>{{ instance.price }}</td>
+                <td data-type="price" {% if instance.price|is_negative %}class="text-danger"{% endif %}>{{ instance.price|intcomma }}</td>
                 <td data-type="dividend">{{ instance.dividend }}</td>
                 <td data-type="per">{{ instance.per }}&#37;</td>
                 <td data-type="pbr">{{ instance.pbr }}&#37;</td>
-                <td data-type="eps" {% if instance.eps|is_negative %}class="text-danger"{% endif %}>{{ instance.eps }}</td>
-                <td data-type="bps" {% if instance.bps|is_negative %}class="text-danger"{% endif %}>{{ instance.bps }}</td>
+                <td data-type="eps" {% if instance.eps|is_negative %}class="text-danger"{% endif %}>{{ instance.eps|intcomma }}</td>
+                <td data-type="bps" {% if instance.bps|is_negative %}class="text-danger"{% endif %}>{{ instance.bps|intcomma }}</td>
                 <td data-type="roe" {% if instance.roe|is_negative %}class="text-danger"{% endif %}>{{ instance.roe }}&#37;</td>
                 <td data-type="er" {% if instance.er|is_negative %}class="text-danger"{% endif %}>{{ instance.er }}&#37;</td>
               </tr>
@@ -71,7 +71,7 @@
 </div>
 
 <div class="modal fade" id="stock-search-modal" tabindex="-1" aria-labelledby="stock-search-label" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
         <p class="modal-title h3" id="stock-search-label">{% trans "Seach stock" %}</p>
@@ -204,7 +204,7 @@
 <script>
 (function () {
   const setupSearchForm = () => {
-    const removeAllAttrs = (element, ...attrs) => attrs.forEach((attr) => element.removeAttribute(attr));
+    const removeAllAttrs = (element, ...attrs) => attrs.forEach((_attr) => element.removeAttribute(_attr));
     const targetColumn = document.querySelector('#target-column-name');
     const compOperator = document.querySelector('#comp-operator');
     const inputData = document.querySelector('#input-data');
@@ -259,12 +259,15 @@
     });
     // Add click event
     addCmd.addEventListener('click', () => {
-      if (targetColumn.value && compOperator.value && inputData.value) {
+      const _variableName = targetColumn.value;
+      const _compOp = compOperator.value;
+      const _inputVal = inputData.value;
+
+      if (_variableName && _compOp && _inputVal) {
         const selectedOption = targetColumn.options[targetColumn.selectedIndex];
         const dataType = selectedOption.dataset.type;
-        const inputVal = inputData.value;
-        const data = (dataType === 'str') ? `"${inputVal}"` : inputVal;
-        const command = `${targetColumn.value} ${compOperator.value} ${data}`;
+        const value = (dataType === 'str') ? `"${_inputVal}"` : _inputVal;
+        const command = `${_variableName} ${_compOp} ${value}`;
         condition.value += command;
       }
     });
@@ -273,7 +276,9 @@
       element.addEventListener('click', () => {
         const sentence = condition.value;
         const position = condition.selectionStart;
-        condition.value = sentence.substr(0, position) + word + sentence.substr(position, sentence.length);
+        const beforeWord = sentence.substr(0, position);
+        const afterWord = sentence.substr(position, sentence.length);
+        condition.value = beforeWord + word + afterWord;
       });
     }
     targetColumn.dispatchEvent(new Event('change'));
@@ -281,6 +286,7 @@
   // Define initialization function
   const init = () => {
     const searchBtn = document.querySelector('#stock-search');
+    // Setup search form
     setupSearchForm();
     // Add key event
     document.addEventListener('keyup', (event) => {
