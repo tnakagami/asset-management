@@ -74,31 +74,33 @@
   (function () {
     document.addEventListener('keyup', (event) => {
 
-      switch (event.code) {
-        case 'ArrowLeft':
-          {
-            event.preventDefault();
-            const element = document.querySelector('#prev-page');
+      if (event.altKey) {
+        switch (event.code) {
+          case 'ArrowLeft':
+            {
+              event.preventDefault();
+              const element = document.querySelector('#prev-page');
 
-            if (element) {
-              window.location.replace(element.href);
+              if (element) {
+                window.location.replace(element.href);
+              }
             }
-          }
-          break;
+            break;
 
-        case 'ArrowRight':
-          {
-            event.preventDefault();
-            const element = document.querySelector('#next-page');
+          case 'ArrowRight':
+            {
+              event.preventDefault();
+              const element = document.querySelector('#next-page');
 
-            if (element) {
-              window.location.replace(element.href);
+              if (element) {
+                window.location.replace(element.href);
+              }
             }
-          }
-          break;
+            break;
 
-        default:
-          break;
+          default:
+            break;
+        }
       }
     });
   })();

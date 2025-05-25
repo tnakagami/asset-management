@@ -138,7 +138,12 @@ USE_I18N = True
 USE_TZ = True
 
 LOCALE_PATHS = (
-    os.path.join(BASE_DIR, 'locale'),
+    os.path.join(BASE_DIR, 'account', 'locale'),
+    os.path.join(BASE_DIR, 'config', 'locale'),
+    os.path.join(BASE_DIR, 'stock', 'locale'),
+    os.path.join(BASE_DIR, 'templates', 'locale'),
+    os.path.join(BASE_DIR, 'utils', 'locale'),
+    os.path.join(BASE_DIR, 'utils', 'templates', 'locale'),
 )
 
 DATETIME_INPUT_FORMATS += ['%Y/%m/%d']

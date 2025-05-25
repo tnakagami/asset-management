@@ -75,7 +75,9 @@ services:
       - ./env_files/django/.env
       - ./env_files/postgres/.env
     environment:
-      - NUM_CPUS=1
+      - NUM_CPUS=2
+      - DJANGO_LANGUAGE_CODE=${ASSETMGMT_LANGCODE:-en}
+      - DJANGO_TIME_ZONE=${ASSETMGMT_TZ:-UTC}
     working_dir: /opt
     entrypoint: /opt/entrypoint.sh
     volumes:

@@ -26,10 +26,10 @@ The example of `user-task` function is shown below.
 from celery.utils.log import get_task_logger
 from stock.models import Stock, bind_user_function
 
-def your_original_function(pk, log_name, **kwargs):
+@bind_user_function
+def your_original_function(pk, logger, **kwargs):
   idx = kwargs.get('idx')
   total = kwargs.get('total')
-  logger = get_task_logger(log_name)
   stock = Stock.objects.get(pk=pk)
   # After executing something process
   stock.price = 0 # It's the updated value

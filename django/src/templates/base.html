@@ -85,6 +85,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6.9.4/dist/js/tempus-dominus.min.js" crossorigin="anonymous"></script>
     {% block bodyjs %}
     <script>
+      const g_getCookie = (name) => {
+        let cookieValue = null;
+
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+
+          for (const cookie of cookies) {
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+
+        return cookieValue;
+      };
       const g_registerDeleteModalEvent = (args) => {
         const {targetCSS, formID, modalID} = args;
         const deleteBtns = document.querySelectorAll(`.${targetCSS}`);
@@ -148,6 +164,11 @@
         });
         element.addEventListener('click', (envet) => {
           isFocused = false;
+        });
+        document.addEventListener('keyup', (event) => {
+          if (event.key === 'Escape') {
+            picker.hide();
+          }
         });
 
         return picker;

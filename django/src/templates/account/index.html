@@ -26,7 +26,7 @@
           <div class="card custom-boxshadow">
             <div class="card-body">
               <p class="card-title h3">{% trans "Snapshot list" %}</p>
-              <p class="card-text">{% trans "Register/Check/Delete snapshots" %}</p>
+              <p class="card-text">{% trans "Check/Register/Update/Delete snapshots" %}</p>
             </div>
           </div>
         </a>
@@ -36,7 +36,7 @@
           <div class="card custom-boxshadow">
             <div class="card-body">
               <p class="card-title h3">{% trans "Cash list" %}</p>
-              <p class="card-text">{% trans "Register/Check/Delete cashes" %}</p>
+              <p class="card-text">{% trans "Check/Register/Update/Delete cashes" %}</p>
             </div>
           </div>
         </a>
@@ -46,7 +46,27 @@
           <div class="card custom-boxshadow">
             <div class="card-body">
               <p class="card-title h3">{% trans "Purchased stock list" %}</p>
-              <p class="card-text">{% trans "Register/Check/Delete purchsed sotcks" %}</p>
+              <p class="card-text">{% trans "Check/Register/Update/Delete purchsed sotcks" %}</p>
+            </div>
+          </div>
+        </a>
+      </div>
+      <div class="col">
+        <a href="{% url 'stock:list_stock' %}" class="link-underline link-underline-opacity-0">
+          <div class="card custom-boxshadow">
+            <div class="card-body">
+              <p class="card-title h3">{% trans "Stock list" %}</p>
+              <p class="card-text">{% trans "Check sotcks" %}</p>
+            </div>
+          </div>
+        </a>
+      </div>
+      <div class="col">
+        <a href="{% url 'stock:explanation' %}" class="link-underline link-underline-opacity-0">
+          <div class="card custom-boxshadow">
+            <div class="card-body">
+              <p class="card-title h3">{% trans "Explanation" %}</p>
+              <p class="card-text">{% trans "Explain terms with relevant to stock" %}</p>
             </div>
           </div>
         </a>

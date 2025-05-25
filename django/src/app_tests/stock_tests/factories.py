@@ -11,10 +11,10 @@ faker = FakerFactory.create()
 _clip = account_factories.clip
 UserFactory = account_factories.UserFactory
 
-def _get_code(max_len):
+def _get_code(idx, max_len=16):
   val = faker.pyint(min_value=0, max_value=9999, step=1)
   alphabets = faker.pystr(min_chars=2, max_chars=5)
-  pseudo_code = _clip(f'{alphabets}{val}', max_len)
+  pseudo_code = _clip(f'{alphabets}{idx}{val}', max_len)
 
   return pseudo_code
 
@@ -39,15 +39,29 @@ class StockFactory(factory.django.DjangoModelFactory):
       'right_digits': 2,
       'min_value': 0,
     }
+    roe_params = {
+      'left_digits': 4,
+      'right_digits': 2,
+      'min_value': 0,
+    }
+    er_params = {
+      'left_digits': 3,
+      'right_digits': 2,
+      'min_value': 0,
+    }
 
-  code = factory.LazyAttribute(lambda instance: _get_code(16))
-  name = factory.LazyAttribute(lambda instance: _clip(faker.name(), 255))
+  code = factory.Sequence(lambda idx: _get_code(idx, max_len=16))
+  name = factory.Sequence(lambda idx: f'stock{idx}')
   industry = factory.SubFactory(IndustryFactory)
   price = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=8, **instance.money_params))
   dividend = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=5, **instance.money_params))
   per = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
   pbr = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
   eps = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
+  bps = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
+  roe = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.roe_params))
+  er  = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.er_params))
+  skip_task = False
 
 class CashFactory(factory.django.DjangoModelFactory):
   class Meta:

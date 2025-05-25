@@ -6,9 +6,11 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
 from zoneinfo import ZoneInfo
+from collections import deque
 import re
 import json
 import uuid
+import ast
 
 UserModel = get_user_model()
 
@@ -28,6 +30,104 @@ def convert_timezone(target, is_string=False, strformat='%Y-%m-%d'):
     output = output.strftime(strformat)
 
   return output
+
+class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
+  def __init__(self, *args, **kwargs):
+    self.q_cond = None
+    self._data_stack = deque()
+    self._comp_op_callbacks = {
+      ast.Eq:    lambda name, val:  models.Q(**{f'{name}__exact': val}),
+      ast.NotEq: lambda name, val: ~models.Q(**{f'{name}__exact': val}),
+      ast.Lt:    lambda name, val:  models.Q(**{f'{name}__lt': val}),
+      ast.LtE:   lambda name, val:  models.Q(**{f'{name}__lte': val}),
+      ast.Gt:    lambda name, val:  models.Q(**{f'{name}__gt': val}),
+      ast.GtE:   lambda name, val:  models.Q(**{f'{name}__gte': val}),
+      ast.In:    lambda name, val:  models.Q(**{f'{name}__contains': val}),
+      ast.NotIn: lambda name, val: ~models.Q(**{f'{name}__contains': val}),
+    }
+    self._swap_pairs = {
+      ast.Lt:  ast.Gt(),
+      ast.LtE: ast.GtE(),
+      ast.Gt:  ast.Lt(),
+      ast.GtE: ast.LtE(),
+    }
+    super().__init__(*args, **kwargs)
+
+  @property
+  def condition(self):
+    return self.q_cond
+
+  # Assumption: top module name is an expression
+  def visit_Expression(self, node):
+    self._data_stack.clear()
+    self.visit(node.body)
+    self.q_cond = self._data_stack.pop()
+
+    return node
+
+  def visit_BoolOp(self, node):
+    _len = len(node.values)
+    # Analysis each node
+    for item in node.values:
+      self.visit(item)
+    # Create condition
+    q_cond = models.Q()
+    _op = models.Q.OR if isinstance(node.op, ast.Or) else models.Q.AND
+    for _ in range(_len):
+      item = self._data_stack.pop()
+      q_cond.add(item, _op)
+    self._data_stack.append(q_cond)
+
+    return node
+
+  def visit_Compare(self, node):
+    _left = [node.left] + node.comparators[:-1]
+    _right = list(node.comparators)
+    count = 0
+
+    for left_item, comp_op, right_item in zip(_left, node.ops, _right):
+      if isinstance(left_item, ast.Constant) and isinstance(right_item, ast.Name):
+        # Swap each item
+        left_item, right_item = right_item, left_item
+
+        for key, alter_op in self._swap_pairs.items():
+          if isinstance(comp_op, key):
+            comp_op = alter_op
+            break
+
+      # Analysis each node
+      self.visit(left_item)
+      self.visit(right_item)
+      # Note: the right item position is upper than left item one because of using stack
+      val = self._data_stack.pop()
+      name = self._data_stack.pop()
+      # Search matched operand
+      for key, callback in self._comp_op_callbacks.items():
+        if isinstance(comp_op, key):
+          q_cond = callback(name, val)
+          self._data_stack.append(q_cond)
+          break
+      count = count + 1
+
+    q_cond = self._data_stack.pop()
+    # Bind multi comparison
+    for _ in range(count - 1):
+      _q_item = self._data_stack.pop()
+      q_cond &= _q_item
+    # Store added items
+    self._data_stack.append(q_cond)
+
+    return node
+
+  def visit_Name(self, node):
+    self._data_stack.append(node.id)
+
+    return node
+
+  def visit_Constant(self, node):
+    self._data_stack.append(node.value)
+
+    return node
 
 class Industry(models.Model):
   name = models.CharField(
@@ -53,7 +153,23 @@ def _validate_code(code):
   invalid_match = re.search('[^0-9a-zA-Z]+', code)
 
   if invalid_match:
-    raise ValidationError(gettext_lazy('You need to set either alphabets or numbers to this field.'))
+    raise ValidationError(
+      gettext_lazy('You need to set either alphabets or numbers to this field.'),
+      code='invalid',
+      params={'value': code},
+    )
+
+class StockQuerySet(models.QuerySet):
+  def select_targets(self, tree=None):
+    queryset = self.filter(skip_task=False)
+
+    if tree:
+      # Assumption: abstract syntax tree is validated by caller
+      visitor = _AnalyzeAndCreateQmodelCondition()
+      visitor.visit(tree)
+      queryset = queryset.filter(visitor.condition)
+
+    return queryset
 
 class Stock(models.Model):
   class Meta:
@@ -64,6 +180,8 @@ class Stock(models.Model):
       models.CheckConstraint(condition=models.Q(per__gte=0),      name='per_gte_0_in_stock'),
       models.CheckConstraint(condition=models.Q(pbr__gte=0),      name='pbr_gte_0_in_stock'),
     ]
+
+  objects = StockQuerySet.as_manager()
 
   code = models.CharField(
     max_length=16,
@@ -136,6 +254,10 @@ class Stock(models.Model):
     verbose_name=gettext_lazy('ER'),
     help_text=gettext_lazy('Equity Ratio'),
     default=0,
+  )
+  skip_task = models.BooleanField(
+    verbose_name=gettext_lazy('Skip executing user task'),
+    default=False,
   )
 
   def save(self, *args, **kwargs):
@@ -351,3 +473,10 @@ class Snapshot(models.Model):
     out = json_script(data, self.uuid)
 
     return out
+
+  @classmethod
+  def save_all(cls, user):
+    queryset = user.snapshots.all()
+
+    for instance in queryset:
+      instance.save()

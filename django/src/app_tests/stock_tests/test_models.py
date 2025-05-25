@@ -1,6 +1,8 @@
 import pytest
 import json
 import re
+import ast
+from django.db.models import Q as dbQ
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
 from django.utils import timezone as djangoTimeZone
@@ -35,6 +37,37 @@ def get_judgement_funcs():
 ], ids=lambda xs: '+'.join([xs[0], xs[1].strftime('%Y%m%d-%H:%M:%S'), xs[2]]))
 def pseudo_date(request):
   yield request.param
+
+@pytest.fixture
+def pseudo_stock_data(django_db_blocker):
+  with django_db_blocker.unblock():
+    industries = [
+      factories.IndustryFactory(name='foo-bar'),
+      factories.IndustryFactory(name='foo'),
+      factories.IndustryFactory(name='hogehoge'),
+    ]
+    stock_params = [
+      {'code': '0010', 'name': 'sampel1', 'industry': 0, 'price': '1200', 'dividend': '15',
+        'per':  '0.2', 'pbr': '1.3', 'eps': '1.7', 'bps': '2.3', 'roe': '5.0', 'er': '23.2'},
+      {'code': '0012', 'name': 'alpha01', 'industry': 0, 'price': '800', 'dividend': '5',
+        'per':  '1.3', 'pbr': '2.5', 'eps': '0.25', 'bps': '1.1', 'roe': '5.3', 'er': '16'},
+      {'code': '0033', 'name': 'beta20', 'industry': 1, 'price': '2000', 'dividend': '15.1',
+        'per':  '2.2', 'pbr': '4.3', 'eps': '5.3', 'bps': '4.1', 'roe': '7.2', 'er': '12.7'},
+      {'code': '005A', 'name': 'kappa88', 'industry': 1, 'price': '1500', 'dividend': '5.2',
+        'per':  '5.7', 'pbr': '1.3', 'eps': '7.9', 'bps': '-5.6', 'roe': '2.1', 'er': '8'},
+      {'code': '040a', 'name': 'gamma_c', 'industry': 2, 'price': '1000', 'dividend': '9',
+        'per':  '1.7', 'pbr': '0.1', 'eps': '3.5', 'bps': '3.7', 'roe': '0.9', 'er': '7.2'},
+    ]
+    stocks = [
+      factories.StockFactory(
+        code=kwargs['code'], name=kwargs['name'], industry=industries[kwargs['industry']],
+        price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
+        per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
+        bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
+      ) for kwargs in stock_params
+    ]
+
+  return stocks
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -175,6 +208,77 @@ def test_check_invalid_code_of_validate_code(code):
     models._validate_code(code)
   assert 'either alphabets or numbers' in str(ex.value)
 
+# ===============
+# QmodelCondition
+# ===============
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'expression',
+  'expected',
+], [
+  ('code == "0010"',                         dbQ(code__exact="0010")),
+  ('code != "0010"',                        ~dbQ(code__exact="0010")),
+  ('code in "001"',                          dbQ(code__contains="001")),
+  ('code not in "001"',                     ~dbQ(code__contains="001")),
+  ('price <= 1000',                          dbQ(price__lte=1000)),
+  ('price < 1000',                           dbQ(price__lt=1000)),
+  ('price >= 1000',                          dbQ(price__gte=1000)),
+  ('price > 1000',                           dbQ(price__gt=1000)),
+  ('price > 2 and er < 5',                   dbQ() & dbQ(er__lt=5) & (dbQ(price__gt=2))),
+  ('price > 2 or er < 5',                    "(OR: (AND: ), (AND: ('er__lt', 5)), ('price__gt', 2))"),
+  ('price > 2.01',                           dbQ(price__gt=2.01)),
+  ('2.01 < price',                           dbQ(price__gt=2.01)),
+  ('2 < er < 3',                             dbQ(er__lt=3) & dbQ(er__gt=2)),
+  ('2 < er < 3 < bps < 5',                   dbQ(bps__lt=5) & dbQ(bps__gt=3) & dbQ(er__lt=3) & dbQ(er__gt=2)),
+  ('2<er<3',                                 dbQ(er__lt=3) & dbQ(er__gt=2)),
+  ('(price<5 or name in "001") and 2<er<3',  "(AND: ('er__lt', 3), ('er__gt', 2), (OR: (AND: ), (AND: ('name__contains', '001')), ('price__lt', 5)))"),
+], ids=[
+  'check-eq-exprn',
+  'check-not-eq-expr',
+  'check-include-expr',
+  'check-not-include-expr',
+  'check-lte-expr',
+  'check-lt-expr',
+  'check-gte-expr',
+  'check-gt-expr',
+  'check-and-expr',
+  'check-or-expr',
+  'check-decimal-point-expr',
+  'check-swap-name-and-constant-expr',
+  'check-python-specific-expr',
+  'check-python-specific-expr-for-multi-version',
+  'check-python-specific-without-spaces-expr',
+  'check-complex-expr',
+])
+def test_q_model_condition(expression, expected):
+  tree = ast.parse(expression, mode='eval')
+  visitor = models._AnalyzeAndCreateQmodelCondition()
+  visitor.visit(tree)
+  estimated = visitor.condition
+
+  assert str(estimated) == str(expected)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'condition',
+], [
+  ('price < 100',),
+  ('100 < price',),
+], ids=[
+  'no-swap-pattern',
+  'swap-pattern',
+])
+def test_no_pairs_for_q_model(condition):
+  visitor = models._AnalyzeAndCreateQmodelCondition()
+  visitor._comp_op_callbacks = {}
+  visitor._swap_pairs = {}
+  tree = ast.parse(condition, mode='eval')
+
+  with pytest.raises(IndexError):
+    visitor.visit(tree)
+
 # ========
 # Industry
 # ========
@@ -272,6 +376,12 @@ def test_add_same_code_in_stock(code):
   ({'pbr': 99999.99}, ),
   ({'eps': -99999.99}, ),
   ({'eps':  99999.99}, ),
+  ({'bps': -99999.99}, ),
+  ({'bps':  99999.99}, ),
+  ({'roe':  -9999.99}, ),
+  ({'roe':   9999.99}, ),
+  ({'er':    -999.99}, ),
+  ({'er':     999.99}, ),
 ], ids=[
   'valid-values',
   'min-value-of-price',
@@ -284,6 +394,12 @@ def test_add_same_code_in_stock(code):
   'max-value-of-pbr',
   'min-value-of-eps',
   'max-value-of-eps',
+  'min-value-of-bps',
+  'max-value-of-bps',
+  'min-value-of-roe',
+  'max-value-of-roe',
+  'min-value-of-er',
+  'max-value-of-er',
 ])
 def test_check_valid_inputs_of_stock(options):
   kwargs = {
@@ -292,6 +408,9 @@ def test_check_valid_inputs_of_stock(options):
     'per':      Decimal('1.07'),
     'pbr':      Decimal('2.0'),
     'eps':      Decimal('1.12'),
+    'bps':      Decimal('2.33'),
+    'roe':      Decimal('5.41'),
+    'er':       Decimal('13.41'),
   }
   kwargs.update(options)
 
@@ -318,12 +437,18 @@ def test_check_valid_inputs_of_stock(options):
   ({'per':            -0.01}, 0,  7), ({'per':      78.991}, 1, 2), ({'per':        1000000.00}, 2, 5),
   ({'pbr':            -0.01}, 0,  7), ({'pbr':      78.991}, 1, 2), ({'pbr':        1000000.00}, 2, 5),
   ({'eps':      -1000000.00}, 2,  5), ({'eps':      78.991}, 1, 2), ({'eps':        1000000.00}, 2, 5),
+  ({'bps':      -1000000.00}, 2,  5), ({'bps':      78.991}, 1, 2), ({'bps':        1000000.00}, 2, 5),
+  ({'roe':       -100000.00}, 2,  4), ({'roe':      78.991}, 1, 2), ({'roe':         100000.00}, 2, 4),
+  ({'er':         -10000.00}, 2,  3), ({'er':       78.991}, 1, 2), ({'er':           10000.00}, 2, 3),
 ], ids=[
   'negative-price',    'invalid-decimal-part-of-price',    'invalid-max-digits-of-price',
   'negative-dividend', 'invalid-decimal-part-of-dividend', 'invalid-max-digits-of-dividend',
   'negative-per',      'invalid-decimal-part-of-per',      'invalid-max-digits-of-per',
   'negative-pbr',      'invalid-decimal-part-of-pbr',      'invalid-max-digits-of-pbr',
   'negative-eps',      'invalid-decimal-part-of-eps',      'invalid-max-digits-of-eps',
+  'negative-bps',      'invalid-decimal-part-of-bps',      'invalid-max-digits-of-bps',
+  'negative-roe',      'invalid-decimal-part-of-roe',      'invalid-max-digits-of-roe',
+  'negative-er',       'invalid-decimal-part-of-er',       'invalid-max-digits-of-er',
 ])
 def test_check_invalid_inputs_of_stock(options, err_idx, digit):
   err_types = [
@@ -346,14 +471,70 @@ def test_check_invalid_inputs_of_stock(options, err_idx, digit):
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
+def test_queryset_of_stock():
+  _ = factories.StockFactory.create_batch(3, skip_task=True)
+  _ = factories.StockFactory.create_batch(4, skip_task=False)
+  all_counts = models.Stock.objects.all().count()
+  specific = models.Stock.objects.select_targets().count()
+
+  assert all_counts == 7
+  assert specific == 4
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'expression',
+  'indices',
+], [
+  ('code in "001"', [0, 1]),
+  ('name == "gamma_c"', [4]),
+  ('industry__name not in "foo"', [4]),
+  ('price <= 1000', [1, 4]),
+  ('dividend > 6', [0, 2, 4]),
+  ('1.1 < per < 2.5', [1, 2, 4]),
+  ('pbr > 10', []),
+  ('eps == 0.25', [1]),
+  ('bps <= 0', [3]),
+  ('roe < 2 or 5 < roe', [1, 2, 4]),
+  ('8 <= er and er <= 16', [1, 2, 3]),
+  ('code in "1" and price < 1000 or name in "_" or industry__name == "foo" or price > 1000', [0,1,2,3,4]),
+], ids=[
+  'based-on-code',
+  'based-on-name',
+  'based-on-industry',
+  'based-on-price',
+  'based-on-dividend',
+  'based-on-per',
+  'based-on-pbr',
+  'based-on-eps',
+  'based-on-bps',
+  'based-on-roe',
+  'based-on-er',
+  'complex-expression-by-using-several-columns',
+])
+def test_qs_of_stock_with_tree(pseudo_stock_data, expression, indices):
+  stock = pseudo_stock_data
+  tree = ast.parse(expression, mode='eval')
+  qs = models.Stock.objects.select_targets(tree=tree).order_by('pk')
+  expected = [stock[idx].pk for idx in indices]
+
+  assert qs.count() == len(expected)
+  assert all([record.pk == pk for record, pk in zip(qs, expected)])
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
 def test_check_get_dict_function_of_stock(get_judgement_funcs):
   collector, compare_keys, compare_values = get_judgement_funcs
   instance = factories.StockFactory()
   out_dict = instance.get_dict()
-  fields = collector(models.Stock, exclude=['industry'])
+  fields = collector(models.Stock, exclude=['industry', 'skip_task'])
   _industry = out_dict.pop('industry', None)
+  _skip_task = out_dict.pop('skip_task', None)
 
   assert _industry is not None
+  assert _skip_task is None
   assert compare_keys(list(out_dict.keys()), fields)
   assert compare_values(fields, out_dict, instance)
 
@@ -932,6 +1113,58 @@ def test_get_jsonfield_function_of_snapshot(mocker, json_data):
   assert all([len(extracted_json[key]) == len(val) for key, val in json_data.items()])
   assert all([extracted_json[cash_key][key] == exact_val] for key, exact_val in json_data[cash_key].items())
   assert all([estimated == exact_val for estimated, exact_val in zip(extracted_json[pstock_key], json_data[pstock_key])])
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_save_all_function_of_snapshot():
+  get_date = lambda day: datetime(2020,3,day,3,4,5, tzinfo=timezone.utc)
+  user = factories.UserFactory()
+  stocks = factories.StockFactory.create_batch(3, price=123)
+  c1 = factories.CashFactory(user=user, balance=1003, registered_date=get_date(3))
+  c2 = factories.CashFactory(user=user, balance=1009, registered_date=get_date(9))
+  c3 = factories.CashFactory(user=user, balance=1023, registered_date=get_date(23))
+  _ = factories.PurchasedStockFactory(user=user, stock=stocks[0], price=234, purchase_date=get_date(4))
+  _ = factories.PurchasedStockFactory(user=user, stock=stocks[1], price=100, purchase_date=get_date(8))
+  _ = factories.PurchasedStockFactory(user=user, stock=stocks[2], price=300, purchase_date=get_date(18))
+  # Create snapshots
+  ss1 = factories.SnapshotFactory(user=user, start_date=get_date(1),  end_date=get_date(15))
+  ss2 = factories.SnapshotFactory(user=user, start_date=get_date(5),  end_date=get_date(20))
+  ss3 = factories.SnapshotFactory(user=user, start_date=get_date(10), end_date=get_date(25))
+  #
+  # Update cash and stocks
+  #
+  # Cash
+  c1.balance = 2004
+  c2.balance = 2010
+  c3.balance = 2024
+  for _c in [c1, c2, c3]:
+    _c.save()
+  # Stock
+  stocks[0].price = 2345
+  stocks[1].price = 3456
+  stocks[2].price = 4567
+  for _stock in stocks:
+    _stock.save()
+  # Call test method
+  models.Snapshot.save_all(user)
+  # Get new snapshots
+  new_ss1 = models.Snapshot.objects.get(pk=ss1.pk)
+  new_ss2 = models.Snapshot.objects.get(pk=ss2.pk)
+  new_ss3 = models.Snapshot.objects.get(pk=ss3.pk)
+  # Collect json data
+  detail_ss1 = json.loads(new_ss1.detail)
+  detail_ss2 = json.loads(new_ss2.detail)
+  detail_ss3 = json.loads(new_ss3.detail)
+
+  assert detail_ss1['cash']['balance'] == 2010
+  assert detail_ss1['purchased_stocks'][0]['stock']['price'] == 3456
+  assert detail_ss1['purchased_stocks'][1]['stock']['price'] == 2345
+  assert detail_ss2['cash']['balance'] == 2010
+  assert detail_ss2['purchased_stocks'][0]['stock']['price'] == 4567
+  assert detail_ss2['purchased_stocks'][1]['stock']['price'] == 3456
+  assert detail_ss3['cash']['balance'] == 2024
+  assert detail_ss3['purchased_stocks'][0]['stock']['price'] == 4567
 
 # ======================
 # Delete related records

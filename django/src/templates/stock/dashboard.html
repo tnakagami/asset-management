@@ -65,6 +65,18 @@
           <button
             type="button"
             class="flex-md-fill text-md-center nav-link"
+            id="asset-diff-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#asset-diff-tab-pane"
+            role="tab"
+            aria-controls="asset-diff-tab-pane"
+            aria-selected="false"
+          >
+            {% trans "Diff" %}
+          </button>
+          <button
+            type="button"
+            class="flex-md-fill text-md-center nav-link"
             id="all-assets-tab"
             data-bs-toggle="tab"
             data-bs-target="#all-assets-tab-pane"
@@ -127,6 +139,19 @@
         </div>
         <div
           class="tab-pane fade"
+          id="asset-diff-tab-pane"
+          role="tabpanel"
+          aria-labelledby="asset-diff-tab"
+          tabindex="0"
+        >
+          <div class="row">
+            <div class="col">
+              <canvas id="asset-diff-chart" class="w-100"></canvas>
+            </div>
+          </div>
+        </div>
+        <div
+          class="tab-pane fade"
           id="all-assets-tab-pane"
           role="tabpanel"
           aria-labelledby="all-assets-tab"
@@ -139,11 +164,12 @@
                   <thead>
                     <tr>
                       <th scope="col">{% trans "No." %}</th>
-                      <th scope="col">{% trans "Code" %}</th>
-                      <th scope="col">{% trans "Name" %}</th>
-                      <th scope="col">{% trans "Industry" %}</th>
-                      <th scope="col">{% trans "Value" %}</th>
-                      <th scope="col">{% trans "Count" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Code" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Value" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
                     </tr>
                   </thead>
                   <tbody id="all-assets-list" class="table-group-divider">
@@ -153,6 +179,7 @@
                       <th scope="row" colspan="4" class="text-center">{% trans "Total" %}</th>
                       <th name="total-value" data-type="total"></th>
                       <th name="total-count" data-type="total"></th>
+                      <th name="total-diff" data-type="total"></th>
                     </tr>
                   </tfoot>
                 </table>
@@ -185,6 +212,7 @@
   <td class="asset-industry"></td>
   <td class="asset-value"></td>
   <td class="asset-count"></td>
+  <td class="asset-diff"></td>
 </tr>
 </template>
 {% endblock %}
@@ -200,6 +228,7 @@
 (function () {
   const createChartData = (data, sortCallback) => {
     const _getValArr = (arr) => arr.map((item) => item.value);
+    const _getDiffArr = (arr) => arr.map((item) => item.diff);
     const _stockValSum = (arr, initVal=0.0) => _getValArr(arr).reduce((acc, val) => acc + val, initVal);
     const _generateColorPalette = (len, offset=180) => {
       const hueArray = (() => {
@@ -213,6 +242,10 @@
     };
     const cash = data.cash.balance;
     const originalStocks = data.purchased_stocks.map((record) => {
+      const stockPrice = record.stock.price;
+      const pStockPrice = record.price;
+      const diff = Math.floor((stockPrice - pStockPrice) * record.count);
+
       return {
         name: record.stock.name,
         code: record.stock.code,
@@ -220,6 +253,7 @@
         isDefensive: record.stock.industry.is_defensive,
         price: record.price,
         count: record.count,
+        diff: diff,
       };
     });
     const stocks = (() => {
@@ -232,6 +266,7 @@
         if (Object.hasOwn(_dict, code)) {
           _dict[code].value += _calcValue(item);
           _dict[code].count += item.count;
+          _dict[code].diff += item.diff;
         }
         else {
           _dict[code] = {
@@ -241,6 +276,7 @@
             isDefensive: item.isDefensive,
             value: _calcValue(item),
             count: item.count,
+            diff: item.diff,
           };
         }
       }
@@ -252,8 +288,9 @@
       code: '-',
       industry: '-',
       isDefensive: undefined,
-      value: cash,
+      value: (cash || 0),
       count: 1,
+      diff: 0,
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
@@ -279,6 +316,9 @@
       [trendNameList[0]]: 'rgba(136, 200, 244, 0.9)',
       [trendNameList[1]]: 'rgba(243, 136, 158, 0.9)',
     };
+    const diffColorDict = stockNameList.slice(1).reduce((_dict, name) => {
+      _dict[name] = 'rgba(136, 200, 244, 0.9)'; return _dict;
+    }, {});
 
     const pairs = {
       allPortfolioData: {
@@ -354,6 +394,16 @@
             return score;
           }),
         }],
+      },
+      assetDiffData: {
+        title: '{% trans "Difference between stock price and purchased price" %}',
+        labels: stockNameList.slice(1),
+        colors: diffColorDict,
+        datasets: [{
+          axis: 'y',
+          label: '{% trans "Diff" %}',
+          data: _getDiffArr(records.slice(1)),
+        }],
       }
     };
     const output = Object.entries(pairs).reduce((_dict, [key, item]) => {
@@ -361,16 +411,20 @@
       const target = dataset.data;
       const indices = target.map((_, idx) => idx);
       const sortedIndices = (sortCallback) ? indices.sort((li, ri) => sortCallback(target[li], target[ri])) : indices;
-      const newItem = {
+      const cores = {
+        label: dataset.label,
+        data: sortedIndices.map((idx) => target[idx]),
+        backgroundColor: sortedIndices.map((idx) => item.colors[item.labels[idx]]),
+      };
+      if (dataset.axis) {
+        cores.indexAxis = dataset.axis;
+      }
+      // Store data
+      _dict[key] = {
         title: item.title,
         labels: sortedIndices.map((idx) => item.labels[idx]),
-        datasets: [{
-          label: dataset.label,
-          data: sortedIndices.map((idx) => target[idx]),
-          backgroundColor: sortedIndices.map((idx) => item.colors[item.labels[idx]]),
-        }],
+        datasets: [cores],
       };
-      _dict[key] = newItem;
 
       return _dict;
     }, {});
@@ -389,10 +443,12 @@
       'industry': (val, _) => val,
       'value': (val, _) => val.toLocaleString(),
       'count': (val, _) => val.toLocaleString(),
+      'diff': (val, _) => val.toLocaleString(),
     };
     const totals = {
       value: 0,
       count: 0,
+      diff: 0,
     };
     tbody.innerHTML = '';
 
@@ -401,16 +457,32 @@
 
       for (const [key, callback] of Object.entries(nodeList)) {
         const element = clone.querySelector(`.asset-${key}`);
-        element.textContent = callback(item[key], idx + 1);
+        const val = item[key];
+        element.textContent = callback(val, idx + 1);
+
+        if ((key === 'diff') && (val < 0)) {
+          element.classList.add('text-danger');
+        }
       }
       totals.value += item.value;
       totals.count += item.count;
+      totals.diff += item.diff;
       tbody.appendChild(clone);
     });
-    tfoot.querySelector('th[name="total-value"]').textContent = totals.value.toLocaleString();
-    tfoot.querySelector('th[name="total-count"]').textContent = totals.count.toLocaleString();
+    ['value', 'count', 'diff'].forEach((key) => {
+      const element = tfoot.querySelector(`th[name="total-${key}"]`);
+      const val = totals[key];
+      element.textContent = val.toLocaleString();
+
+      if ((key === 'diff') && (val < 0)) {
+        element.classList.add('text-danger');
+      }
+      else {
+        element.classList.remove('text-danger');
+      }
+    });
   };
-  const drawChart = (chart, target, asset) => {
+  const drawPieChart = (chart, target, asset) => {
     const context = document.querySelector(`#${target}`);
 
     if (chart) {
@@ -455,6 +527,43 @@
 
     return chart;
   };
+  const drawBarChart = (chart, target, asset) => {
+    const context = document.querySelector(`#${target}`);
+
+    if (chart) {
+      chart.destroy();
+    }
+    chart = new Chart(context, {
+      type: 'bar',
+      data: {
+        labels: asset.labels,
+        datasets: asset.datasets,
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        indexAxis: 'y',
+        plugins: {
+          legend: {
+            display: false,
+          },
+          title: {
+            display: true,
+            text: asset.title,
+          },
+          tooltip: {
+            callbacks: {
+              label: function (tooltipItem) {
+                return `${tooltipItem.dataset.label}: ${tooltipItem.formattedValue}`;
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return chart;
+  };
 
   const init = () => {
     const _sortAlgorithm = (sortType) => {
@@ -483,6 +592,7 @@
     let sectorPriceChart = null;
     let trendCountChart = null;
     let trendPriceChart = null;
+    let assetDiffChart = null;
     // Define callback
     const _callback = (snapshot, sortType) => {
       const uuid = snapshot.value;
@@ -493,12 +603,13 @@
       // Update table
       updateTable(output.records);
       // Draw charts
-      allPortfolioChart = drawChart(allPortfolioChart, 'all-portfolio-chart', output.allPortfolioData);
-      stockPortfolioChart = drawChart(stockPortfolioChart, 'stock-portfolio-chart', output.stockPortfolioData);
-      sectorCountChart = drawChart(sectorCountChart, 'sector-count-chart', output.sectorCountData);
-      sectorPriceChart = drawChart(sectorPriceChart, 'sector-price-chart', output.sectorPriceData);
-      trendCountChart = drawChart(trendCountChart, 'trend-count-chart', output.trendCountData);
-      trendPriceChart = drawChart(trendPriceChart, 'trend-price-chart', output.trendPriceData);
+      allPortfolioChart = drawPieChart(allPortfolioChart, 'all-portfolio-chart', output.allPortfolioData);
+      stockPortfolioChart = drawPieChart(stockPortfolioChart, 'stock-portfolio-chart', output.stockPortfolioData);
+      sectorCountChart = drawPieChart(sectorCountChart, 'sector-count-chart', output.sectorCountData);
+      sectorPriceChart = drawPieChart(sectorPriceChart, 'sector-price-chart', output.sectorPriceData);
+      trendCountChart = drawPieChart(trendCountChart, 'trend-count-chart', output.trendCountData);
+      trendPriceChart = drawPieChart(trendPriceChart, 'trend-price-chart', output.trendPriceData);
+      assetDiffChart = drawBarChart(assetDiffChart, 'asset-diff-chart', output.assetDiffData);
     };
     // Get element
     const snapshot = document.querySelector('#all-snapshots');

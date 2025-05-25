@@ -1,5 +1,23 @@
 from django import forms
 
+class SelectWithDataAttr(forms.Select):
+  data_attr_name = ''
+  data_attrs = {}
+
+  def __init__(self, *args, attrs=None, **kwargs):
+    if attrs is not None:
+      self.data_attr_name = attrs.pop('data-attr-name', self.data_attr_name)
+      self.data_attrs = attrs.pop('data-attrs', self.data_attrs)
+    super().__init__(*args, attrs=attrs, **kwargs)
+
+  def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+    option = super().create_option(name, value, label, selected, index, subindex, attrs)
+
+    if self.data_attr_name:
+      option['attrs'][f'data-{self.data_attr_name}'] = self.data_attrs.get(value, 'none')
+
+    return option
+
 class Datalist(forms.Select):
   input_type = 'text'
   input_list = ''

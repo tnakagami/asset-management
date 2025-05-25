@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load utils_extras %}
 {% load i18n %}
 {% load humanize %}
 
@@ -22,25 +23,41 @@
             <thead>
               <tr>
                 <th scope="col">{% trans "No." %}</th>
-                <th scope="col">{% trans "Code" %}</th>
-                <th scope="col">{% trans "Stock name" %}</th>
-                <th scope="col">{% trans "Industry" %}</th>
-                <th scope="col">{% trans "Trade date" %}</th>
-                <th scope="col">{% trans "Average trade price" %}</th>
-                <th scope="col">{% trans "Count" %}</th>
+                <th scope="col" class="text-break">{% trans "Code" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Trade date" %}</th>
+                <th scope="col" class="text-break">{% trans "Average trade price" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
                 <th colspan="2">{% trans "Operate" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
               {% for instance in pstocks %}
-              <tr>
+              <tr
+                data-code="{{ instance.stock.code }}"
+                data-name="{{ instance.stock.name }}"
+                data-industry="{{ instance.stock.industry }}"
+                data-price="{{ instance.stock.price|intcomma }}"
+                data-dividend="{{ instance.stock.dividend }}"
+                data-per="{{ instance.stock.per }}"
+                data-pbr="{{ instance.stock.pbr }}"
+                data-eps="{{ instance.stock.eps|intcomma }}"
+                data-bps="{{ instance.stock.bps|intcomma }}"
+                data-roe="{{ instance.stock.roe }}"
+                data-er="{{ instance.stock.er }}"
+              >
                 <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td data-type="code">{{ instance.stock.code }}</td>
-                <td data-type="name">{{ instance.stock.name }}</td>
+                <td data-type="name" class="text-decoration-underline text-primary js-click-link">{{ instance.stock.name }}</td>
                 <td data-type="industry">{{ instance.stock.industry }}</td>
                 <td data-type="purchaseDate">{{ instance.purchase_date|date:"Y-m-d" }}</td>
                 <td data-type="price">{{ instance.price|intcomma }}</td>
                 <td data-type="count">{{ instance.count|intcomma }}</td>
+                {% with total=instance|get_total_diff %}
+                <td data-type="diff" {% if total|is_negative %}class="text-danger"{% endif %}>{{ total|floatformat:0|intcomma }}</td>
+                {% endwith %}
                 <td data-operate="edit">
                   <a
                     href="{% url 'stock:update_purchased_stock' pk=instance.pk %}"
@@ -75,6 +92,83 @@
 </div>
 
 {% include "delete_modal_form.html" with modal_id="delete-modal" form_id="delete-form" %}
+<div class="modal" id="stock-modal" tabindex="-1" aria-labelledby="stock-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title fs-5" id="stock-label">{% trans "Detail of target stock" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col" class="text-nowrap fw-bold">{% trans "Element" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Value" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider">
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Code" %}</td>
+                <td class="text-nowrap"><span data-target="code"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Stock name" %}</td>
+                <td class="text-break"><span data-target="name"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Industry" %}</td>
+                <td class="text-nowrap"><span data-target="industry"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Stock price" %}</td>
+                <td class="text-nowrap"><span data-target="price"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend" %}</td>
+                <td class="text-nowrap"><span data-target="dividend"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="per"></span>&#37;</td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Price Book-value Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="pbr"></span>&#37;</td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Earnings Per Share" %}</td>
+                <td class="text-nowrap"><span data-target="eps"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Book value Per Share" %}</td>
+                <td class="text-nowrap"><span data-target="bps"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Return On Equity" %}</td>
+                <td class="text-nowrap"><span data-target="roe"></span>&#37;</td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Equity Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="er"></span>&#37;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="row">
+          <div class="col">
+            <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+              {% trans "Close" %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block bodyjs %}
@@ -86,6 +180,43 @@
     formID: 'delete-form',
     modalID: 'delete-modal',
   });
+  const stockModal = new bootstrap.Modal('#stock-modal');
+  const canClickLinks = document.querySelectorAll('.js-click-link');
+  const _keys = Object.freeze([
+    'code',
+    'name',
+    'industry',
+    'price',
+    'dividend',
+    'per',
+    'pbr',
+    'eps',
+    'bps',
+    'roe',
+    'er',
+  ]);
+  const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
+  const isNegative = (val) => pattern.test(val);
+
+  for (const link of canClickLinks) {
+    link.addEventListener('click', (event) => {
+      const parent = event.target.parentElement;
+
+      for (const key of _keys) {
+        const node = document.querySelector(`[data-target="${key}"]`);
+        const value = parent.dataset[key];
+        node.textContent = value;
+
+        if (isNegative(value)) {
+          node.parentElement.classList.add('text-danger');
+        }
+        else {
+          node.parentElement.classList.remove('text-danger');
+        }
+      }
+      stockModal.show();
+    });
+  }
 })();
 </script>
 {% endblock %}

@@ -1,5 +1,6 @@
 import pytest
 import json
+from pytest_django.asserts import assertTemplateUsed, assertQuerySetEqual
 from django.urls import reverse
 from app_tests import status
 from datetime import datetime, timezone
@@ -311,3 +312,146 @@ def test_invalid_post_access_to_deleteview(login_process, get_kwargs):
 
   assert response.status_code == status.HTTP_403_FORBIDDEN
   assert total == 1
+
+# ========
+# AjaxView
+# ========
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_post_invalid_access_to_ajax_stock(client):
+  url = reverse('stock:ajax_stock')
+  response = client.post(url)
+
+  assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_get_access_to_ajax_stock(client, mocker):
+  _mock = mocker.patch('stock.models.Stock.get_choices_as_list', return_value=[{'pk': 1, 'name': 'hoge', 'code': '1234'}])
+  url = reverse('stock:ajax_stock')
+  response = client.get(url)
+  data = json.loads(response.content)
+
+  assert response.status_code == status.HTTP_200_OK
+  assert 'qs' in data.keys()
+  assert isinstance(data['qs'], list)
+  assert _mock.call_count == 1
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_get_access_to_ajaxview(client):
+  url = reverse('stock:update_all_snapshots')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_post_access_with_valid_response_to_ajaxview(client, mocker):
+  url = reverse('stock:update_all_snapshots')
+  _mock = mocker.patch('stock.models.Snapshot.save_all', return_value=None)
+  response = client.post(url)
+  data = json.loads(response.content)
+
+  assert response.status_code == status.HTTP_200_OK
+  assert 'status' in data.keys()
+  assert data['status']
+  assert _mock.call_count == 1
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_post_access_with_invalid_response_to_ajaxview(client, mocker):
+  url = reverse('stock:update_all_snapshots')
+  _mock = mocker.patch('stock.models.Snapshot.save_all', side_effect=Exception('Error'))
+  response = client.post(url)
+  data = json.loads(response.content)
+
+  assert response.status_code == status.HTTP_200_OK
+  assert 'status' in data.keys()
+  assert not data['status']
+  assert _mock.call_count == 1
+
+# =========
+# ListStock
+# =========
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_list_stock(login_process):
+  client, _ = login_process
+  url = reverse(f'stock:list_stock')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_200_OK
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'query_params',
+  'num',
+], [
+  ({'condition': 'price < 100'}, 3),
+  ({'condition': 100}, 4),
+  ({}, 5),
+], ids=[
+  'qs-is-3-with-condition',
+  'qs-is-4-with-integer',
+  'qs-is-5-without-condition',
+])
+def test_get_access_with_query_to_list_stock(login_process, mocker, query_params, num):
+  industry = factories.IndustryFactory()
+  _ = factories.StockFactory.create_batch(num, industry=industry)
+  exact_qs = models.Stock.objects.select_targets()
+  client, _ = login_process
+  url = reverse(f'stock:list_stock')
+  _mock = mocker.patch('stock.forms.StockSearchForm.get_queryset_with_condition', return_value=exact_qs)
+  response = client.get(url, query_params=query_params)
+
+  assert response.status_code == status.HTTP_200_OK
+  assert response.context['form'] is not None
+  assert response.context['stocks'].count() == exact_qs.count()
+  assertQuerySetEqual(response.context['stocks'], exact_qs, ordered=False)
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_without_authentication_in_list_stock(client):
+  url = reverse('stock:list_stock')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_post_invalid_access_to_list_stock(login_process):
+  client, _ = login_process
+  url = reverse(f'stock:list_stock')
+  response = client.post(url)
+
+  assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+# ===============
+# ExplanationPage
+# ===============
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_explanation(login_process):
+  client, _ = login_process
+  url = reverse(f'stock:explanation')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_200_OK
+  assertTemplateUsed(response, 'stock/explanation.html')
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_without_authentication_in_explanation(client):
+  url = reverse('stock:explanation')
+  response = client.get(url)
+  expected = '{}?next={}'.format(reverse('account:login'), url)
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == expected

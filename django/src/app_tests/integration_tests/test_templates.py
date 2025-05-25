@@ -961,3 +961,59 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
   assert calc_pstock_sum(details[2]['purchased_stocks']) == 0
   assert calc_pstock_sum(details[1]['purchased_stocks']) == 627212
   assert calc_pstock_sum(details[0]['purchased_stocks']) == 922485
+
+# ============
+# Stock search
+# ============
+@pytest.mark.webtest
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'condition',
+  'ordering',
+  'count',
+  'exacts',
+], [
+  ('name == "skipped"', '-price', 0, []),
+  ('name == "sample"', '-price', 1, ['sample']),
+  ('name in "hoge"', '-price', 2, ['hogehoge', 'hoge-foo']),
+  ('1000 < price < 1200 and industry__name == "alpha"', '-price', 3, ['hogehoge', 'hoge-foo', 'bar']),
+  ('', 'price', 150, ['stock']),
+], ids=[
+  'target-does-not-exist',
+  'there-is-only-one-target',
+  'there-are-two-targets',
+  'there-are-three-targets',
+  'there-are-targets-which-can-show-in-a-page',
+])
+def test_search_stock_by_using_form(init_webtest, condition, ordering, count, exacts):
+  app, _users = init_webtest
+  user = _users['owner']
+  # Define all data
+  industries = [
+    factories.IndustryFactory(name='alpha'),
+    factories.IndustryFactory(name='beta'),
+  ]
+  _ = factories.StockFactory(name='hogehoge', price=1199.0, industry=industries[0])
+  _ = factories.StockFactory(name='hoge-foo', price=1001.0, industry=industries[0])
+  _ = factories.StockFactory(name='bar',      price=1100.0, industry=industries[0])
+  _ = factories.StockFactory(name='sample',   price=2000.0, industry=industries[0])
+  _ = factories.StockFactory(name='skipped',  price=1024.0, industry=industries[0], skip_task=True)
+  _ = factories.StockFactory.create_batch(151, price=1, industry=industries[1])
+
+  # Execution
+  target_url = reverse('stock:list_stock')
+  forms = app.get(target_url, user=user).forms
+  form = forms['stock-search-form']
+  form['condition'] = condition
+  form['ordering'] = ordering
+  response = form.submit()
+  # Collect response data
+  records = response.context['stocks']
+  elements = [
+    element.contents[0] for element in response.html.find_all('td', attrs={'data-type': 'name'})
+  ]
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == target_url
+  assert len(records) == count
+  assert all([elem.startswith(tuple(exacts)) for elem in elements])
