@@ -31,8 +31,10 @@
                 <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Stock price" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Price Earnings Ratio" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Price Book-value Ratio" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "PER &times; PBR" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Earnings Per Share" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Book value Per Share" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Return On Equity" %}</th>
@@ -47,9 +49,11 @@
                 <td data-type="name">{{ instance.name }}</td>
                 <td data-type="industry">{{ instance.industry }}</td>
                 <td data-type="price" {% if instance.price|is_negative %}class="text-danger"{% endif %}>{{ instance.price|intcomma }}</td>
-                <td data-type="dividend">{{ instance.dividend }}</td>
-                <td data-type="per">{{ instance.per }}&#37;</td>
-                <td data-type="pbr">{{ instance.pbr }}&#37;</td>
+                <td data-type="dividend">{{ instance.dividend|intcomma }}</td>
+                <td data-type="yield">{{ instance.div_yield|floatformat:2 }}&#37;</td>
+                <td data-type="per">{{ instance.per }}</td>
+                <td data-type="pbr">{{ instance.pbr }}</td>
+                <td data-type="multi">{{ instance.multi_pp|floatformat:2 }}</td>
                 <td data-type="eps" {% if instance.eps|is_negative %}class="text-danger"{% endif %}>{{ instance.eps|intcomma }}</td>
                 <td data-type="bps" {% if instance.bps|is_negative %}class="text-danger"{% endif %}>{{ instance.bps|intcomma }}</td>
                 <td data-type="roe" {% if instance.roe|is_negative %}class="text-danger"{% endif %}>{{ instance.roe }}&#37;</td>
@@ -170,11 +174,26 @@
                   </div>
                 </div>
                 <div class="col">
-                  <div class="form-floating">
+                  <div class="input-group">
                   {% with field=form.ordering %}
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary dropdown-toggle"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false"
+                    >
+                      {{ field.label }}
+                    </button>
                     {{ field }}
-                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                  {% endwith %}
+                    <button
+                      type="button"
+                      id="delete-ordering-option"
+                      class="btn btn-outline-danger"
+                      data-fieldname="{{ field.id_for_label }}"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  {% endwith %}  
                   </div>
                 </div>
               </div>
@@ -210,6 +229,7 @@
     const inputData = document.querySelector('#input-data');
     const condition = document.querySelector('#condition');
     const addCmd = document.querySelector('#add-command');
+    const deleteBtn = document.querySelector('#delete-ordering-option');
     const operatorValuePair = Object.freeze({
       'and-operator': ' and ',
       'or-operator': ' or ',
@@ -281,20 +301,30 @@
         condition.value = beforeWord + word + afterWord;
       });
     }
+    deleteBtn.addEventListener('click', (event) => {
+      const fieldname = event.currentTarget.dataset.fieldname;
+      const element = document.querySelector(`#${fieldname}`);
+      element.value = '';
+    });
     targetColumn.dispatchEvent(new Event('change'));
   };
   // Define initialization function
   const init = () => {
     const searchBtn = document.querySelector('#stock-search');
+    const form = document.querySelector('#stock-search-form');
     // Setup search form
     setupSearchForm();
+    // Add submit event
+    form.addEventListener('submit', (event) => {
+      const ordering = document.querySelector('#column-ordering');
+      ordering.disabled = false;
+    });
     // Add key event
     document.addEventListener('keyup', (event) => {
       if (event.key === 'F') { /* F := Shift + f */
         searchBtn.click();
       }
       else if (event.ctrlKey && (event.key === 'Enter')) {
-        const form = document.querySelector('#stock-search-form');
         form.submit();
       }
     });

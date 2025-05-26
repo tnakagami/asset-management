@@ -1,4 +1,5 @@
 from django import template
+from decimal import Decimal
 
 register = template.Library()
 
@@ -20,5 +21,25 @@ def get_total_diff(instance):
 @register.filter()
 def is_negative(value):
   ret = value < 0
+
+  return ret
+
+@register.filter()
+def get_yield(instance):
+  dividend = instance.stock.dividend
+  price = instance.stock.price
+
+  try:
+    _yield = dividend / price * Decimal('100.0')
+  except ZeroDivisionError:
+    _yield = 0
+
+  return _yield
+
+@register.filter()
+def get_multi_per_pbr(instance):
+  per = instance.stock.per
+  pbr = instance.stock.pbr
+  ret = per * pbr
 
   return ret

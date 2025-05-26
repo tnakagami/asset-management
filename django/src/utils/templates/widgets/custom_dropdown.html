@@ -1,0 +1,20 @@
+<ul class="dropdown-menu" id="{{ widget.dropdown_id }}">
+{% for group_name, group_choices, group_index in widget.optgroups %}{% for option in group_choices %}
+  {% include option.template_name with widget=option %}{% endfor %}{% endfor %}
+  <script>
+    (function () {
+      const liElements = document.querySelectorAll('#{{ widget.dropdown_id }} > li');
+
+      for (const element of liElements) {
+        element.addEventListener('click', (event) => {
+          const inputData = document.querySelector('#{{ widget.attrs.id }}');
+          const oldVal = inputData.value;
+          const newArr = [event.target.dataset.value];
+          const arr = (oldVal) ? oldVal.split(',').concat(newArr) : newArr;
+          inputData.value = arr.join(',');
+        });
+      }
+    })();
+  </script>
+</ul>
+<input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.initial %} value="{{ widget.initial }}"{% endif %}{% include "django/forms/widgets/attrs.html" %} />

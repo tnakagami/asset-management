@@ -145,6 +145,50 @@ def test_check_has_error_getter():
 
 @pytest.mark.utils
 @pytest.mark.widget
+def test_check_variables_of_dropdown_with_input():
+  instance = widgets.DropdownWithInput()
+  exact_input_type = 'text'
+  exact_template_name = 'widgets/custom_dropdown.html'
+  exact_option_template_name = 'widgets/custom_dropdown_option.html'
+
+  assert instance.input_type == exact_input_type
+  assert instance.template_name == exact_template_name
+  assert instance.option_template_name == exact_option_template_name
+
+@pytest.mark.utils
+@pytest.mark.widget
+def test_check_create_option_method_of_dropdown_with_input():
+  instance = widgets.DropdownWithInput()
+  exact_value = 5
+  option = instance.create_option('sample', exact_value, 'dummy', False, 0)
+  estimated = option['attrs'].get('data-value', None)
+
+  assert estimated == exact_value
+
+@pytest.mark.utils
+@pytest.mark.widget
+@pytest.mark.parametrize([
+  'name',
+  'value',
+  'exact',
+], [
+  ('hoge', 'code', 'code'),
+  ('foo', ['price', '-eps'], 'price,-eps'),
+], ids=[
+  'is-string',
+  'is-list',
+])
+def test_check_context_method_of_dropdown_with_input(name, value, exact):
+  instance = widgets.DropdownWithInput()
+  context = instance.get_context(name, value, None)
+  widget = context['widget']
+
+  assert widget['type'] == 'text'
+  assert widget['initial'] == exact
+  assert widget['dropdown_id'] == f'{name}_dropdown'
+
+@pytest.mark.utils
+@pytest.mark.widget
 def test_check_variables_of_datalist():
   instance = widgets.Datalist()
   exact_template_name = 'widgets/custom_datalist.html'
@@ -175,3 +219,10 @@ def test_check_init_func_of_modeldatalist_field(widget, exact_class):
   instance = widgets.ModelDatalistField(queryset=UserModel.objects.none(), widget=widget)
 
   assert isinstance(instance.widget, exact_class)
+
+@pytest.mark.utils
+@pytest.mark.widget
+def test_check_init_func_of_dropdown_field():
+  instance = widgets.DropdownField(choices=())
+
+  assert isinstance(instance.widget, widgets.DropdownWithInput)

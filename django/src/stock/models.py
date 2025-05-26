@@ -160,8 +160,28 @@ def _validate_code(code):
     )
 
 class StockQuerySet(models.QuerySet):
+  def _annotate_dividend(self):
+    return self.annotate(
+      div_yield=models.Case(
+        models.When(price__gt=0, then=models.F('dividend')/models.F('price')*100.0),
+        default=models.Value(0),
+        output_field=models.FloatField(),
+      )
+    )
+
+  def _annotate_per_pbr(self):
+    return self.annotate(
+      multi_pp=models.Case(
+        models.When(per__gt=0, pbr__gt=0, then=models.F('per')*models.F('pbr')),
+        default=models.Value(0),
+        output_field=models.FloatField(),
+      )
+    )
+
   def select_targets(self, tree=None):
-    queryset = self.filter(skip_task=False)
+    queryset = self.filter(skip_task=False) \
+                   ._annotate_dividend() \
+                   ._annotate_per_pbr()
 
     if tree:
       # Assumption: abstract syntax tree is validated by caller
