@@ -273,7 +273,7 @@ class StockSearchForm(forms.Form):
       ('div_yield', gettext_lazy('Dividend yield')),
       ('per', gettext_lazy('Price Earnings Ratio')),
       ('pbr', gettext_lazy('Price Book-value Ratio')),
-      ('multi_pp', format_html('PER {} PBR', '&times;')),
+      ('multi_pp', format_html('{} &times; {}', 'PER', 'PBR')),
       ('eps', gettext_lazy('Earnings Per Share')),
       ('bps', gettext_lazy('Book value Per Share')),
       ('roe', gettext_lazy('Return On Equity')),
