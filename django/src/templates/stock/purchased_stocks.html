@@ -40,9 +40,11 @@
                 data-name="{{ instance.stock.name }}"
                 data-industry="{{ instance.stock.industry }}"
                 data-price="{{ instance.stock.price|intcomma }}"
-                data-dividend="{{ instance.stock.dividend }}"
+                data-dividend="{{ instance.stock.dividend|intcomma }}"
+                data-yield="{{ instance|get_yield|floatformat:2 }}"
                 data-per="{{ instance.stock.per }}"
                 data-pbr="{{ instance.stock.pbr }}"
+                data-multi="{{ instance|get_multi_per_pbr|floatformat:2 }}"
                 data-eps="{{ instance.stock.eps|intcomma }}"
                 data-bps="{{ instance.stock.bps|intcomma }}"
                 data-roe="{{ instance.stock.roe }}"
@@ -130,12 +132,20 @@
                 <td class="text-nowrap"><span data-target="dividend"></span></td>
               </tr>
               <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend yield" %}</td>
+                <td class="text-nowrap"><span data-target="yield"></span>&#37;</td>
+              </tr>
+              <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
-                <td class="text-nowrap"><span data-target="per"></span>&#37;</td>
+                <td class="text-nowrap"><span data-target="per"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Book-value Ratio" %}</td>
-                <td class="text-nowrap"><span data-target="pbr"></span>&#37;</td>
+                <td class="text-nowrap"><span data-target="pbr"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "PER &times; PBR" %}</td>
+                <td class="text-nowrap"><span data-target="multi"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Earnings Per Share" %}</td>
@@ -158,7 +168,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <div class="row">
+        <div class="row w-100">
           <div class="col">
             <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
               {% trans "Close" %}
@@ -188,8 +198,10 @@
     'industry',
     'price',
     'dividend',
+    'yield',
     'per',
     'pbr',
+    'multi',
     'eps',
     'bps',
     'roe',

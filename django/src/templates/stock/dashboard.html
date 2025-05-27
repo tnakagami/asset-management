@@ -167,6 +167,7 @@
                       <th scope="col" class="text-nowrap">{% trans "Code" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Value" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
@@ -176,7 +177,8 @@
                   </tbody>
                   <tfoot class="table-group-divider text-left" id="asset-totals">
                     <tr>
-                      <th scope="row" colspan="4" class="text-center">{% trans "Total" %}</th>
+                      <th scope="row" colspan="3" class="text-center">{% trans "Total" %}</th>
+                      <th name="total-dividend" data-type="total"></th>
                       <th name="total-value" data-type="total"></th>
                       <th name="total-count" data-type="total"></th>
                       <th name="total-diff" data-type="total"></th>
@@ -210,6 +212,7 @@
   <td class="asset-code"></td>
   <td class="asset-name"></td>
   <td class="asset-industry"></td>
+  <td class="asset-dividend"></td>
   <td class="asset-value"></td>
   <td class="asset-count"></td>
   <td class="asset-diff"></td>
@@ -250,6 +253,7 @@
         name: record.stock.name,
         code: record.stock.code,
         industry: record.stock.industry.name,
+        dividend: record.stock.dividend,
         isDefensive: record.stock.industry.is_defensive,
         price: record.price,
         count: record.count,
@@ -264,6 +268,7 @@
         const code = item.code;
 
         if (Object.hasOwn(_dict, code)) {
+          _dict[code].dividend += item.dividend;
           _dict[code].value += _calcValue(item);
           _dict[code].count += item.count;
           _dict[code].diff += item.diff;
@@ -273,6 +278,7 @@
             name: item.name,
             code: code,
             industry: item.industry,
+            dividend: item.dividend,
             isDefensive: item.isDefensive,
             value: _calcValue(item),
             count: item.count,
@@ -287,6 +293,7 @@
       name: '{% trans "Cash" %}',
       code: '-',
       industry: '-',
+      dividend: 0,
       isDefensive: undefined,
       value: (cash || 0),
       count: 1,
@@ -441,11 +448,13 @@
       'code': (val, _) => val,
       'name': (val, _) => val,
       'industry': (val, _) => val,
+      'dividend': (val, _) => val.toLocaleString(),
       'value': (val, _) => val.toLocaleString(),
       'count': (val, _) => val.toLocaleString(),
       'diff': (val, _) => val.toLocaleString(),
     };
     const totals = {
+      dividend: 0,
       value: 0,
       count: 0,
       diff: 0,
@@ -464,12 +473,13 @@
           element.classList.add('text-danger');
         }
       }
+      totals.dividend += item.dividend;
       totals.value += item.value;
       totals.count += item.count;
       totals.diff += item.diff;
       tbody.appendChild(clone);
     });
-    ['value', 'count', 'diff'].forEach((key) => {
+    ['dividend', 'value', 'count', 'diff'].forEach((key) => {
       const element = tfoot.querySelector(`th[name="total-${key}"]`);
       const val = totals[key];
       element.textContent = val.toLocaleString();

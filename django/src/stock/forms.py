@@ -1,11 +1,13 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy
+from django.utils.html import format_html
 from utils.forms import ModelFormBasedOnUser, BaseModelDatalistForm
-from utils.widgets import SelectWithDataAttr, Datalist, ModelDatalistField
+from utils.widgets import SelectWithDataAttr, DropdownWithInput, Datalist, ModelDatalistField, DropdownField
 from . import models
 from collections import deque
 import ast
+import urllib.parse
 
 class _BaseModelFormWithCSS(ModelFormBasedOnUser):
   def __init__(self, *args, **kwargs):
@@ -108,6 +110,10 @@ class SnapshotForm(_BaseModelFormWithCSS):
       }),
     }
 
+class _IgnoredField:
+  def clean(self, value, option):
+    pass
+
 class _ValidateCondition(ast.NodeVisitor):
   def __init__(self, *args, fields=None, comp_ops=None, **kwargs):
     # Define stock fields to check right operand
@@ -118,8 +124,10 @@ class _ValidateCondition(ast.NodeVisitor):
       'industry__name': models.Industry._meta.get_field('name'),
       'price': _meta.get_field('price'),
       'dividend': _meta.get_field('dividend'),
+      'div_yield': _IgnoredField(),
       'per': _meta.get_field('per'),
       'pbr': _meta.get_field('pbr'),
+      'multi_pp': _IgnoredField(),
       'eps': _meta.get_field('eps'),
       'bps': _meta.get_field('bps'),
       'roe': _meta.get_field('roe'),
@@ -134,8 +142,10 @@ class _ValidateCondition(ast.NodeVisitor):
       'industry__name': _for_str,
       'price': _for_number,
       'dividend': _for_number,
+      'div_yield': _for_number,
       'per': _for_number,
       'pbr': _for_number,
+      'multi_pp': _for_number,
       'eps': _for_number,
       'bps': _for_number,
       'roe': _for_number,
@@ -260,8 +270,10 @@ class StockSearchForm(forms.Form):
       ('industry__name', gettext_lazy('Stock industry')),
       ('price', gettext_lazy('Stock price')),
       ('dividend', gettext_lazy('Dividend')),
+      ('div_yield', gettext_lazy('Dividend yield')),
       ('per', gettext_lazy('Price Earnings Ratio')),
       ('pbr', gettext_lazy('Price Book-value Ratio')),
+      ('multi_pp', format_html('{} &times; {}', 'PER', 'PBR')),
       ('eps', gettext_lazy('Earnings Per Share')),
       ('bps', gettext_lazy('Book value Per Share')),
       ('roe', gettext_lazy('Return On Equity')),
@@ -278,8 +290,10 @@ class StockSearchForm(forms.Form):
         'industry__name': 'str',
         'price': 'number',
         'dividend': 'number',
+        'div_yield': 'number',
         'per': 'number',
         'pbr': 'number',
+        'multi_pp': 'number',
         'eps': 'number',
         'bps': 'number',
         'roe': 'number',
@@ -333,13 +347,14 @@ class StockSearchForm(forms.Form):
     widget=forms.Textarea(attrs={
       'class': 'form-control h-100',
       'id': 'condition',
+      'name': 'condition',
       'rows': '10',
       'cols': '40',
       'style': 'resize: none;',
     }),
     validators=[validate_filtering_condition],
   )
-  ordering = forms.ChoiceField(
+  ordering = DropdownField(
     label=gettext_lazy('Ordering'),
     choices=(
       ('code', gettext_lazy('Stock code (ASC)')),
@@ -350,10 +365,14 @@ class StockSearchForm(forms.Form):
       ('-price', gettext_lazy('Stock price (DESC)')),
       ('dividend', gettext_lazy('Dividend (ASC)')),
       ('-dividend', gettext_lazy('Dividend (DESC)')),
+      ('div_yield', gettext_lazy('Dividend yield (ASC)')),
+      ('-div_yield', gettext_lazy('Dividend yield (DESC)')),
       ('per', gettext_lazy('Price Earnings Ratio (ASC)')),
       ('-per', gettext_lazy('Price Earnings Ratio (DESC)')),
       ('pbr', gettext_lazy('Price Book-value Ratio (ASC)')),
       ('-pbr', gettext_lazy('Price Book-value Ratio (DESC)')),
+      ('multi_pp', format_html('PER &times; PBR{}', gettext_lazy(' (ASC)'))),
+      ('-multi_pp',  format_html('PER &times; PBR{}', gettext_lazy(' (DESC)'))),
       ('eps', gettext_lazy('Earnings Per Share (ASC)')),
       ('-eps', gettext_lazy('Earnings Per Share (DESC)')),
       ('bps', gettext_lazy('Book value Per Share (ASC)')),
@@ -365,11 +384,27 @@ class StockSearchForm(forms.Form):
     ),
     initial='code',
     required=False,
-    widget=forms.Select(attrs={
+    widget=DropdownWithInput(attrs={
       'class': 'form-control',
       'id': 'column-ordering',
+      'name': 'ordering',
+      'disabled': True,
+      'readonly': True,
     }),
   )
+
+  def __init__(self, *args, **kwargs):
+    params = kwargs.pop('data', None)
+    # Convert message
+    if params is not None:
+      for key, val in params.items():
+        if key == 'ordering':
+          target = val.split(',')
+        else:
+          utf8str = val.encode('utf-8', 'ignore')
+          target = urllib.parse.unquote(utf8str)
+        params[key] = target
+    super().__init__(*args, data=params, **kwargs)
 
   def get_queryset_with_condition(self):
     if self.is_valid():
@@ -380,8 +415,8 @@ class StockSearchForm(forms.Form):
     else:
       tree = None
     # Get ordering of queryset
-    ordering = self.cleaned_data.get('ordering') or 'code'
+    ordering = self.cleaned_data.get('ordering') or ['code']
     # Get queryset
-    queryset = models.Stock.objects.select_targets(tree=tree).order_by(ordering)
+    queryset = models.Stock.objects.select_targets(tree=tree).order_by(*ordering)
 
     return queryset

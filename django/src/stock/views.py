@@ -11,7 +11,6 @@ from utils.views import (
 )
 from account.views import Index
 from . import models, forms
-import urllib.parse
 
 class Dashboard(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.Snapshot
@@ -206,13 +205,9 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   )
 
   def get_queryset(self):
-    initial = self.request.GET.copy() or {}
-    # Convert message
-    for key, val in initial.items():
-      utf8str = val.encode('utf-8', 'ignore')
-      initial[key] = urllib.parse.unquote(utf8str)
+    params = self.request.GET.copy() or {}
     # Create form
-    self.form = self.form_class(initial)
+    self.form = self.form_class(data=params)
     queryset = self.form.get_queryset_with_condition()
 
     return queryset

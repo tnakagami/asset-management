@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-13 01:41+0900\n"
+"POT-Creation-Date: 2025-05-25 20:09+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -21,3 +21,11 @@ msgstr ""
 #: utils/templates/renderer/custom_form.html:6
 msgid "Errors"
 msgstr "エラー"
+
+#: utils/templates/renderer/custom_pagenate.html:115
+msgid "Go to previous page"
+msgstr "次ページに移動"
+
+#: utils/templates/renderer/custom_pagenate.html:118
+msgid "Go to next page"
+msgstr "前ページに移動"

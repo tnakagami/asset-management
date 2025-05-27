@@ -26,6 +26,15 @@ def get_user(django_db_blocker):
 
 @pytest.mark.stock
 @pytest.mark.form
+def test_check_ignore_field_class():
+  try:
+    instance = forms._IgnoredField()
+    instance.clean(3, None)
+  except Exception as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+@pytest.mark.stock
+@pytest.mark.form
 @pytest.mark.parametrize([
   'condition',
 ], [
@@ -483,6 +492,38 @@ def test_snapshot_form(get_user, params, is_valid):
   form = forms.SnapshotForm(user=user, data=params)
 
   assert form.is_valid() == is_valid
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.parametrize([
+  'params',
+  'exacts',
+], [
+  ({}, {'condition': '', 'ordering': []}),
+  ({'condition': ''}, {'condition': '', 'ordering': []}),
+  ({'condition': 'price < 123'}, {'condition': 'price < 123', 'ordering': []}),
+  ({'ordering': '-code'}, {'condition': '', 'ordering': ['-code']}),
+  ({'ordering': '-code,price'}, {'condition': '', 'ordering': ['-code', 'price']}),
+  ({'condition': 'price < 1234', 'ordering': 'code,-price'}, {'condition': 'price < 1234', 'ordering': ['code', '-price']}),
+], ids=[
+  'empty-param',
+  'condition-data-with-empty-data',
+  'condition-of-valid-data',
+  'ordering-of-valid-data',
+  'ordering-of-multi-valid-data',
+  'valid-both-data',
+])
+def test_init_method_of_search_form(params, exacts):
+  form = forms.StockSearchForm(data=params)
+  is_valid = form.is_valid()
+  condition = form.cleaned_data['condition']
+  ordering = form.cleaned_data['ordering']
+  exact_cond = exacts['condition']
+  exact_order = exacts['ordering']
+
+  assert is_valid
+  assert condition == exacts['condition']
+  assert all([estimated == _exact for estimated, _exact in zip(ordering, exact_order)])
 
 @pytest.mark.stock
 @pytest.mark.form

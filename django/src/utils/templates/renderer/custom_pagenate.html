@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load utils_extras %}
 
 <nav aria-label="Page navigation">
@@ -6,23 +7,51 @@
   {% if page_obj.has_previous %}
     <li class="page-item">
       <a
-        href="?{%  url_replace request 'page' page_obj.previous_page_number %}"
-        id="prev-page"
-        class="page-link py-2"
-        aria-label="Previous"
+        href="?{%  url_replace request 'page' 1 %}"
+        id="first-page"
+        class="page-link px-3 py-2"
+        aria-label="First"
       >
         <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+    <li class="page-item">
+      <a
+        href="?{%  url_replace request 'page' page_obj.previous_page_number %}"
+        id="prev-page"
+        class="page-link px-3 py-2"
+        aria-label="Previous"
+      >
+        <span
+          aria-hidden="true"
+          data-bs-toggle="tooltip"
+          data-bs-placement="bottom"
+          data-bs-html="true"
+          data-bs-title="{% trans 'Go to previous page' %}<br />(Ctrl + Alt + &larr;)"
+        >
+          &lt;
+        </span>
       </a>
     </li>
   {% else %}
     <li class="page-item disabled">
       <a
-        class="page-link py-2"
+        class="page-link px-3 py-2"
+        href="#"
+        tabindex="-1"
+        aria-label="First"
+      >
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+    <li class="page-item disabled">
+      <a
+        class="page-link px-3 py-2"
         href="#"
         tabindex="-1"
         aria-label="Previous"
       >
-        <span aria-hidden="true">&laquo;</span>
+        <span aria-hidden="true">&lt;</span>
       </a>
     </li>
   {% endif %}
@@ -31,7 +60,7 @@
     {% if num <= page_obj.number|add:5 and num >= page_obj.number|add:-5 %}
       {% if page_obj.number == num %}
     <li class="page-item active">
-      <span class="page-link py-2">{{ num }}(current)</span>
+      <span class="page-link px-3 py-2">{{ num }}</span>
     </li>
       {% else %}
     <li class="page-item">
@@ -44,6 +73,11 @@
     </li>
       {% endif %}
     {% endif %}
+    {% if num == page_obj.number|add:6 or num == page_obj.number|add:-6 %}
+    <li class="page-item">
+      <span class="page-link px-3 py-2">...</span>
+    </li>
+    {% endif %}
   {% endfor %}
   {# Next #}
   {% if page_obj.has_next %}
@@ -51,8 +85,26 @@
       <a
         href="?{%  url_replace request 'page' page_obj.next_page_number %}"
         id="next-page"
-        class="page-link py-2"
+        class="page-link px-3 py-2"
         aria-label="Next"
+      >
+        <span
+          aria-hidden="true"
+          data-bs-toggle="tooltip"
+          data-bs-placement="bottom"
+          data-bs-html="true"
+          data-bs-title="{% trans 'Go to next page' %}<br />(Ctrl + Alt + &rarr;)"
+        >
+          &gt;
+        </span>
+      </a>
+    </li>
+    <li class="page-item">
+      <a
+        href="?{%  url_replace request 'page' paginator.num_pages %}"
+        id="last-page"
+        class="page-link px-3 py-2"
+        aria-label="Last"
       >
         <span aria-hidden="true">&raquo;</span>
       </a>
@@ -60,10 +112,20 @@
   {% else %}
     <li class="page-item disabled">
       <a
-        class="page-link py-2"
+        class="page-link px-3 py-2"
         href="#"
         tabindex="-1"
         aria-label="Next"
+      >
+        <span aria-hidden="true">&gt;</span>
+      </a>
+    </li>
+    <li class="page-item disabled">
+      <a
+        class="page-link px-3 py-2"
+        href="#"
+        tabindex="-1"
+        aria-label="Last"
       >
         <span aria-hidden="true">&raquo;</span>
       </a>
@@ -72,9 +134,10 @@
   </ul>
   <script>
   (function () {
+    // Add key event
     document.addEventListener('keyup', (event) => {
 
-      if (event.altKey) {
+      if (event.altKey && event.ctrlKey) {
         switch (event.code) {
           case 'ArrowLeft':
             {
@@ -102,6 +165,12 @@
             break;
         }
       }
+    });
+    // Add DOM event
+    document.addEventListener('DOMContentLoaded', () => {
+      // Enable tooltips
+      const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+      const tooltipList = [...tooltipTriggers].map((elem) => new bootstrap.Tooltip(elem));
     });
   })();
   </script>

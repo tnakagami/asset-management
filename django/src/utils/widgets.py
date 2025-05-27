@@ -54,6 +54,25 @@ class Datalist(forms.Select):
   def has_error(self, value):
     self._has_error = True
 
+class DropdownWithInput(forms.Select):
+  input_type = 'text'
+  template_name = 'widgets/custom_dropdown.html'
+  option_template_name = 'widgets/custom_dropdown_option.html'
+
+  def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+    option = super().create_option(name, value, label, selected, index, subindex, attrs)
+    option['attrs']['data-value'] = value
+
+    return option
+
+  def get_context(self, name, value, attrs):
+    context = super().get_context(name, value, attrs)
+    context['widget']['type'] = self.input_type
+    context['widget']['initial'] = ','.join(value) if isinstance(value, list) else value
+    context['widget']['dropdown_id'] = f'{name}_dropdown'
+
+    return context
+
 class DatalistField(forms.ChoiceField):
   widget = Datalist
 
@@ -63,3 +82,6 @@ class ModelDatalistField(forms.ModelChoiceField):
   def __init__(self, queryset, *, widget=None, **kwargs):
     widget = widget or self.widget
     super().__init__(queryset, widget=widget, **kwargs)
+
+class DropdownField(forms.MultipleChoiceField):
+  widget = DropdownWithInput
