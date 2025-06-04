@@ -85,3 +85,11 @@ class ModelDatalistField(forms.ModelChoiceField):
 
 class DropdownField(forms.MultipleChoiceField):
   widget = DropdownWithInput
+
+  def to_python(self, value):
+    if isinstance(value, (list, tuple)) and any([val in self.empty_values for val in value]) and self.initial:
+      out = self.initial
+    else:
+      out = super().to_python(value)
+
+    return out

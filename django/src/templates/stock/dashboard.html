@@ -177,7 +177,7 @@
                   </tbody>
                   <tfoot class="table-group-divider text-left" id="asset-totals">
                     <tr>
-                      <th scope="row" colspan="3" class="text-center">{% trans "Total" %}</th>
+                      <th scope="row" colspan="4" class="text-center">{% trans "Total" %}</th>
                       <th name="total-dividend" data-type="total"></th>
                       <th name="total-value" data-type="total"></th>
                       <th name="total-count" data-type="total"></th>
@@ -206,13 +206,91 @@
   </div>
 </div>
 
+<div class="modal" id="stock-modal" tabindex="-1" aria-labelledby="stock-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title fs-5" id="stock-label">{% trans "Detail of target stock" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col" class="text-nowrap fw-bold">{% trans "Element" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Value" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider">
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Code" %}</td>
+                <td class="text-nowrap"><span data-target="code"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Stock name" %}</td>
+                <td class="text-break"><span data-target="name"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Industry" %}</td>
+                <td class="text-nowrap"><span data-target="industry"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Stock price" %}</td>
+                <td class="text-nowrap"><span data-target="price"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend" %}</td>
+                <td class="text-nowrap"><span data-target="dividend"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="per"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Price Book-value Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="pbr"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Earnings Per Share" %}</td>
+                <td class="text-nowrap"><span data-target="eps"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Book value Per Share" %}</td>
+                <td class="text-nowrap"><span data-target="bps"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Return On Equity" %}</td>
+                <td class="text-nowrap"><span data-target="roe"></span>&#37;</td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Equity Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="er"></span>&#37;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="row w-100">
+          <div class="col">
+            <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+              {% trans "Close" %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <template id="tbody-template">
 <tr>
   <td scope="row" class="asset-idx"></td>
   <td class="asset-code"></td>
   <td class="asset-name"></td>
   <td class="asset-industry"></td>
-  <td class="asset-dividend"></td>
+  <td class="asset-realDividend"></td>
   <td class="asset-value"></td>
   <td class="asset-count"></td>
   <td class="asset-diff"></td>
@@ -245,19 +323,30 @@
     };
     const cash = data.cash.balance;
     const originalStocks = data.purchased_stocks.map((record) => {
-      const stockPrice = record.stock.price;
+      const _stock = record.stock;
+      const stockPrice = _stock.price;
       const pStockPrice = record.price;
       const diff = Math.floor((stockPrice - pStockPrice) * record.count);
 
       return {
-        name: record.stock.name,
-        code: record.stock.code,
-        industry: record.stock.industry.name,
-        dividend: record.stock.dividend,
-        isDefensive: record.stock.industry.is_defensive,
+        name: _stock.name,
+        code: _stock.code,
+        industry: _stock.industry.name,
+        dividend: _stock.dividend,
+        realDividend: _stock.dividend * record.count,
+        isDefensive: _stock.industry.is_defensive,
         price: record.price,
         count: record.count,
         diff: diff,
+        options: {
+          price: _stock.price,
+          per: _stock.per,
+          pbr: _stock.pbr,
+          eps: _stock.eps,
+          bps: _stock.bps,
+          roe: _stock.roe,
+          er: _stock.er,
+        },
       };
     });
     const stocks = (() => {
@@ -268,7 +357,7 @@
         const code = item.code;
 
         if (Object.hasOwn(_dict, code)) {
-          _dict[code].dividend += item.dividend;
+          _dict[code].realDividend += item.realDividend;
           _dict[code].value += _calcValue(item);
           _dict[code].count += item.count;
           _dict[code].diff += item.diff;
@@ -279,10 +368,12 @@
             code: code,
             industry: item.industry,
             dividend: item.dividend,
+            realDividend: item.realDividend,
             isDefensive: item.isDefensive,
             value: _calcValue(item),
             count: item.count,
             diff: item.diff,
+            options: item.options,
           };
         }
       }
@@ -294,10 +385,12 @@
       code: '-',
       industry: '-',
       dividend: 0,
+      realDividend: 0,
       isDefensive: undefined,
       value: (cash || 0),
       count: 1,
       diff: 0,
+      options: undefined,
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
@@ -440,6 +533,46 @@
     return output;
   };
   const updateTable = (records) => {
+    const updateNodeStatus = (item, element) => {
+      if (item.options) {
+        element.dataset.name = item.name;
+        element.dataset.code = item.code;
+        element.dataset.industry = item.industry;
+        element.dataset.price = item.options.price;
+        element.dataset.dividend = item.dividend;
+        element.dataset.per = item.options.per;
+        element.dataset.pbr = item.options.pbr;
+        element.dataset.eps = item.options.eps;
+        element.dataset.bps = item.options.bps;
+        element.dataset.roe = item.options.roe;
+        element.dataset.er = item.options.er;
+        element.classList.add('text-decoration-underline', 'text-primary');
+        // Add click event
+        element.addEventListener('click', () => {
+          const _keys = Object.freeze([
+            'code', 'name', 'industry', 'price', 'dividend',
+            'per', 'pbr', 'eps', 'bps', 'roe', 'er',
+          ]);
+          const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
+          const isNegative = (val) => pattern.test(val);
+          // Update modal data and show modal
+          for (const key of _keys) {
+            const node = document.querySelector(`[data-target="${key}"]`);
+            const value = element.dataset[key];
+            node.textContent = value;
+
+            if (isNegative(value)) {
+              node.parentElement.classList.add('text-danger');
+            }
+            else {
+              node.parentElement.classList.remove('text-danger');
+            }
+          }
+          const stockModal = new bootstrap.Modal('#stock-modal');
+          stockModal.show();
+        });
+      }
+    };
     const tbody = document.querySelector('#all-assets-list');
     const tfoot = document.querySelector('#asset-totals');
     const template = document.querySelector('#tbody-template');
@@ -448,7 +581,7 @@
       'code': (val, _) => val,
       'name': (val, _) => val,
       'industry': (val, _) => val,
-      'dividend': (val, _) => val.toLocaleString(),
+      'realDividend': (val, _) => val.toLocaleString(),
       'value': (val, _) => val.toLocaleString(),
       'count': (val, _) => val.toLocaleString(),
       'diff': (val, _) => val.toLocaleString(),
@@ -472,8 +605,11 @@
         if ((key === 'diff') && (val < 0)) {
           element.classList.add('text-danger');
         }
+        else if (key === 'name') {
+          updateNodeStatus(item, element);
+        }
       }
-      totals.dividend += item.dividend;
+      totals.dividend += item.realDividend;
       totals.value += item.value;
       totals.count += item.count;
       totals.diff += item.diff;

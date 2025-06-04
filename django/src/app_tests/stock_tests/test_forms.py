@@ -579,14 +579,16 @@ def test_target_field_data_of_stock_search_form(params, is_valid):
 @pytest.mark.parametrize([
   'params',
   'indices',
+  'exact_valid',
 ], [
-  ({'condition': 'price < 500', 'ordering': 'price'}, [0, 1, 2]),
-  ({'condition': 'price < 500'}, [0, 2, 1]),
-  ({'condition': 'price < 500 and code == "600"'}, [1]),
-  ({'condition': 'price < 500\n and\n code == "600"'}, [1]),
-  ({}, [0, 2, 4, 1, 3]),
-  ({'condition': ''}, [0, 2, 4, 1, 3]),
-  ({'condition': 'price + 100 < 5000', 'ordering': 'price'}, [0, 1, 2, 3, 4]),
+  ({'condition': 'price < 500', 'ordering': 'price'}, [0, 1, 2], True),
+  ({'condition': 'price < 500'}, [0, 2, 1], True),
+  ({'condition': 'price < 500 and code == "600"'}, [1], True),
+  ({'condition': 'price < 500\n and\n code == "600"'}, [1], True),
+  ({}, [0, 2, 4, 1, 3], True),
+  ({'condition': ''}, [0, 2, 4, 1, 3], True),
+  ({'ordering': ''}, [0, 2, 4, 1, 3], True),
+  ({'condition': 'price + 100 < 5000', 'ordering': 'price'}, [0, 1, 2, 3, 4], False),
 ], ids=[
   'set-condition-and-order',
   'set-condition',
@@ -594,9 +596,10 @@ def test_target_field_data_of_stock_search_form(params, is_valid):
   'set-multi-conditions-with-return-code',
   'set-no-fields',
   'empty-condition',
+  'empty-ordering',
   'invalid-condition',
 ])
-def test_get_queryset_with_condition_method_of_stock_search_form(params, indices):
+def test_get_queryset_with_condition_method_of_stock_search_form(params, indices, exact_valid):
   industry = factories.IndustryFactory()
   stocks = [
     factories.StockFactory(code='100', price=100, industry=industry),
@@ -606,8 +609,10 @@ def test_get_queryset_with_condition_method_of_stock_search_form(params, indices
     factories.StockFactory(code='400', price=750, industry=industry),
   ]
   form = forms.StockSearchForm(data=params)
+  is_valid = form.is_valid()
   qs = form.get_queryset_with_condition()
   expected = [stocks[idx] for idx in indices]
 
+  assert is_valid == exact_valid
   assert len(expected) == qs.count()
   assert all([record.pk == exact.pk for record, exact in zip(qs, expected)])
