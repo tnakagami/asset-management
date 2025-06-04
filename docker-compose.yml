@@ -26,13 +26,13 @@ services:
     ports:
       - ${ASSETMGMT_ACCESS_PORT:-3101}:80
     depends_on:
-      - django
+      - backend
     networks:
       - frontend-link
 
-  django:
+  backend:
     build:
-      context: ./django
+      context: ./backend
       dockerfile: Dockerfile
       args:
         - UID
@@ -41,22 +41,22 @@ services:
         - GROUPNAME=user
         - ARCHITECTURE=${ASSETMGMT_ARCH:-arm32v7}
         - TZ=${ASSETMGMT_TZ:-UTC}
-    image: django.asset-management
-    container_name: django.asset-management
+    image: backend.asset-management
+    container_name: backend.asset-management
     restart: always
     env_file:
-      - ./env_files/django/docker.env
-      - ./env_files/django/.env
+      - ./env_files/backend/docker.env
+      - ./env_files/backend/.env
       - ./env_files/postgres/.env
     environment:
       - DJANGO_LANGUAGE_CODE=${ASSETMGMT_LANGCODE:-en}
       - DJANGO_TIME_ZONE=${ASSETMGMT_TZ:-UTC}
     volumes:
       - static-volume:/var/static
-      - ./django/uwsgi.ini:/opt/uwsgi.ini:ro
-      - ./django/bashrc:/opt/home/.bashrc:ro
-      - ./django/src:/opt/app
-      - ./django/pyproject.toml:/opt/pyproject.toml
+      - ./backend/uwsgi.ini:/opt/uwsgi.ini:ro
+      - ./backend/bashrc:/opt/home/.bashrc:ro
+      - ./backend/src:/opt/app
+      - ./backend/pyproject.toml:/opt/pyproject.toml
     logging: *json-logging
     expose:
       - 8001
@@ -67,12 +67,12 @@ services:
       - backend-link
 
   celery:
-    image: django.asset-management
+    image: backend.asset-management
     container_name: celery.asset-management
     restart: always
     env_file:
-      - ./env_files/django/docker.env
-      - ./env_files/django/.env
+      - ./env_files/backend/docker.env
+      - ./env_files/backend/.env
       - ./env_files/postgres/.env
     environment:
       - NUM_CPUS=2
@@ -83,13 +83,13 @@ services:
     volumes:
       - ./celery/entrypoint.sh:/opt/entrypoint.sh:ro
       - ./celery/show-log.sh:/opt/show-log.sh:ro
-      - ./django/src:/opt/app:ro
-      - ./django/bashrc:/opt/home/.bashrc:ro
+      - ./backend/src:/opt/app:ro
+      - ./backend/bashrc:/opt/home/.bashrc:ro
     logging: *json-logging
     depends_on:
       redis:
         condition: service_started
-      django:
+      backend:
         condition: service_started
     networks:
       - backend-link

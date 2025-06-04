@@ -1,4 +1,4 @@
-# Setup Django
+# Setup backend
 ## Preparations
 ### Step1: Execute makemigrations and migrate
 Migrations are how Django stores changes to your models and Django manages your database schema automatically by using results of migration. To do this, from the command line, run the following command.
@@ -6,7 +6,7 @@ Migrations are how Django stores changes to your models and Django manages your 
 ```bash
 # In the host environment
 ./wrapper.sh migrate
-docker-compose run --rm django bash
+docker-compose run --rm backend bash
 
 # In the docker environment
 python manage.py migrate django_celery_results
@@ -18,11 +18,11 @@ Please remember the two-step guides to making model changes:
 1. Run `./wrapper.sh migrate` to create migrations for those changes in your application and to apply those changes to the database.
 
 ### Step2: Create superuser
-To create superuser account, let's run following command, where `DJANGO_SUPERUSER_NAME`, `DJANGO_SUPERUSER_EMAIL`, and `DJANGO_SUPERUSER_PASSWORD` are environment variables defined by `env_files/django/.env`.
+To create superuser account, let's run following command, where `DJANGO_SUPERUSER_NAME`, `DJANGO_SUPERUSER_EMAIL`, and `DJANGO_SUPERUSER_PASSWORD` are environment variables defined by `env_files/backend/.env`.
 
 ```bash
 # In the host environment
-docker-compose run --rm django bash
+docker-compose run --rm backend bash
 
 # In the docker environment
 python manage.py custom_createsuperuser --username ${DJANGO_SUPERUSER_NAME} --email ${DJANGO_SUPERUSER_EMAIL} --password ${DJANGO_SUPERUSER_PASSWORD}
@@ -41,7 +41,7 @@ exit # or press Ctrl + D
 # Edit .po files using your favorite editor (e.g. vim)
 #
 # In the host environment
-docker-compose run --rm django bash
+docker-compose run --rm backend bash
 # 
 
 # In the docker environment
