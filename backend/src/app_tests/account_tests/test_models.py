@@ -1,47 +1,39 @@
 import pytest
-from pytest_factoryboy import register
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError, DataError
 from account import models
 from . import factories
 
-register(factories.UserFactory)
-
 @pytest.mark.account
 @pytest.mark.model
 @pytest.mark.django_db
-def test_user(user):
+def test_user():
+  user = factories.UserFactory.build()
+
   assert isinstance(user, models.User)
 
 @pytest.mark.account
 @pytest.mark.model
 @pytest.mark.django_db
-def test_user_factory(user_factory):
-  assert user_factory is factories.UserFactory
-
-@pytest.mark.account
-@pytest.mark.model
-@pytest.mark.django_db
 @pytest.mark.parametrize([
-  'user__username',
-  'user__email',
-  'user__screen_name',
-  'expected_name',
-  'expected_email',
-  'expected_screen',
+  'username',
+  'email',
+  'screen_name',
 ], [
-  ('hoge', 'hoge@example.com', 'hogehoge', 'hoge', 'hoge@example.com', 'hogehoge'), 
-  ('1'*128, '{}@ok.com'.format('1'*121), '1'*128, '1'*128, '{}@ok.com'.format('1'*121), '1'*128),
-  ('foo', 'foo@ok.com', '', 'foo', 'foo@ok.com', ''), 
+  ('hoge', 'hoge@example.com', 'hogehoge'),
+  ('1'*128, '{}@ok.com'.format('1'*121), '1'*128),
+  ('foo', 'foo@ok.com', ''),
 ], ids=[
   'valid',
   'max-length',
   'include-empty-data',
 ])
-def test_user_creation(user, expected_name, expected_email, expected_screen):
-  assert user.username == expected_name
-  assert user.email == expected_email
-  assert user.screen_name == expected_screen
+def test_user_creation(username, email, screen_name):
+  user = factories.UserFactory(username=username, email=email, screen_name=screen_name)
+
+  assert user.username == username
+  assert user.email == email
+  assert user.screen_name == screen_name
 
 @pytest.mark.account
 @pytest.mark.model
@@ -155,8 +147,8 @@ def test_invalid_same_email():
 @pytest.mark.model
 @pytest.mark.django_db
 @pytest.mark.parametrize([
-  'user__username',
-  'user__screen_name',
+  'username',
+  'screen_name',
   'expected'
 ], [
   ('1'*32, '2'*32, '2'*32,), 
@@ -169,15 +161,17 @@ def test_invalid_same_email():
   'screen-name-length-is-33',
   'username-length-is-33',
 ])
-def test_user_shortname(user, expected):
+def test_user_shortname(username, screen_name, expected):
+  user = factories.UserFactory(username=username, screen_name=screen_name)
+
   assert user.get_short_name() == expected
 
 @pytest.mark.account
 @pytest.mark.model
 @pytest.mark.django_db
 @pytest.mark.parametrize([
-  'user__username',
-  'user__screen_name',
+  'username',
+  'screen_name',
   'expected',
 ], [
   ('1'*32, '2'*32, '2'*32,), 
@@ -194,5 +188,7 @@ def test_user_shortname(user, expected):
   'length-eq-128',
   'username-length-eq-128-screen-name-is-empty',
 ])
-def test_user_fullname(user, expected):
+def test_user_fullname(username, screen_name, expected):
+  user = factories.UserFactory(username=username, screen_name=screen_name)
+
   assert user.get_full_name() == expected
