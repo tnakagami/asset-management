@@ -226,3 +226,26 @@ def test_check_init_func_of_dropdown_field():
   instance = widgets.DropdownField(choices=())
 
   assert isinstance(instance.widget, widgets.DropdownWithInput)
+
+@pytest.mark.utils
+@pytest.mark.widget
+@pytest.mark.parametrize([
+  'value',
+  'exact',
+], [
+  (['foo'], ['foo']),
+  ([], []),
+  ([''], ['hoge']),
+  (('',), ['hoge']),
+], ids=[
+  'call-super-method',
+  'is-empty-list',
+  'is-empty-string-list',
+  'is-empty-string-tuple',
+])
+def test_check_to_python_method_of_dropdown_field(value, exact):
+  instance = widgets.DropdownField(choices=(), initial=['hoge'])
+  out = instance.to_python(value)
+
+  assert len(out) == len(exact)
+  assert all([val == original for val, original in zip(out, exact)])

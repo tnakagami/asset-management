@@ -25,7 +25,7 @@ But because of using docker environment, you can use the other architecture such
     | Target | Path | Detail |
     | :--- | :--- | :--- |
     | postgres | `./env_files/postgres/.env` | [`README.md`](./env_files/postgres/README.md) |
-    | django | `./env_files/django/.env` | [`README.md`](./env_files/django/README.md) |
+    | backend | `./env_files/backend/.env` | [`README.md`](./env_files/backend/README.md) |
 
 1. Create `.env` file in the top directory of current project. The `.env` file consists of four environment variables.
 
@@ -45,7 +45,7 @@ But because of using docker environment, you can use the other architecture such
     # or docker-compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)"
     ```
 
-1. Check [`README.md`](./django/README.md) to initialize Django application.
+1. Check [`README.md`](./backend/README.md) to initialize backend application.
 
 ## Execution
 1. Type the following command, and then wait for a moment.

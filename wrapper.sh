@@ -1,6 +1,6 @@
 #!/bin/bash
 
-readonly DJANGO_CONTAINER_NAME=django.asset-management
+readonly BACKEND_CONTAINER_NAME=backend.asset-management
 readonly CELERY_CONTAINER_NAME=celery.asset-management
 
 function Usage() {
@@ -34,14 +34,14 @@ Enabled commands:
     By using option "-s", output becomes simple.
 
   migrate
-    Execute database migration of Django in the docker environment
+    Execute database migration of backend in the docker environment
 
   loaddata
-    Load yaml data to Django's database
+    Load yaml data to backend's database
 
   command [-something]
     Execute specific command
-    By specifying string with starting a hyphen (e.g., -something), you can give a custom command to Django.
+    By specifying string with starting a hyphen (e.g., -something), you can give a custom command to backend.
     Default command is "exec_job".
 
   cron
@@ -163,9 +163,9 @@ while [ -n "$1" ]; do
 
     migrate )
       docker-compose up -d
-      apps=$(find django/src -type f | grep -oP "(?<=/)([a-zA-Z]+)(?=/apps.py$)" | tr '\n' ' ')
+      apps=$(find backend/src -type f | grep -oP "(?<=/)([a-zA-Z]+)(?=/apps.py$)" | tr '\n' ' ')
       commands="python manage.py makemigrations ${apps}; python manage.py migrate"
-      docker exec ${DJANGO_CONTAINER_NAME} bash -c "${commands}"
+      docker exec ${BACKEND_CONTAINER_NAME} bash -c "${commands}"
 
       shift
       ;;
@@ -173,7 +173,7 @@ while [ -n "$1" ]; do
     loaddata )
       docker-compose up -d
       xml_file_path='stock/fixtures/${DJANGO_LANGUAGE_CODE}/*.yaml'
-      docker exec ${DJANGO_CONTAINER_NAME} bash -c "python manage.py loaddata ${xml_file_path}"
+      docker exec ${BACKEND_CONTAINER_NAME} bash -c "python manage.py loaddata ${xml_file_path}"
 
       shift
       ;;
@@ -187,20 +187,20 @@ while [ -n "$1" ]; do
       else
         command="exec_job"
       fi
-      docker exec -it ${DJANGO_CONTAINER_NAME} python manage.py ${command}
+      docker exec -it ${BACKEND_CONTAINER_NAME} python manage.py ${command}
 
       shift
       ;;
 
     cron )
-      docker exec -i ${DJANGO_CONTAINER_NAME} python manage.py exec_job
+      docker exec -i ${BACKEND_CONTAINER_NAME} python manage.py exec_job
 
       shift
       ;;
 
     test )
       docker-compose up -d
-      docker exec -it ${DJANGO_CONTAINER_NAME} /opt/tester.sh
+      docker exec -it ${BACKEND_CONTAINER_NAME} /opt/tester.sh
 
       shift
       ;;

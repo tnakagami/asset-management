@@ -382,7 +382,7 @@ class StockSearchForm(forms.Form):
       ('er', gettext_lazy('Equity Ratio (ASC)')),
       ('-er', gettext_lazy('Equity Ratio (DESC)')),
     ),
-    initial='code',
+    initial=['code'],
     required=False,
     widget=DropdownWithInput(attrs={
       'class': 'form-control',
