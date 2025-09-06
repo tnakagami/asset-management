@@ -43,6 +43,7 @@ def get_purchased_stock_kwargs(django_db_blocker):
     'price': 5678,
     'purchase_date': datetime(2022,3,7,11,5,21, tzinfo=timezone.utc),
     'count': 120,
+    'has_been_sold': False,
   }
   model_class = models.PurchasedStock
   factory_class = factories.PurchasedStockFactory

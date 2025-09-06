@@ -93,3 +93,22 @@ class DropdownField(forms.MultipleChoiceField):
       out = super().to_python(value)
 
     return out
+
+class CustomRadioSelect(forms.RadioSelect):
+  input_class = ''
+  label_class = ''
+  template_name = 'widgets/custom_radio.html'
+  option_template_name = 'widgets/custom_radio_option.html'
+
+  def __init__(self, attrs=None):
+    if attrs is not None:
+      self.input_class = attrs.pop('input-class', self.input_class)
+      self.label_class = attrs.pop('label-class', self.label_class)
+    super().__init__(attrs)
+
+  def create_option(self, *args, **kwargs):
+    options = super().create_option(*args, **kwargs)
+    options['input_class'] = self.input_class
+    options['label_class'] = self.label_class
+
+    return options

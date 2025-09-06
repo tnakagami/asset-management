@@ -357,14 +357,14 @@ class PurchasedStockQuerySet(models.QuerySet):
     return self.order_by('purchase_date')
 
   def selected_range(self, from_date=None, to_date=None):
+    queryset = self.filter(has_been_sold=False)
+
     if from_date and to_date:
-      queryset = self.filter(purchase_date__range=[from_date, to_date])
+      queryset = queryset.filter(purchase_date__range=[from_date, to_date])
     elif from_date:
-      queryset = self.filter(purchase_date__gte=from_date)
+      queryset = queryset.filter(purchase_date__gte=from_date)
     elif to_date:
-      queryset = self.filter(purchase_date__lte=to_date)
-    else:
-      queryset = self
+      queryset = queryset.filter(purchase_date__lte=to_date)
 
     return queryset
 
@@ -401,6 +401,10 @@ class PurchasedStock(models.Model):
   count = models.IntegerField(
     verbose_name=gettext_lazy('The number of purchased stocks'),
     validators=[MinValueValidator(0)],
+  )
+  has_been_sold = models.BooleanField(
+    verbose_name=gettext_lazy('Its stock has been sold or not'),
+    default=False,
   )
 
   def get_dict(self):
@@ -460,7 +464,7 @@ class Snapshot(models.Model):
     default=timezone.now,
   )
 
-  def save(self, *args, **kwargs):
+  def update_record(self):
     if not self.start_date:
       oldest_record = self.user.purchased_stocks.older().first()
 
@@ -480,6 +484,8 @@ class Snapshot(models.Model):
     }
     self.detail = json.dumps(detail_dict)
 
+  def save(self, *args, **kwargs):
+    self.update_record()
     super().save(*args, **kwargs)
 
   def __str__(self):
@@ -497,6 +503,10 @@ class Snapshot(models.Model):
   @classmethod
   def save_all(cls, user):
     queryset = user.snapshots.all()
+    records = []
 
     for instance in queryset:
-      instance.save()
+      instance.update_record()
+      records += [instance]
+    # Update relevant fields
+    cls.objects.bulk_update(records, fields=['detail'])

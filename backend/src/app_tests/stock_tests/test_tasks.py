@@ -14,6 +14,15 @@ class FakeUserTask:
 
     return 0
 
+  def monthly_report(self, day_offset):
+    self.kwargs = {'day_offset': day_offset}
+
+class FakeLogger:
+  def __init__(self):
+    self.msg = ''
+  def store(self, msg):
+    self.msg = msg
+
 @pytest.mark.stock
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -34,13 +43,6 @@ class FakeUserTask:
 ])
 def test_check_delete_task_records(mocker, num_tasks, is_raise, expected, log_message):
   import stock.tasks
-
-  class FakeLogger:
-    def __init__(self):
-      self.msg = ''
-    def store(self, msg):
-      self.msg = msg
-
   _ = factories.TaskResultFactory.create_batch(num_tasks, status=states.SUCCESS)
   _ = factories.TaskResultFactory(status=states.PENDING)
   fake_logger = FakeLogger()
@@ -82,6 +84,42 @@ def test_check_update_stock_records(mocker, attrs, checker, expected_kwargs):
 
   assert checker(ret)
   assert all([expected_kwargs[key] == val for key, val in _user_task.kwargs.items()])
+
+@pytest.mark.stock
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'user_task',
+  'checker',
+], [
+  (None, lambda ret, exact: ret is None),
+  (FakeUserTask(), lambda ret, exact: ret.kwargs['day_offset'] == exact),
+], ids=[
+  'user-task-is-none',
+  'user-task-is-set',
+])
+def test_check_behavior_of_register_monthly_report(mocker, user_task, checker):
+  import stock.tasks
+  mocker.patch.object(stock.tasks, 'user_tasks', user_task)
+  day_offset = 3
+  # Call target function
+  try:
+    stock.tasks.register_monthly_report(day_offset)
+  except Exception as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+  assert checker(user_task, day_offset)
+
+@pytest.mark.stock
+@pytest.mark.django_db
+def test_check_raise_exception_of_register_monthly_report(mocker):
+  import stock.tasks
+  fake_logger = FakeLogger()
+  mocker.patch.object(stock.tasks.user_tasks, 'monthly_report', None)
+  mocker.patch.object(stock.tasks.g_logger, 'error', side_effect=lambda msg: fake_logger.store(msg))
+  # Call target function
+  stock.tasks.register_monthly_report(2)
+
+  assert 'Failed to call user function.' in fake_logger.msg
 
 @pytest.mark.stock
 def test_raise_import_exception(mocker):

@@ -3,11 +3,21 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy
 from django.utils.html import format_html
 from utils.forms import ModelFormBasedOnUser, BaseModelDatalistForm
-from utils.widgets import SelectWithDataAttr, DropdownWithInput, Datalist, ModelDatalistField, DropdownField
+from utils.widgets import (
+  SelectWithDataAttr,
+  DropdownWithInput,
+  Datalist,
+  ModelDatalistField,
+  DropdownField,
+  CustomRadioSelect,
+)
 from . import models
 from collections import deque
 import ast
 import urllib.parse
+
+def bool_converter(value):
+  return value not in ['False', 'false', 'FALSE', '0', False]
 
 class _BaseModelFormWithCSS(ModelFormBasedOnUser):
   def __init__(self, *args, **kwargs):
@@ -58,7 +68,7 @@ class CustomModelDatalistField(ModelDatalistField):
 class PurchasedStockForm(BaseModelDatalistForm, _BaseModelFormWithCSS):
   class Meta:
     model = models.PurchasedStock
-    fields = ('stock', 'price', 'purchase_date', 'count')
+    fields = ('stock', 'price', 'purchase_date', 'count', 'has_been_sold')
     widgets = {
       'stock': Datalist(attrs={
         'id': 'stock-id',
@@ -78,6 +88,23 @@ class PurchasedStockForm(BaseModelDatalistForm, _BaseModelFormWithCSS):
         'queryset': models.Stock.objects.none(),
       },
     }
+
+  has_been_sold = forms.TypedChoiceField(
+    label=gettext_lazy('Has been sold/Is holding'),
+    coerce=bool_converter,
+    initial=False,
+    empty_value=False,
+    choices=(
+      (True, gettext_lazy('Has been sold')),
+      (False, gettext_lazy('Is holding')),
+    ),
+    widget=CustomRadioSelect(attrs={
+      'class': 'form-check form-check-inline',
+      'input-class': 'form-check-input',
+      'label-class': 'form-check-label',
+    }),
+    help_text=gettext_lazy('Describes whether this purchased stock has been sold or not.'),
+  )
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, field_class=CustomModelDatalistField, **kwargs)
