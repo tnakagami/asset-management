@@ -357,14 +357,14 @@ class PurchasedStockQuerySet(models.QuerySet):
     return self.order_by('purchase_date')
 
   def selected_range(self, from_date=None, to_date=None):
+    queryset = self.filter(has_been_sold=False)
+
     if from_date and to_date:
-      queryset = self.filter(purchase_date__range=[from_date, to_date])
+      queryset = queryset.filter(purchase_date__range=[from_date, to_date])
     elif from_date:
-      queryset = self.filter(purchase_date__gte=from_date)
+      queryset = queryset.filter(purchase_date__gte=from_date)
     elif to_date:
-      queryset = self.filter(purchase_date__lte=to_date)
-    else:
-      queryset = self
+      queryset = queryset.filter(purchase_date__lte=to_date)
 
     return queryset
 
@@ -401,6 +401,10 @@ class PurchasedStock(models.Model):
   count = models.IntegerField(
     verbose_name=gettext_lazy('The number of purchased stocks'),
     validators=[MinValueValidator(0)],
+  )
+  has_been_sold = models.BooleanField(
+    verbose_name=gettext_lazy('Its stock has been sold or not'),
+    default=False,
   )
 
   def get_dict(self):

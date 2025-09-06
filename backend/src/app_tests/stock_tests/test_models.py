@@ -777,14 +777,24 @@ def test_check_invalid_inputs_of_purchased_stock(options, exception_type, err_ms
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-def test_check_get_dict_function_of_purchased_stock(get_judgement_funcs):
+@pytest.mark.parametrize([
+  'sold_out',
+], [
+  (True, ),
+  (False, ),
+], ids=[
+  'has-been-sold',
+  'has-not-been-sold',
+])
+def test_check_get_dict_function_of_purchased_stock(get_judgement_funcs, sold_out):
   collector, compare_keys, compare_values = get_judgement_funcs
   target_date = datetime(2022,3,4,10,9,1, tzinfo=timezone.utc)
   instance = factories.PurchasedStockFactory(
     purchase_date=target_date,
+    has_been_sold=sold_out,
   )
   out_dict = instance.get_dict()
-  fields = collector(models.PurchasedStock, exclude=['user', 'stock', 'purchase_date'])
+  fields = collector(models.PurchasedStock, exclude=['user', 'stock', 'purchase_date', 'has_been_sold'])
   _stock = out_dict.pop('stock', None)
   _purchase_date = out_dict.pop('purchase_date', None)
 
@@ -876,6 +886,22 @@ def test_selected_range_queryset_of_purchased_stock(from_day, to_day, count, fir
   assert all([record.user == user for record in queryset])
   assert _first.purchase_date == first_date
   assert _last.purchase_date == last_date
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_ignore_sold_stocks_of_purchased_stock():
+  user = factories.UserFactory()
+  pstocks = [
+    factories.PurchasedStockFactory(user=user, has_been_sold=True),
+    factories.PurchasedStockFactory(user=user, has_been_sold=False),
+    factories.PurchasedStockFactory(user=user, has_been_sold=True),
+  ]
+  queryset = user.purchased_stocks.selected_range()
+  the1st_instance = queryset.first()
+
+  assert queryset.count() == 1
+  assert the1st_instance.pk == pstocks[1].pk
 
 # ========
 # Snapshot

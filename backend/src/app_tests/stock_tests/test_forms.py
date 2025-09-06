@@ -26,6 +26,37 @@ def get_user(django_db_blocker):
 
 @pytest.mark.stock
 @pytest.mark.form
+@pytest.mark.parametrize([
+  'value',
+  'expected',
+], [
+  ('True', True),
+  ('true', True),
+  ('TRUE', True),
+  ('1', True),
+  ('False', False),
+  ('false', False),
+  ('FALSE', False),
+  ('0', False),
+  (False, False),
+], ids=[
+  'python-style-true',
+  'javascript-style-true',
+  'Excel-style-true',
+  'number-style-true',
+  'python-style-false',
+  'javascript-style-false',
+  'Excel-style-false',
+  'number-style-false',
+  'boolean-style-false',
+])
+def test_bool_converter(value, expected):
+  estimated = forms.bool_converter(value)
+
+  assert estimated == expected
+
+@pytest.mark.stock
+@pytest.mark.form
 def test_check_ignore_field_class():
   try:
     instance = forms._IgnoredField()
@@ -266,24 +297,26 @@ def test_cash_form(get_user, params, is_valid):
   'kwargs',
   'is_valid',
 ], [
-  (True,  {'price':  10, 'purchase_date': get_date(3), 'count':   5}, True),
-  (True,  {'price':   0, 'purchase_date': get_date(3), 'count':   5}, True),
-  (True,  {'price':  10, 'purchase_date': get_date(3), 'count':   0}, True),
-  (False, {'price':  10, 'purchase_date': get_date(3), 'count':   5}, False),
-  (True,  {'price':  -1, 'purchase_date': get_date(3), 'count':   5}, False),
-  (True,  {'price': 'a', 'purchase_date': get_date(3), 'count':   5}, False),
-  (True,  {'price':  10, 'purchase_date':    '123456', 'count':   5}, False),
-  (True,  {'price':  10, 'purchase_date':       'abc', 'count':   5}, False),
-  (True,  {'price':  10, 'purchase_date': get_date(3), 'count':  -1}, False),
-  (True,  {'price':  10, 'purchase_date': get_date(3), 'count': 'a'}, False),
-  (True,  {              'purchase_date': get_date(3), 'count':   5}, False),
-  (True,  {'price':  10,                               'count':   5}, False),
-  (True,  {'price':  10, 'purchase_date': get_date(3),             }, False),
-  (False, {                                                        }, False),
+  (True,  {'price':  10, 'purchase_date': get_date(3), 'count':   5, 'has_been_sold': False}, True),
+  (True,  {'price':   0, 'purchase_date': get_date(3), 'count':   5, 'has_been_sold': False}, True),
+  (True,  {'price':  10, 'purchase_date': get_date(3), 'count':   0, 'has_been_sold': False}, True),
+  (True,  {'price':   7, 'purchase_date': get_date(3), 'count':   2, 'has_been_sold': True},  True),
+  (False, {'price':  10, 'purchase_date': get_date(3), 'count':   5, 'has_been_sold': False}, False),
+  (True,  {'price':  -1, 'purchase_date': get_date(3), 'count':   5, 'has_been_sold': False}, False),
+  (True,  {'price': 'a', 'purchase_date': get_date(3), 'count':   5, 'has_been_sold': False}, False),
+  (True,  {'price':  10, 'purchase_date':    '123456', 'count':   5, 'has_been_sold': False}, False),
+  (True,  {'price':  10, 'purchase_date':       'abc', 'count':   5, 'has_been_sold': False}, False),
+  (True,  {'price':  10, 'purchase_date': get_date(3), 'count':  -1, 'has_been_sold': False}, False),
+  (True,  {'price':  10, 'purchase_date': get_date(3), 'count': 'a', 'has_been_sold': False}, False),
+  (True,  {              'purchase_date': get_date(3), 'count':   5, 'has_been_sold': False}, False),
+  (True,  {'price':  10,                               'count':   5, 'has_been_sold': False}, False),
+  (True,  {'price':  10, 'purchase_date': get_date(3),               'has_been_sold': False}, False),
+  (False, {                                                                                }, False),
 ], ids=[
   'valid-form-data',
   'price-is-zero',
   'count-is-zero',
+  'stock-has-been-sold',
   'stock-is-empty',
   'price-is-negative',
   'price-is-string',
@@ -340,6 +373,7 @@ def test_stock_field_doesnot_have_error(mocker, get_user):
     'price': 10,
     'purchase_date': get_date(3),
     'count': 5,
+    'has_been_sold': False,
   }
   form = forms.PurchasedStockForm(user=user, data=params)
   form.fields['stock'].error_messages = {}

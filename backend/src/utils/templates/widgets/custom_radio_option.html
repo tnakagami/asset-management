@@ -1,0 +1,2 @@
+<input type="{{ widget.type }}"{% if widget.input_class %} class="{{ widget.input_class }}"{% endif %} name="{{ widget.name }}"{% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+{% if widget.wrap_label %}<label{% if widget.label_class %} class="{{ widget.label_class }}"{% endif %}{% if widget.attrs.id %} for="{{ widget.attrs.id }}"{% endif %}>{{ widget.label }}</label>{% endif %}

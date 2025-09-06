@@ -50,15 +50,17 @@
                 data-roe="{{ instance.stock.roe }}"
                 data-er="{{ instance.stock.er }}"
               >
-                <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                <td data-type="code">{{ instance.stock.code }}</td>
-                <td data-type="name" class="text-decoration-underline text-primary js-click-link">{{ instance.stock.name }}</td>
-                <td data-type="industry">{{ instance.stock.industry }}</td>
-                <td data-type="purchaseDate">{{ instance.purchase_date|date:"Y-m-d" }}</td>
-                <td data-type="price">{{ instance.price|intcomma }}</td>
-                <td data-type="count">{{ instance.count|intcomma }}</td>
+                {% with table_css=instance.has_been_sold|yesno:'table-secondary,' %}
+                <td scope="row" class="{{ table_css }}">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                <td data-type="code" class="{{ table_css }}">{{ instance.stock.code }}</td>
+                <td data-type="name" class="text-decoration-underline text-primary js-click-link {{ table_css }}">{{ instance.stock.name }}</td>
+                <td data-type="industry" class="{{ table_css }}">{{ instance.stock.industry }}</td>
+                <td data-type="purchaseDate" class="{{ table_css }}">{{ instance.purchase_date|date:"Y-m-d" }}</td>
+                <td data-type="price" class="{{ table_css }}">{{ instance.price|intcomma }}</td>
+                <td data-type="count" class="{{ table_css }}">{{ instance.count|intcomma }}</td>
                 {% with total=instance|get_total_diff %}
-                <td data-type="diff" {% if total|is_negative %}class="text-danger"{% endif %}>{{ total|floatformat:0|intcomma }}</td>
+                <td data-type="diff" {% if total|is_negative %}class="text-danger {{ table_css }}"{% else %}class="{{ table_css }}"{% endif %}>{{ total|floatformat:0|intcomma }}</td>
+                {% endwith %}
                 {% endwith %}
                 <td data-operate="edit">
                   <a

@@ -28,7 +28,7 @@ class IndustryFactory(factory.django.DjangoModelFactory):
 class StockFactory(factory.django.DjangoModelFactory):
   class Meta:
     model = models.Stock
-  
+
   class Params:
     money_params = {
       'right_digits': 2,
@@ -66,7 +66,7 @@ class StockFactory(factory.django.DjangoModelFactory):
 class CashFactory(factory.django.DjangoModelFactory):
   class Meta:
     model = models.Cash
-  
+
   class Params:
     params = {
       'min_value': 0,
@@ -81,7 +81,7 @@ class CashFactory(factory.django.DjangoModelFactory):
 class PurchasedStockFactory(factory.django.DjangoModelFactory):
   class Meta:
     model = models.PurchasedStock
-  
+
   class Params:
     price_params = {
       'left_digits': 9,
@@ -99,6 +99,7 @@ class PurchasedStockFactory(factory.django.DjangoModelFactory):
   price = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.price_params))
   purchase_date = factory.LazyFunction(timezone.now)
   count = factory.LazyAttribute(lambda instance: faker.pyint(**instance.count_params))
+  has_been_sold = False
 
 class SnapshotFactory(factory.django.DjangoModelFactory):
   class Meta:
