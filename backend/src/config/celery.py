@@ -14,6 +14,11 @@ app.conf.beat_schedule = {
     'task': 'stock.tasks.delete_successful_tasks',
     'schedule': crontab(hour=21, minute=0),
   },
+  'Register-monthly-report': {
+    'task': 'stock.tasks.register_monthly_report',
+    'schedule': crontab(day_of_month=1, hour=18, minute=0),
+    'args': (1, ),
+  },
 }
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks(lambda: [config.name for config in apps.get_app_configs()])

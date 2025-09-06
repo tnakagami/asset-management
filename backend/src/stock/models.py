@@ -464,7 +464,7 @@ class Snapshot(models.Model):
     default=timezone.now,
   )
 
-  def save(self, *args, **kwargs):
+  def update_record(self):
     if not self.start_date:
       oldest_record = self.user.purchased_stocks.older().first()
 
@@ -484,6 +484,8 @@ class Snapshot(models.Model):
     }
     self.detail = json.dumps(detail_dict)
 
+  def save(self, *args, **kwargs):
+    self.update_record()
     super().save(*args, **kwargs)
 
   def __str__(self):
@@ -501,6 +503,10 @@ class Snapshot(models.Model):
   @classmethod
   def save_all(cls, user):
     queryset = user.snapshots.all()
+    records = []
 
     for instance in queryset:
-      instance.save()
+      instance.update_record()
+      records += [instance]
+    # Update relevant fields
+    cls.objects.bulk_update(records, fields=['detail'])

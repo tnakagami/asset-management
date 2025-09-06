@@ -25,6 +25,15 @@ def delete_successful_tasks():
     except Exception as ex:
       g_logger.error(f'Failed to delete the records that the status of celery task is {states.SUCCESS}({ex}).')
 
+@shared_task(ignore_result=True)
+def register_monthly_report(day_offset):
+  if user_tasks is not None:
+    try:
+      callback = getattr(user_tasks, 'monthly_report')
+      callback(day_offset)
+    except Exception:
+      g_logger.error('Failed to call user function.')
+
 @shared_task(bind=True)
 def update_stock_records(self, **kwargs):
   if len(g_attrs) > 0:

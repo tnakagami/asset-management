@@ -1100,10 +1100,8 @@ def test_range_patterns_in_snapshot(mocker, start_day, end_day, num_purchased_st
   for _day in range(num_purchased_stock):
     purchase_date = get_date(10 + _day) # oldest day: 2024/3/10
     _ = factories.PurchasedStockFactory(user=user, purchase_date=purchase_date)
-  instance = models.Snapshot.objects.create(
-    user=user,
-    **options,
-  )
+  instance = factories.SnapshotFactory(user=user, **options)
+  instance.update_record()
   # Compare
   assert instance.start_date == expected_start_date
   assert instance.end_date == expected_end_date
