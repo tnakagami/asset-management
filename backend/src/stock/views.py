@@ -135,7 +135,7 @@ class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
 class ListSnapshot(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.Snapshot
   template_name = 'stock/snapshots.html'
-  paginate_by = 10
+  paginate_by = 36
   context_object_name = 'snapshots'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:list_snapshot',

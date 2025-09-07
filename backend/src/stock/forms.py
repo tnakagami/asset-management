@@ -125,7 +125,7 @@ class PurchasedStockForm(BaseModelDatalistForm, _BaseModelFormWithCSS):
 class SnapshotForm(_BaseModelFormWithCSS):
   class Meta:
     model = models.Snapshot
-    fields = ('title', 'start_date', 'end_date')
+    fields = ('title', 'start_date', 'end_date', 'priority', 'forced_update')
     widgets = {
       'start_date': forms.DateInput(attrs={
         'id': 'from-date-id',
@@ -136,6 +136,30 @@ class SnapshotForm(_BaseModelFormWithCSS):
         'class': 'datetimepicker-input',
       }),
     }
+
+  forced_update = forms.TypedChoiceField(
+    label=gettext_lazy('Force update/Nothing'),
+    required=False,
+    coerce=bool_converter,
+    initial=False,
+    empty_value=False,
+    choices=(
+      (True, gettext_lazy('Force update')),
+      (False, gettext_lazy('Nothing')),
+    ),
+    help_text=gettext_lazy('Describes whether this record is forced update or not.'),
+  )
+
+  def save(self, commit=True):
+    forced_update = self.cleaned_data.get('forced_update')
+    instance = super().save(commit=False)
+
+    if forced_update:
+      instance.update_record()
+    if commit:
+      instance.save()
+
+    return instance
 
 class _IgnoredField:
   def clean(self, value, option):

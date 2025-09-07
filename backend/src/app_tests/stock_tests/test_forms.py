@@ -1,7 +1,8 @@
 import pytest
 import ast
+import json
 from datetime import datetime, timezone
-from stock.models import PurchasedStock, Stock
+from stock.models import PurchasedStock, Stock, Snapshot
 from stock import forms
 from . import factories
 
@@ -501,20 +502,22 @@ def test_check_invalid_custom_modeldatalist_field(arg_idx):
   'params',
   'is_valid',
 ], [
-  ({'title': 'sample', 'start_date': get_date(2), 'end_date': get_date(28)}, True),
-  ({'title': 'sample',                            'end_date': get_date(28)}, True),
-  ({'title': 'sample', 'start_date': get_date(2)                          }, False),
-  ({                   'start_date': get_date(2), 'end_date': get_date(28)}, False),
-  ({'title': 'sample', 'start_date':       'abc', 'end_date': get_date(28)}, False),
-  ({'title': 'sample', 'start_date':       '123', 'end_date': get_date(28)}, False),
-  ({'title': 'sample', 'start_date': get_date(2), 'end_date':        'abc'}, False),
-  ({'title': 'sample', 'start_date': get_date(2), 'end_date':        '123'}, False),
-  ({                                                                      }, False),
+  ({'title': 'sample', 'priority': 99, 'start_date': get_date(2), 'end_date': get_date(28)}, True),
+  ({'title': 'sample', 'priority': 99,                            'end_date': get_date(28)}, True),
+  ({'title': 'sample', 'priority': 99, 'start_date': get_date(2)                          }, False),
+  ({                   'priority': 99, 'start_date': get_date(2), 'end_date': get_date(28)}, False),
+  ({'title': 'sample',                 'start_date': get_date(2), 'end_date': get_date(28)}, False),
+  ({'title': 'sample', 'priority': 99, 'start_date':       'abc', 'end_date': get_date(28)}, False),
+  ({'title': 'sample', 'priority': 99, 'start_date':       '123', 'end_date': get_date(28)}, False),
+  ({'title': 'sample', 'priority': 99, 'start_date': get_date(2), 'end_date':        'abc'}, False),
+  ({'title': 'sample', 'priority': 99, 'start_date': get_date(2), 'end_date':        '123'}, False),
+  ({                                                                                      }, False),
 ], ids=[
   'valid-form-data',
   'start-date-is-empty',
   'end-date-is-empty',
   'title-is-empty',
+  'priority-is-empty',
   'start-date-is-string',
   'start-date-is-invalid',
   'end-date-is-string',
@@ -526,6 +529,53 @@ def test_snapshot_form(get_user, params, is_valid):
   form = forms.SnapshotForm(user=user, data=params)
 
   assert form.is_valid() == is_valid
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'forced_update',
+  'commit',
+  'output_dlen', # data length of detail for returned value
+  'record_dlen', # data length of detail for database record
+], [
+  (True, True, 2, 2),
+  (True, False, 2, 0),
+  (False, True, 0, 0),
+  (False, False, 0, 0),
+], ids=[
+  'forced-update-and-commit',
+  'only-forced-update',
+  'only-commit',
+  'do-nothing',
+])
+def test_save_method_of_snapshot(get_user, forced_update, commit, output_dlen, record_dlen):
+  user = get_user
+  _ = factories.CashFactory.create_batch(2, user=user)
+  _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+  instance = factories.SnapshotFactory(user=user, title='snapshot to call save method')
+  # Forced detail field update
+  instance.detail = json.dumps({})
+  instance.save()
+  # Create the parameters for form fields
+  params = {
+    'title': 'sample',
+    'priority': 99,
+    'start_date': get_date(2),
+    'end_date': get_date(28),
+    'forced_update': forced_update,
+  }
+  form = forms.SnapshotForm(user=user, data=params)
+  form.instance = instance
+  is_valid = form.is_valid()
+  output = form.save(commit=commit)
+  estimated = Snapshot.objects.get(pk=instance.pk)
+  detail_output = json.loads(output.detail)
+  detail_estimated = json.loads(estimated.detail)
+
+  assert is_valid
+  assert len(detail_output) == output_dlen
+  assert len(detail_estimated) == record_dlen
 
 @pytest.mark.stock
 @pytest.mark.form

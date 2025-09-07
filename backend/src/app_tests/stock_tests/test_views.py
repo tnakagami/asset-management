@@ -57,6 +57,7 @@ def get_snapshot_kwargs():
     'title': 'sample-snapshot',
     'start_date': datetime(2023,4,5,12,3,10, tzinfo=timezone.utc),
     'end_date':   datetime(2023,7,9,13,1,32, tzinfo=timezone.utc),
+    'priority': 99,
   }
   model_class = models.Snapshot
   factory_class = factories.SnapshotFactory
