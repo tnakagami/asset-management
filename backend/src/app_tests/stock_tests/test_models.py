@@ -1059,6 +1059,39 @@ def test_check_snapshot_str_function(settings, pseudo_date):
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
+def test_check_save_method_in_instance_update():
+  user = factories.UserFactory()
+  _ = factories.CashFactory.create_batch(2, user=user)
+  _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+  instance = models.Snapshot.objects.create(
+    user=user,
+    title='save instance for the 1st time',
+  )
+  # Update details
+  detail_dict = {
+    'cash': {},
+    'purchased_stocks': {
+      'stock': {
+        'name': 'hogehoge',
+      },
+      'purchase_date': None,
+    },
+  }
+  instance.detail = json.dumps(detail_dict)
+  instance.title = 'updated the record'
+  instance.save()
+  # Get updated instance
+  estimated = models.Snapshot.objects.get(pk=instance.pk)
+  out_dict = json.loads(estimated.detail)
+
+  assert estimated.title == instance.title
+  assert len(out_dict['cash']) == 0
+  assert out_dict['purchased_stocks']['stock']['name'] == 'hogehoge'
+  assert out_dict['purchased_stocks']['purchase_date'] is None
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
 @pytest.mark.parametrize([
   'start_day',
   'end_day',

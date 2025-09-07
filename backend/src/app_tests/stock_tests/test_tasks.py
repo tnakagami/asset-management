@@ -14,8 +14,11 @@ class FakeUserTask:
 
     return 0
 
-  def monthly_report(self, day_offset):
-    self.kwargs = {'day_offset': day_offset}
+  def monthly_report(self, day_offset, title_template):
+    self.kwargs = {
+      'day_offset': day_offset,
+      'title': title_template.format(date='2001/12'),
+    }
 
 class FakeLogger:
   def __init__(self):
@@ -87,18 +90,20 @@ def test_check_update_stock_records(mocker, attrs, checker, expected_kwargs):
 
 @pytest.mark.stock
 @pytest.mark.django_db
-@pytest.mark.parametrize([
-  'user_task',
-  'checker',
-], [
-  (None, lambda ret, exact: ret is None),
-  (FakeUserTask(), lambda ret, exact: ret.kwargs['day_offset'] == exact),
-], ids=[
-  'user-task-is-none',
-  'user-task-is-set',
-])
-def test_check_behavior_of_register_monthly_report(mocker, user_task, checker):
+def test_user_task_is_not_set_register_monthly_report(mocker):
   import stock.tasks
+  mocker.patch.object(stock.tasks, 'user_tasks', None)
+  # Call target function
+  try:
+    stock.tasks.register_monthly_report(1)
+  except Exception as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+@pytest.mark.stock
+@pytest.mark.django_db
+def test_user_task_is_set_of_register_monthly_report(mocker):
+  import stock.tasks
+  user_task = FakeUserTask()
   mocker.patch.object(stock.tasks, 'user_tasks', user_task)
   day_offset = 3
   # Call target function
@@ -107,7 +112,9 @@ def test_check_behavior_of_register_monthly_report(mocker, user_task, checker):
   except Exception as ex:
     pytest.fail(f'Unexpected Error: {ex}')
 
-  assert checker(user_task, day_offset)
+  assert all([key in ['day_offset', 'title'] for key in user_task.kwargs.keys()])
+  assert user_task.kwargs['day_offset'] == day_offset
+  assert user_task.kwargs['title'] == 'Monthly report - 2001/12'
 
 @pytest.mark.stock
 @pytest.mark.django_db

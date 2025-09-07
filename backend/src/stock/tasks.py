@@ -29,8 +29,10 @@ def delete_successful_tasks():
 def register_monthly_report(day_offset):
   if user_tasks is not None:
     try:
+      from django.utils.translation import gettext_lazy
+      title_template = gettext_lazy('Monthly report - {date}')
       callback = getattr(user_tasks, 'monthly_report')
-      callback(day_offset)
+      callback(day_offset, title_template)
     except Exception:
       g_logger.error('Failed to call user function.')
 

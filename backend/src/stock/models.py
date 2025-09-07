@@ -427,7 +427,7 @@ class PurchasedStock(models.Model):
 
 class Snapshot(models.Model):
   class Meta:
-    ordering = ('-created_at', )
+    ordering = ('priority', '-created_at', )
 
   uuid = models.UUIDField(
     primary_key=False,
@@ -450,6 +450,11 @@ class Snapshot(models.Model):
     verbose_name=gettext_lazy('Relevant assets'),
     help_text=gettext_lazy('Relevant asset list as of created time (json format).'),
     blank=True,
+  )
+  priority = models.IntegerField(
+    verbose_name=gettext_lazy('Priority to show the snapshot'),
+    validators=[MinValueValidator(0)],
+    default=99,
   )
   start_date = models.DateTimeField(
     verbose_name=gettext_lazy('Start date'),
@@ -485,7 +490,8 @@ class Snapshot(models.Model):
     self.detail = json.dumps(detail_dict)
 
   def save(self, *args, **kwargs):
-    self.update_record()
+    if self.pk is None:
+      self.update_record()
     super().save(*args, **kwargs)
 
   def __str__(self):

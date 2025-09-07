@@ -41,8 +41,8 @@ class PurchasedStockAdmin(admin.ModelAdmin):
 @admin.register(Snapshot)
 class SnapshotAdmin(admin.ModelAdmin):
   model = Snapshot
-  fields = ['user', 'title', 'detail', 'start_date', 'end_date', 'created_at']
-  list_display = ('user', 'title', 'start_date', 'end_date')
+  fields = ['user', 'title', 'detail', 'priority', 'start_date', 'end_date', 'created_at']
+  list_display = ('user', 'title', 'priority', 'start_date', 'end_date')
   list_filter = ('user',)
-  search_fields = ('user__username', 'user__screen_name', 'start_date', 'end_date')
-  ordering = ('-created_at',)
+  search_fields = ('user__username', 'user__screen_name', 'priority', 'start_date', 'end_date')
+  ordering = ('priority', '-created_at',)
