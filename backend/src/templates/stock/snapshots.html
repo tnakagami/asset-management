@@ -115,6 +115,7 @@
     formID: 'delete-form',
     modalID: 'delete-modal',
   });
+  {% comment %}
   const init = () => {
     const updateSnapshots = document.querySelector('#update-all-snapshots');
     updateSnapshots.addEventListener('click', async (event) => {
@@ -139,6 +140,7 @@
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);
+  {% endcomment %}
 })();
 </script>
 {% endblock %}
