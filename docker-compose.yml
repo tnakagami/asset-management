@@ -84,7 +84,7 @@ services:
       - FLOWER_URL_PREFIX=flower
       - FLOWER_PURGE_OFFLINE_WORKERS=60
       - FLOWER_MAX_WORKERS=16
-      - FLOWER_MAX_TASKS=128
+      - FLOWER_MAX_TASKS=4096
     working_dir: /opt
     entrypoint: /opt/entrypoint.sh
     volumes:
