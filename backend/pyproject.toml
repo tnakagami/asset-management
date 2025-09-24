@@ -1,6 +1,6 @@
 [project]
 name = "app"
-version = "0.0.1"
+version = "0.1.0"
 authors = [{ name="tnakagami", email="61491272+tnakagami@users.noreply.github.com" },]
 maintainers = [{ name="tnakagami", email="61491272+tnakagami@users.noreply.github.com" },]
 description = "Backend application using Django"

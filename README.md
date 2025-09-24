@@ -27,14 +27,13 @@ But because of using docker environment, you can use the other architecture such
     | postgres | `./env_files/postgres/.env` | [`README.md`](./env_files/postgres/README.md) |
     | backend | `./env_files/backend/.env` | [`README.md`](./env_files/backend/README.md) |
 
-1. Create `.env` file in the top directory of current project. The `.env` file consists of four environment variables.
+1. Create `.env` file in the top directory of current project. The `.env` file consists of three environment variables.
 
     | Environment variable | Example | Enables (option) |
     | :--- | :--- | :--- |
     | `ASSETMGMT_ACCESS_PORT` | 3101 | from 1025 to 65535 |
     | `ASSETMGMT_ARCH` | arm32v7 | amd64, arm32v5, arm32v6, arm32v7, arm64v8, i386, mips64le, ppc64le, riscv64, s390x |
     | `ASSETMGMT_TZ` | UTC | UTC, Asia/Tokyo, etc. |
-    | `ASSETMGMT_LANGCODE` | en | en, ja, etc. |
 
     Please see [`env.sample`](./env.sample) for details.
 

@@ -6,5 +6,5 @@ register = template.Library()
 def is_login_page(request):
   login_url = reverse_lazy('account:login')
   target_url = request.path
-  
+
   return login_url == target_url

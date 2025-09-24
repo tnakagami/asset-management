@@ -41,7 +41,7 @@ class StockAjaxResponse(View):
 class ListCash(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.Cash
   template_name = 'stock/cashes.html'
-  paginate_by = 10
+  paginate_by = 24
   context_object_name = 'cashes'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:list_cash',
@@ -85,7 +85,7 @@ class DeleteCash(CustomDeleteView, DjangoBreadcrumbsMixin):
 class ListPurchasedStock(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
   template_name = 'stock/purchased_stocks.html'
-  paginate_by = 10
+  paginate_by = 20
   context_object_name = 'pstocks'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:list_purchased_stock',
@@ -196,7 +196,7 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   model = models.Stock
   template_name = 'stock/stocks.html'
   form_class = forms.StockSearchForm
-  paginate_by = 150
+  paginate_by = 300
   context_object_name = 'stocks'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:list_stock',

@@ -32,28 +32,11 @@ celery --app=config --workdir=${_workdir} \
        --pidfile="${_pid_dir}/celery-beatd.pid" \
        --logfile="${_log_dir}/celery-beatd.log"
 
-is_waiting=1
-while [ ${is_waiting} -eq 1 ]; do
-  num_workers=$(celery --app=config --workdir=${_workdir} inspect active 2> /dev/null | grep -oE "worker.*?: OK" | wc -l)
-
-  if [ ${num_workers} -gt 0 ]; then
-    is_waiting=0
-  fi
-done
-# Start flower
-celery --app=config --workdir=${_workdir} \
-       flower --address=0.0.0.0 --port=5053 --url_prefix=flower --purge_offline_workers=60 \
-       --max_workers=${CELERY_WORKER_PREFETCH_MULTIPLIER} --max_tasks=128 \
-       --log_file_max_size=$(expr 3 \* 1024 \* 1024) --log_file_num_backups=3 \
-       --log_file_prefix=${_log_dir}/celery-flower.log --logging=info &
-flower_pid=$!
-
 while [ ${is_running} -eq 1 ]; do
   sleep 1
 done
 
 # Finalize
-kill ${flower_pid}
 {
   ls ${_pid_dir}/celery-beatd.pid
   ls ${_pid_dir}/celeryd-*.pid

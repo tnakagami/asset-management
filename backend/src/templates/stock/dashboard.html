@@ -600,7 +600,7 @@
       for (const [key, callback] of Object.entries(nodeList)) {
         const element = clone.querySelector(`.asset-${key}`);
         const val = item[key];
-        element.textContent = callback(val, idx + 1);
+        element.textContent = callback(val, idx);
 
         if ((key === 'diff') && (val < 0)) {
           element.classList.add('text-danger');

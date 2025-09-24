@@ -27,6 +27,7 @@ services:
       - ${ASSETMGMT_ACCESS_PORT:-3101}:80
     depends_on:
       - backend
+      - flower
       - celery
     networks:
       - frontend-link
@@ -50,7 +51,6 @@ services:
       - ./env_files/backend/.env
       - ./env_files/postgres/.env
     environment:
-      - DJANGO_LANGUAGE_CODE=${ASSETMGMT_LANGCODE:-en}
       - DJANGO_TIME_ZONE=${ASSETMGMT_TZ:-UTC}
     volumes:
       - static-volume:/var/static
@@ -67,6 +67,40 @@ services:
       - frontend-link
       - backend-link
 
+  flower:
+    image: backend.asset-management
+    container_name: flower.asset-management
+    restart: always
+    env_file:
+      - ./env_files/backend/docker.env
+      - ./env_files/backend/.env
+      - ./env_files/postgres/.env
+    environment:
+      - DJANGO_TIME_ZONE=${ASSETMGMT_TZ:-UTC}
+      - FLOWER_ADDRESS=0.0.0.0
+      - FLOWER_PORT=5053
+      - FLOWER_URL_PREFIX=flower
+      - FLOWER_PURGE_OFFLINE_WORKERS=60
+      - FLOWER_MAX_WORKERS=16
+      - FLOWER_MAX_TASKS=4096
+    working_dir: /opt
+    entrypoint: /opt/entrypoint.sh
+    volumes:
+      - ./flower/entrypoint.sh:/opt/entrypoint.sh:ro
+      - ./backend/src:/opt/app:ro
+      - ./backend/bashrc:/opt/home/.bashrc:ro
+    logging: *json-logging
+    expose:
+      - 5053
+    depends_on:
+      celery:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - frontend-link
+      - backend-link
+
   celery:
     image: backend.asset-management
     container_name: celery.asset-management
@@ -76,8 +110,7 @@ services:
       - ./env_files/backend/.env
       - ./env_files/postgres/.env
     environment:
-      - NUM_CPUS=2
-      - DJANGO_LANGUAGE_CODE=${ASSETMGMT_LANGCODE:-en}
+      - NUM_CPUS=3
       - DJANGO_TIME_ZONE=${ASSETMGMT_TZ:-UTC}
     working_dir: /opt
     entrypoint: /opt/entrypoint.sh
@@ -87,15 +120,12 @@ services:
       - ./backend/src:/opt/app:ro
       - ./backend/bashrc:/opt/home/.bashrc:ro
     logging: *json-logging
-    expose:
-      - 5053
     depends_on:
       redis:
         condition: service_started
       backend:
         condition: service_started
     networks:
-      - frontend-link
       - backend-link
 
   redis:

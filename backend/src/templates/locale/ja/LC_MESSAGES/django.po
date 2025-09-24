@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-07 17:33+0900\n"
+"POT-Creation-Date: 2025-09-23 08:33+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -105,6 +105,14 @@ msgstr "用語説明"
 #: templates/account/index.html:69
 msgid "Explain terms with relevant to stock"
 msgstr "株式に関する用語を説明する"
+
+#: templates/account/index.html:79
+msgid "Monitoring celery tasks"
+msgstr "Celeryタスクの監視"
+
+#: templates/account/index.html:80
+msgid "Monitor celery tasks using flower."
+msgstr "Flowerを用いてCeleryタスクを監視する"
 
 #: templates/account/login.html:5 templates/account/login.html:21
 #: templates/header.html:73
