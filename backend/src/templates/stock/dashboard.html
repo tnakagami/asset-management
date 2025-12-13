@@ -98,10 +98,10 @@
         >
           <div class="row row-cols-1 row-cols-md-2 g-2">
             <div class="col">
-              <canvas id="all-portfolio-chart" class="w-100"></canvas>
+              <canvas id="stock-portfolio-chart" class="w-100"></canvas>
             </div>
             <div class="col">
-              <canvas id="stock-portfolio-chart" class="w-100"></canvas>
+              <canvas id="dividend-portfolio-chart" class="w-100"></canvas>
             </div>
           </div>
         </div>
@@ -114,10 +114,10 @@
         >
           <div class="row row-cols-1 row-cols-md-2 g-2">
             <div class="col">
-              <canvas id="sector-count-chart" class="w-100"></canvas>
+              <canvas id="sector-price-chart" class="w-100"></canvas>
             </div>
             <div class="col">
-              <canvas id="sector-price-chart" class="w-100"></canvas>
+              <canvas id="sector-dividend-chart" class="w-100"></canvas>
             </div>
           </div>
         </div>
@@ -130,10 +130,10 @@
         >
           <div class="row row-cols-1 row-cols-md-2 g-2">
             <div class="col">
-              <canvas id="trend-count-chart" class="w-100"></canvas>
+              <canvas id="trend-price-chart" class="w-100"></canvas>
             </div>
             <div class="col">
-              <canvas id="trend-price-chart" class="w-100"></canvas>
+              <canvas id="trend-dividend-chart" class="w-100"></canvas>
             </div>
           </div>
         </div>
@@ -310,7 +310,9 @@
   const createChartData = (data, sortCallback) => {
     const _getValArr = (arr) => arr.map((item) => item.value);
     const _getDiffArr = (arr) => arr.map((item) => item.diff);
+    const _getDividendArr = (arr) => arr.map((item) => item.realDividend);
     const _stockValSum = (arr, initVal=0.0) => _getValArr(arr).reduce((acc, val) => acc + val, initVal);
+    const _dividendValSum = (arr, initVal=0.0) => _getDividendArr(arr).reduce((acc, val) => acc + val, initVal);
     const _generateColorPalette = (len, offset=180) => {
       const hueArray = (() => {
         const scaler = (len > 360) ? 1.0 : 360.0 / len;
@@ -388,7 +390,7 @@
       realDividend: 0,
       isDefensive: undefined,
       value: (cash || 0),
-      count: 1,
+      count: 0,
       diff: 0,
       options: undefined,
     }].concat(stocks);
@@ -421,35 +423,35 @@
     }, {});
 
     const pairs = {
-      allPortfolioData: {
-        title: '{% trans "Portfolio (all)" %}',
-        labels: stockNameList,
-        colors: stockColorDict,
-        datasets: [{
-          label: '{% trans "Price" %}',
-          data: _getValArr(records),
-        }],
-      },
-      stockPortfolioData: {
-        title: '{% trans "Portfolio (without cash)" %}',
+      dividendPortfolioData: {
+        title: '{% trans "Portfolio (dividend)" %}',
         labels: stockNameList.slice(1),
         colors: stockColorDict,
         datasets: [{
-          label: '{% trans "Price" %}',
+          label: '{% trans "Dividend" %}',
+          data: _getDividendArr(records.slice(1)),
+        }],
+      },
+      stockPortfolioData: {
+        title: '{% trans "Portfolio (price)" %}',
+        labels: stockNameList.slice(1),
+        colors: stockColorDict,
+        datasets: [{
+          label: '{% trans "Stock price" %}',
           data: _getValArr(records.slice(1)),
         }],
       },
-      sectorCountData: {
-        title: '{% trans "Sector distribution (count)" %}',
+      sectorDividendData: {
+        title: '{% trans "Sector distribution (dividend)" %}',
         labels: sectorNameList,
         colors: sectorColorDict,
         datasets: [{
-          label: '{% trans "Count" %}',
+          label: '{% trans "Dividend" %}',
           data: sectorNameList.map((name) => {
             const targets = records.filter((item) => item.industry === name);
-            const num = targets.length;
+            const total = _dividendValSum(targets);
 
-            return num;
+            return total;
           }),
         }],
       },
@@ -467,17 +469,17 @@
           }),
         }],
       },
-      trendCountData: {
-        title: '{% trans "Economic trend (count)" %}',
+      trendDividendData: {
+        title: '{% trans "Economic trend (dividend)" %}',
         labels: trendNameList,
         colors: trendColorDict,
         datasets: [{
-          label: '{% trans "Count" %}',
+          label: '{% trans "Dividend" %}',
           data: [true, false].map((isDefensive) => {
             const targets = records.filter((item) => item.isDefensive === isDefensive);
-            const num = targets.length;
+            const total = _dividendValSum(targets);
 
-            return num;
+            return total;
           }),
         }],
       },
@@ -732,12 +734,12 @@
       }
     };
     // Define chart's variables
-    let allPortfolioChart = null;
     let stockPortfolioChart = null;
-    let sectorCountChart = null;
+    let dividendPortfolioChart = null;
     let sectorPriceChart = null;
-    let trendCountChart = null;
+    let sectorDividendChart = null;
     let trendPriceChart = null;
+    let trendDividendChart = null;
     let assetDiffChart = null;
     // Define callback
     const _callback = (snapshot, sortType) => {
@@ -749,12 +751,12 @@
       // Update table
       updateTable(output.records);
       // Draw charts
-      allPortfolioChart = drawPieChart(allPortfolioChart, 'all-portfolio-chart', output.allPortfolioData);
       stockPortfolioChart = drawPieChart(stockPortfolioChart, 'stock-portfolio-chart', output.stockPortfolioData);
-      sectorCountChart = drawPieChart(sectorCountChart, 'sector-count-chart', output.sectorCountData);
+      dividendPortfolioChart = drawPieChart(dividendPortfolioChart, 'dividend-portfolio-chart', output.dividendPortfolioData);
       sectorPriceChart = drawPieChart(sectorPriceChart, 'sector-price-chart', output.sectorPriceData);
-      trendCountChart = drawPieChart(trendCountChart, 'trend-count-chart', output.trendCountData);
+      sectorDividendChart = drawPieChart(sectorDividendChart, 'sector-dividend-chart', output.sectorDividendData);
       trendPriceChart = drawPieChart(trendPriceChart, 'trend-price-chart', output.trendPriceData);
+      trendDividendChart = drawPieChart(trendDividendChart, 'trend-dividend-chart', output.trendDividendData);
       assetDiffChart = drawBarChart(assetDiffChart, 'asset-diff-chart', output.assetDiffData);
     };
     // Get element

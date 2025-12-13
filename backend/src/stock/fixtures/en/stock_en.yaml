@@ -59503,3 +59503,18 @@
     roe: 0
     er: 0
     skip_task: false
+- model: stock.stock
+  pk: 3968
+  fields:
+    code: 5530
+    name: Japan System Bank
+    industry: 10
+    price: 0
+    dividend: 0
+    per: 0
+    pbr: 0
+    eps: 0
+    bps: 0
+    roe: 0
+    er: 0
+    skip_task: false
