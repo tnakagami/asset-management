@@ -22,6 +22,16 @@
         </a>
       </div>
       <div class="col">
+        <a href="{% url 'stock:investment_history' %}" class="link-underline link-underline-opacity-0">
+          <div class="card custom-boxshadow">
+            <div class="card-body">
+              <p class="card-title h3">{% trans "Investment history" %}</p>
+              <p class="card-text">{% trans "Show your investment history." %}</p>
+            </div>
+          </div>
+        </a>
+      </div>
+      <div class="col">
         <a href="{% url 'stock:list_snapshot' %}" class="link-underline link-underline-opacity-0">
           <div class="card custom-boxshadow">
             <div class="card-body">
