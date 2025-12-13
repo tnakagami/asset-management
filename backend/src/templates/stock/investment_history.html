@@ -143,6 +143,7 @@
               <th scope="col" class="text-nowrap">{% trans "Evaluated price" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Dividend (per year)" %}</th>
+              <th scope="col" class="text-nowrap">{% trans "Cash" %}</th>
             </tr>
           </thead>
           <tbody id="all-snapshot-list" class="table-group-divider">
@@ -172,6 +173,7 @@
   <td class="ss-stockPrice"></td>
   <td class="ss-diff"></td>
   <td class="ss-dividend"></td>
+  <td class="ss-cash"></td>
 </tr>
 </template>
 {% endblock %}
@@ -261,8 +263,13 @@
           }
         }
       }
+      const output = [{
+        dividend: 0,
+        price: data.cash.balance,
+        diff: 0,
+      }].concat(Object.values(purchasedPairs));
 
-      return Object.values(purchasedPairs);
+      return output;
     }
     const getTotal = (arr, callback) => arr.reduce((acc, item) => acc + callback(item), 0);
     // Load relevant data
@@ -272,10 +279,11 @@
     const snapshotNameList = indices.map((idx) => options[idx].text);
     const histories = {
       ssName: snapshotNameList,
-      purchased: records.map((arr) => getTotal(arr, (item) => item.price)),
-      portfolio: records.map((arr) => getTotal(arr, (item) => item.price + item.diff)),
-      diff:      records.map((arr) => getTotal(arr, (item) => item.diff)),
-      dividend:  records.map((arr) => getTotal(arr, (item) => item.dividend)),
+      purchased: records.map((arr) => getTotal(arr.slice(1), (item) => item.price)),
+      portfolio: records.map((arr) => getTotal(arr.slice(1), (item) => item.price + item.diff)),
+      diff:      records.map((arr) => getTotal(arr.slice(1), (item) => item.diff)),
+      dividend:  records.map((arr) => getTotal(arr.slice(1), (item) => item.dividend)),
+      cash:      records.map((arr) => arr[0].price),
     }
     // Create output
     const output = {
@@ -323,6 +331,7 @@
       stockPrice: histories.portfolio,
       diff: histories.diff,
       dividend: histories.dividend,
+      cash: histories.cash,
     };
     tbody.innerHTML = '';
     const len = histories.purchased.length;
