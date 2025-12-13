@@ -190,7 +190,7 @@ class AjaxUpdateAllSnapshots(View):
 
   def post(self, request, *args, **kwargs):
     try:
-      #models.Snapshot.save_all(request.user)
+      models.Snapshot.save_all(request.user)
       data = {'status': True}
     except:
       data = {'status': False}

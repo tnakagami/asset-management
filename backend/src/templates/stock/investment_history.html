@@ -102,7 +102,7 @@
   {% if snapshots %}
   <div class="row row-cols-1 g-2">
     <div class="col">
-      <p class="fs-3">{% trans "Target snapshots" %}</p>
+      <p class="fs-4">{% trans "Target snapshots" %}</p>
       <select
         name="snapshots"
         id="snapshots"
@@ -113,16 +113,16 @@
     <div class="col">
       <button
         type="button"
-        id="update-figure"
+        id="update-graph"
         class="btn btn-primary w-100 custom-boxshadow"
       >
-        {% trans "Update figure" %}
+        {% trans "Update graph" %}
       </button>
     </div>
   </div>
   <div class="row row-cols-1 g-2">
     <div class="col">
-      <p class="fs-3 mt-3">{% trans "Histories" %}</p>
+      <p class="fs-4 mt-3">{% trans "Histories" %}</p>
     </div>
     <div class="col">
       <canvas id="purchased-chart" class="w-100"></canvas>
@@ -394,8 +394,8 @@
     let portfolioChart = null;
     let dividendChart = null;
     // Add click event
-    const updateFigure = document.querySelector('#update-figure');
-    updateFigure.addEventListener('click', async (event) => {
+    const updateGraph = document.querySelector('#update-graph');
+    updateGraph.addEventListener('click', async (event) => {
       event.target.disabled = true;
 
       // Sort function
