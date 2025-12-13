@@ -28,6 +28,14 @@ class Dashboard(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
 
     return queryset
 
+class InvestmentHistory(Dashboard):
+  template_name = 'stock/investment_history.html'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:investment_history',
+    title=gettext_lazy('Investment history'),
+    parent_view_class=Index,
+  )
+
 class StockAjaxResponse(View):
   raise_exception = True
   http_method_names = ['get']
@@ -182,7 +190,7 @@ class AjaxUpdateAllSnapshots(View):
 
   def post(self, request, *args, **kwargs):
     try:
-      #models.Snapshot.save_all(request.user)
+      models.Snapshot.save_all(request.user)
       data = {'status': True}
     except:
       data = {'status': False}

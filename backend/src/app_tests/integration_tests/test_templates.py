@@ -194,7 +194,7 @@ def test_can_move_to_parent_page_from_update_user_profile_page(init_webtest):
 ])
 def test_invalid_page_access_in_account(init_webtest, page_link, method, params):
   app, users = init_webtest
-  
+
   with pytest.raises(AppError) as ex:
     url = reverse(f'account:{page_link}', kwargs={'pk': users['other'].pk})
     caller = getattr(app, method)
@@ -213,11 +213,13 @@ def test_invalid_page_access_in_account(init_webtest, page_link, method, params)
   'page_link',
 ], [
   ('Dashboard', 'dashboard'),
+  ('Investment history', 'investment_history'),
   ('Snapshot list', 'list_snapshot'),
   ('Cash list', 'list_cash'),
   ('Purchased stock list', 'list_purchased_stock'),
 ], ids=[
   'dashboard-page',
+  'history-page',
   'cash-list-page',
   'purchased-stock-list-page',
   'snapshot-list-page',
@@ -241,6 +243,7 @@ def test_can_move_to_target_page_from_index_page(init_webtest, page_title, page_
 ], [
   # from list page to register page
   ('dashboard', 'Register snapshot', 'register_snapshot'),
+  ('investment_history', 'Register snapshot', 'register_snapshot'),
   ('list_snapshot', 'Register snapshot', 'register_snapshot'),
   ('list_cash', 'Register cash', 'register_cash'),
   ('list_purchased_stock', 'Register purchsed stock', 'register_purchased_stock'),
@@ -250,6 +253,7 @@ def test_can_move_to_target_page_from_index_page(init_webtest, page_title, page_
   ('register_purchased_stock', 'Cancel', 'list_purchased_stock'),
 ], ids=[
   'register-page-from-dashboard-page',
+  'register-page-from-history-page',
   'register-page-from-snapshot-list-page',
   'register-page-from-cash-list-page',
   'register-page-from-purchased-stock-list-page',
@@ -393,7 +397,7 @@ def test_registration_form_in_stock(init_webtest, target_page, form_id, param_na
   }
   exacts = {
     'snapshot': {
-      'title':     'sample-snapshot', 
+      'title':     'sample-snapshot',
       'startDate': '2024-12-03',
       'endDate':   '2025-01-21',
     },
@@ -508,7 +512,7 @@ def test_update_form_in_stock(init_webtest, param_name):
   }
   exacts = {
     'snapshot': {
-      'title':     'updated-snapshot', 
+      'title':     'updated-snapshot',
       'startDate': '2010-01-04',
       'endDate':   '2011-02-15',
     },
@@ -581,10 +585,19 @@ def test_delete_instance_in_stock(init_webtest, factory_class, delete_link, list
   assert len(response.context[object_name]) == 1
   assert response.context[object_name].first().pk == rest.pk
 
-# Check dashboard
+# Check dashboard and history page
 @pytest.mark.webtest
 @pytest.mark.django_db
-def test_check_snapshot_detail_in_dashboard(init_webtest):
+@pytest.mark.parametrize([
+  'link_name',
+], [
+  ('dashboard',),
+  ('investment_history',),
+], ids=[
+  'dashboard-page',
+  'history-page',
+])
+def test_check_snapshot_detail_in_asset_pages(init_webtest, link_name):
   app, _users = init_webtest
   user = _users['owner']
   # Create cash and purchased-stocks
@@ -650,10 +663,10 @@ def test_check_snapshot_detail_in_dashboard(init_webtest):
       ps_3rd.get_dict(),
     ],
   }
-  compare_dict = lambda _est_dict, _exact_dict: all([_est_dict[key] == val for key, val in _exact_dict.items()]) 
+  compare_dict = lambda _est_dict, _exact_dict: all([_est_dict[key] == val for key, val in _exact_dict.items()])
   # Execution
   uuid = str(snapshot.uuid)
-  response = app.get(reverse('stock:dashboard'), user=user)
+  response = app.get(reverse(f'stock:{link_name}'), user=user)
   element = response.html.find('script', id=uuid)
   estimated = json.loads(element.contents[0])
 
@@ -672,11 +685,13 @@ def test_check_snapshot_detail_in_dashboard(init_webtest):
   'target_page',
 ], [
   ('dashboard',),
+  ('investment_history',),
   ('list_snapshot',),
   ('list_cash',),
   ('list_purchased_stock',),
 ], ids=[
   'dashboard-page',
+  'history-page',
   'snapshot-list-page',
   'cash-list-page',
   'purchased-stock-list-page',
@@ -801,7 +816,7 @@ def test_invalid_request_for_delete_method(init_webtest, param_name):
 
   with pytest.raises(AppError) as ex:
     form.submit()
-  
+
   assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
 # ============================
@@ -896,10 +911,8 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
     next_link = get_current_path(res)
   page = app.get(next_link)
   status_codes.append(page.status_code)
-  # There are more than ten records, so move to next page
-  total_pstocks  = len(page.context['pstocks'])
-  page = page.click(linkid='next-page')
-  total_pstocks += len(page.context['pstocks'])
+  # Check total records
+  total_pstocks = len(page.context['pstocks'])
   results.append(total_pstocks == len(options))
   res = page.click('Home')
   status_codes.append(res.status_code)
@@ -936,31 +949,47 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
   # Step5: Access to dashboard page
   res = app.get(next_link).click('Dashboard')
   status_codes.append(res.status_code)
+  next_link = get_current_path(res)
   details = []
   # Collect detail of snapshots (ordering: '-created_at')
   for ss in snapshots:
     uuid = str(ss.uuid)
     element = res.html.find('script', id=uuid)
     details.append(json.loads(element.contents[0]))
+  page = app.get(next_link)
+  res = page.click('Home')
+  status_codes.append(res.status_code)
+  next_link = get_current_path(res)
+
+  # Step6: Access to history page
+  res = app.get(next_link).click('Investment history')
+  status_codes.append(res.status_code)
+  histories = []
+  # Collect histories of snapshots (ordering: '-created_at')
+  for ss in snapshots:
+    uuid = str(ss.uuid)
+    element = res.html.find('script', id=uuid)
+    histories.append(json.loads(element.contents[0]))
 
   # --------------
   # Assert process
   # --------------
-  calc_pstock_sum = lambda ps_records: sum([target['price'] * target['count'] for target in ps_records]) 
+  calc_pstock_sum = lambda ps_records: sum([target['price'] * target['count'] for target in ps_records])
+  chk_ss = lambda callback: all([callback(target) for target in [details, histories]])
   # Check status_codes and results
   assert all([_status_code == status.HTTP_200_OK for _status_code in status_codes])
   assert all(results)
   # Check cashes
-  assert details[2]['cash']['balance'] == 750000
-  assert details[2]['cash']['registered_date'] == '2020-12-11'
-  assert details[1]['cash']['balance'] == 122788
-  assert details[1]['cash']['registered_date'] == '2021-09-10'
-  assert details[0]['cash']['balance'] == 77516
-  assert details[0]['cash']['registered_date'] == '2022-02-02'
+  assert chk_ss(lambda target: target[2]['cash']['balance'] == 750000)
+  assert chk_ss(lambda target: target[2]['cash']['registered_date'] == '2020-12-11')
+  assert chk_ss(lambda target: target[1]['cash']['balance'] == 122788)
+  assert chk_ss(lambda target: target[1]['cash']['registered_date'] == '2021-09-10')
+  assert chk_ss(lambda target: target[0]['cash']['balance'] == 77516)
+  assert chk_ss(lambda target: target[0]['cash']['registered_date'] == '2022-02-02')
   # Check purchsed stock
-  assert calc_pstock_sum(details[2]['purchased_stocks']) == 0
-  assert calc_pstock_sum(details[1]['purchased_stocks']) == 627212
-  assert calc_pstock_sum(details[0]['purchased_stocks']) == 922485
+  assert chk_ss(lambda target: calc_pstock_sum(target[2]['purchased_stocks']) == 0)
+  assert chk_ss(lambda target: calc_pstock_sum(target[1]['purchased_stocks']) == 627212)
+  assert chk_ss(lambda target: calc_pstock_sum(target[0]['purchased_stocks']) == 922485)
 
 # ============
 # Stock search
@@ -977,7 +1006,7 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
   ('name == "sample"', '-price', 1, ['sample']),
   ('name in "hoge"', '-price', 2, ['hogehoge', 'hoge-foo']),
   ('1000 < price < 1200 and industry__name == "alpha"', '-price', 3, ['hogehoge', 'hoge-foo', 'bar']),
-  ('', 'price', 150, ['stock']),
+  ('', 'price', 300, ['stock']),
 ], ids=[
   'target-does-not-exist',
   'there-is-only-one-target',
@@ -998,7 +1027,7 @@ def test_search_stock_by_using_form(init_webtest, condition, ordering, count, ex
   _ = factories.StockFactory(name='bar',      price=1100.0, industry=industries[0])
   _ = factories.StockFactory(name='sample',   price=2000.0, industry=industries[0])
   _ = factories.StockFactory(name='skipped',  price=1024.0, industry=industries[0], skip_task=True)
-  _ = factories.StockFactory.create_batch(151, price=1, industry=industries[1])
+  _ = factories.StockFactory.create_batch(301, price=1, industry=industries[1])
 
   # Execution
   target_url = reverse('stock:list_stock')

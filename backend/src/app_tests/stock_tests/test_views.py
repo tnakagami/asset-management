@@ -99,6 +99,30 @@ def test_without_authentication_for_dashboard(client):
   assert response.status_code == status.HTTP_302_FOUND
   assert response['Location'] == expected
 
+# =======
+# History
+# =======
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_history_page(login_process):
+  client, user = login_process
+  client.force_login(user)
+  url = reverse('stock:investment_history')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_200_OK
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_without_authentication_for_history_page(client):
+  url = reverse('stock:investment_history')
+  response = client.get(url)
+  expected = '{}?next={}'.format(reverse('account:login'), url)
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == expected
+
 # ========
 # AjaxView
 # ========

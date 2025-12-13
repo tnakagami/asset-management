@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-07 23:28+0900\n"
+"POT-Creation-Date: 2025-12-13 19:44+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -407,46 +407,50 @@ msgstr "{date} 月次報告"
 msgid "Dashboard"
 msgstr "ダッシュボード"
 
-#: stock/views.py:48
+#: stock/views.py:35
+msgid "Investment history"
+msgstr "投資実績"
+
+#: stock/views.py:56
 msgid "Cash list"
 msgstr "口座残高一覧"
 
-#: stock/views.py:65
+#: stock/views.py:73
 msgid "Register cash"
 msgstr "口座残高の登録"
 
-#: stock/views.py:76
+#: stock/views.py:84
 msgid "Update cash"
 msgstr "口座残高の更新"
 
-#: stock/views.py:92
+#: stock/views.py:100
 msgid "Purchsed stock list"
 msgstr "購入済み株式一覧"
 
-#: stock/views.py:109
+#: stock/views.py:117
 msgid "Register purchsed stock"
 msgstr "購入済み株式の登録"
 
-#: stock/views.py:120
+#: stock/views.py:128
 msgid "Update purchsed stock"
 msgstr "購入済み株式の更新"
 
-#: stock/views.py:142
+#: stock/views.py:150
 msgid "Snapshot list"
 msgstr "特定時点の資産一覧"
 
-#: stock/views.py:159
+#: stock/views.py:167
 msgid "Register snapshot"
 msgstr "特定時点の資産の登録"
 
-#: stock/views.py:170
+#: stock/views.py:178
 msgid "Update snapshot"
 msgstr "特定時点の資産の更新"
 
-#: stock/views.py:203
+#: stock/views.py:211
 msgid "Stock list"
 msgstr "株価一覧"
 
-#: stock/views.py:225
+#: stock/views.py:233
 msgid "Explanation"
 msgstr "用語説明"
