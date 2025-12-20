@@ -244,6 +244,10 @@
                 <td class="text-nowrap"><span data-target="dividend"></span></td>
               </tr>
               <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend yield" %}</td>
+                <td class="text-nowrap"><span data-target="yield"></span>&#37;</td>
+              </tr>
+              <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
                 <td class="text-nowrap"><span data-target="per"></span></td>
               </tr>
@@ -300,8 +304,7 @@
 
 {% block bodyjs %}
 {% for instance in snapshots %}
-  {{ instance.get_jsonfield }}
-{% endfor %}
+  {{ instance.get_jsonfield }}{% endfor %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
         integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -537,23 +540,25 @@
   const updateTable = (records) => {
     const updateNodeStatus = (item, element) => {
       if (item.options) {
+        const get_yield = (price, dividend) => ((dividend > 0) ? (dividend / price * 100.0).toFixed(2) : '0.00');
         element.dataset.name = item.name;
         element.dataset.code = item.code;
         element.dataset.industry = item.industry;
-        element.dataset.price = item.options.price;
-        element.dataset.dividend = item.dividend;
-        element.dataset.per = item.options.per;
-        element.dataset.pbr = item.options.pbr;
-        element.dataset.eps = item.options.eps;
-        element.dataset.bps = item.options.bps;
-        element.dataset.roe = item.options.roe;
-        element.dataset.er = item.options.er;
+        element.dataset.price = item.options.price.toFixed(2);
+        element.dataset.dividend = item.dividend.toFixed(2);
+        element.dataset.yield = get_yield(item.options.price, item.dividend);
+        element.dataset.per = item.options.per.toFixed(2);
+        element.dataset.pbr = item.options.pbr.toFixed(2);
+        element.dataset.eps = item.options.eps.toFixed(2);
+        element.dataset.bps = item.options.bps.toFixed(2);
+        element.dataset.roe = item.options.roe.toFixed(2);
+        element.dataset.er = item.options.er.toFixed(2);
         element.classList.add('text-decoration-underline', 'text-primary');
         // Add click event
         element.addEventListener('click', () => {
           const _keys = Object.freeze([
             'code', 'name', 'industry', 'price', 'dividend',
-            'per', 'pbr', 'eps', 'bps', 'roe', 'er',
+            'yield', 'per', 'pbr', 'eps', 'bps', 'roe', 'er',
           ]);
           const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
           const isNegative = (val) => pattern.test(val);

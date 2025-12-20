@@ -139,6 +139,7 @@
           <thead>
             <tr>
               <th scope="col">{% trans "Title" %}</th>
+              <th scope="col" class="text-nowrap">{% trans "#Stocks" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Evaluated price" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
@@ -169,6 +170,7 @@
 <template id="tbody-template">
 <tr>
   <td scope="row" class="ss-title"></td>
+  <td class="ss-count"></td>
   <td class="ss-purchasedPrice"></td>
   <td class="ss-stockPrice"></td>
   <td class="ss-diff"></td>
@@ -180,8 +182,7 @@
 
 {% block bodyjs %}
 {% for instance in snapshots %}
-  {{ instance.get_jsonfield }}
-{% endfor %}
+  {{ instance.get_jsonfield }}{% endfor %}
 <script src="https://cdn.jsdelivr.net/npm/dual-listbox/dist/dual-listbox.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
         integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg=="
@@ -279,6 +280,7 @@
     const snapshotNameList = indices.map((idx) => options[idx].text);
     const histories = {
       ssName: snapshotNameList,
+      count:     records.map((arr) => arr.slice(1).length),
       purchased: records.map((arr) => getTotal(arr.slice(1), (item) => item.price)),
       portfolio: records.map((arr) => getTotal(arr.slice(1), (item) => item.price + item.diff)),
       diff:      records.map((arr) => getTotal(arr.slice(1), (item) => item.diff)),
@@ -319,6 +321,7 @@
 
     return output;
   };
+
   //
   // Update history table
   //
@@ -327,6 +330,7 @@
     const template = document.querySelector('#tbody-template');
     const nodeList = {
       title: histories.ssName,
+      count: histories.count,
       purchasedPrice: histories.purchased,
       stockPrice: histories.portfolio,
       diff: histories.diff,
@@ -334,7 +338,7 @@
       cash: histories.cash,
     };
     tbody.innerHTML = '';
-    const len = histories.purchased.length;
+    const len = histories.ssName.length;
 
     for (let idx = 0; idx < len; idx++) {
       const clone = template.content.cloneNode(true);
@@ -351,6 +355,7 @@
       tbody.appendChild(clone);
     }
   };
+
   //
   // Draw bar chart
   //
@@ -392,11 +397,14 @@
     return chart;
   };
 
+  //
+  // Initialization
+  //
   const init = () => {
     // Initialize select DOM element
     const options = [{% for instance in snapshots %}
-      {text: '{{ instance.title }}', value: '{{ instance.uuid }}', selected: false, endDate: '{{ instance.end_date|date:"Y-m-d" }}'},
-    {% endfor %}];
+      {text: '{{ instance.title }}', value: '{{ instance.uuid }}', selected: false, endDate: new Date('{{ instance.end_date|date:"Y-m-d" }}'),},{% endfor %}
+    ];
     setupDualListbox('#snapshots', options);
     // Define chart's variables
     let purchasedChart = null;
@@ -404,28 +412,29 @@
     let dividendChart = null;
     // Add click event
     const updateGraph = document.querySelector('#update-graph');
-    updateGraph.addEventListener('click', async (event) => {
+    updateGraph.addEventListener('click', (event) => {
       event.target.disabled = true;
 
       // Sort function
       const compare = (le, re) => {
         // le: left element, re: right element
         // lv: left value,   rv: right value
-        const lv = (new Date(le.endDate)).getTime();
-        const rv = (new Date(re.endDate)).getTime();
-        if      (lv > rv) { return  1; }
-        else if (lv < rv) { return -1; }
-        else              { return  0; }
+        const sign = 1; // ASC=1, DESC=-1
+        const lv = le.endDate.getTime();
+        const rv = re.endDate.getTime();
+        const ret = (lv > rv) ? sign : ((lv < rv) ? (-sign) : 0);
+
+        return ret;
       };
       const selectedOptions = (() => {
         const ssElem = document.querySelector('ul.dual-listbox__selected');
         const requestedUUIDs = Array.from(ssElem.querySelectorAll('li')).map((item) => item.dataset.id);
-        const targets = options.filter((_dict) => requestedUUIDs.includes(_dict.value));
+        const targets = options.filter((elem) => requestedUUIDs.includes(elem.value));
 
         return targets;
       })();
-      const indices = selectedOptions.map((_, idx) => idx);
-      const sortedIndices = indices.sort((li, ri) => compare(selectedOptions[li], selectedOptions[ri]));
+      const sortedIndices = selectedOptions.map((_, idx) => idx)
+                                           .sort((li, ri) => compare(selectedOptions[li], selectedOptions[ri]));
       // Create chart data
       const output = createChartData(sortedIndices, selectedOptions);
       // Update table
@@ -438,7 +447,10 @@
       event.target.disabled = false;
     });
   };
+
+  //
   // Add DOM event
+  //
   document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
