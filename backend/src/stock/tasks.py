@@ -2,6 +2,14 @@ from types import FunctionType
 from celery import shared_task, states
 from celery.utils.log import get_task_logger
 from django_celery_results.models import TaskResult
+from django.utils.translation import gettext_lazy
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django.utils.translation import gettext_lazy
+from stock.models import Snapshot, convert_timezone
+from datetime import datetime, timedelta
+
+UserModel = get_user_model()
 
 try:
   import stock.user_tasks as user_tasks
@@ -13,6 +21,12 @@ except:
 
 # Get logger
 g_logger = get_task_logger(__name__)
+
+def _calc_diff_date(offset=1):
+  current = timezone.now()
+  shifted_date = datetime(current.year, current.month, current.day, tzinfo=current.tzinfo) - timedelta(days=offset-1, seconds=1)
+
+  return shifted_date
 
 @shared_task(ignore_result=True)
 def delete_successful_tasks():
@@ -27,14 +41,18 @@ def delete_successful_tasks():
 
 @shared_task(ignore_result=True)
 def register_monthly_report(day_offset):
-  if user_tasks is not None:
-    try:
-      from django.utils.translation import gettext_lazy
-      title_template = gettext_lazy('Monthly report - {date}')
-      callback = getattr(user_tasks, 'monthly_report')
-      callback(day_offset, title_template)
-    except Exception:
-      g_logger.error('Failed to call user function.')
+  title_template = gettext_lazy('Monthly report - {date}')
+  queryset = UserModel.objects.filter(is_active=True, is_staff=False)
+  end_date = _calc_diff_date(day_offset)
+  year_month = convert_timezone(end_date, is_string=True, strformat='%Y/%m')
+  title = title_template.format(date=year_month)
+  records = []
+
+  for user in queryset:
+    instance = Snapshot(user=user, title=title, end_date=end_date)
+    instance.update_record()
+    records += [instance]
+  Snapshot.objects.bulk_create(records)
 
 @shared_task(bind=True)
 def update_stock_records(self, **kwargs):

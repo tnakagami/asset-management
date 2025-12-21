@@ -1,7 +1,14 @@
 import pytest
+import json
 from celery import states
+from datetime import datetime, timezone
+from decimal import Decimal
 from django_celery_results.models import TaskResult
+from django.contrib.auth import get_user_model
+from stock.models import convert_timezone
 from . import factories
+
+UserModel = get_user_model()
 
 class FakeUserTask:
   def __init__(self):
@@ -14,17 +21,41 @@ class FakeUserTask:
 
     return 0
 
-  def monthly_report(self, day_offset, title_template):
-    self.kwargs = {
-      'day_offset': day_offset,
-      'title': title_template.format(date='2001/12'),
-    }
-
 class FakeLogger:
   def __init__(self):
     self.msg = ''
   def store(self, msg):
     self.msg = msg
+
+@pytest.mark.stock
+@pytest.mark.parametrize([
+  'current_date',
+  'offset',
+  'expected_date',
+], [
+  (datetime(2000,1,2, 9,0,0, tzinfo=timezone.utc), 3, datetime(1999,12,30,23,59,59, tzinfo=timezone.utc)),
+  (datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), 2, datetime(1999,12,31,23,59,59, tzinfo=timezone.utc)),
+  (datetime(2000,1,2,11,0,0, tzinfo=timezone.utc), 1, datetime(2000, 1, 1,23,59,59, tzinfo=timezone.utc)),
+  (datetime(2000,4,1,12,0,0, tzinfo=timezone.utc), 2, datetime(2000, 3,30,23,59,59, tzinfo=timezone.utc)),
+  (datetime(2000,4,1,13,0,0, tzinfo=timezone.utc), 1, datetime(2000, 3,31,23,59,59, tzinfo=timezone.utc)),
+], ids=[
+  'offset-3-20000102',
+  'offset-2-20000102',
+  'offset-1-20000102',
+  'offset-2-20000401',
+  'offset-1-20000401',
+])
+def test_check_calc_diff_date(mocker, current_date, offset, expected_date):
+  import stock.tasks
+  mocker.patch.object(stock.tasks.timezone, 'now', return_value=current_date)
+  estimated_date = stock.tasks._calc_diff_date(offset)
+
+  assert estimated_date.year == expected_date.year
+  assert estimated_date.month == expected_date.month
+  assert estimated_date.day == expected_date.day
+  assert estimated_date.hour == expected_date.hour
+  assert estimated_date.minute == expected_date.minute
+  assert estimated_date.second == expected_date.second
 
 @pytest.mark.stock
 @pytest.mark.django_db
@@ -89,46 +120,6 @@ def test_check_update_stock_records(mocker, attrs, checker, expected_kwargs):
   assert all([expected_kwargs[key] == val for key, val in _user_task.kwargs.items()])
 
 @pytest.mark.stock
-@pytest.mark.django_db
-def test_user_task_is_not_set_register_monthly_report(mocker):
-  import stock.tasks
-  mocker.patch.object(stock.tasks, 'user_tasks', None)
-  # Call target function
-  try:
-    stock.tasks.register_monthly_report(1)
-  except Exception as ex:
-    pytest.fail(f'Unexpected Error: {ex}')
-
-@pytest.mark.stock
-@pytest.mark.django_db
-def test_user_task_is_set_of_register_monthly_report(mocker):
-  import stock.tasks
-  user_task = FakeUserTask()
-  mocker.patch.object(stock.tasks, 'user_tasks', user_task)
-  day_offset = 3
-  # Call target function
-  try:
-    stock.tasks.register_monthly_report(day_offset)
-  except Exception as ex:
-    pytest.fail(f'Unexpected Error: {ex}')
-
-  assert all([key in ['day_offset', 'title'] for key in user_task.kwargs.keys()])
-  assert user_task.kwargs['day_offset'] == day_offset
-  assert user_task.kwargs['title'] == 'Monthly report - 2001/12'
-
-@pytest.mark.stock
-@pytest.mark.django_db
-def test_check_raise_exception_of_register_monthly_report(mocker):
-  import stock.tasks
-  fake_logger = FakeLogger()
-  mocker.patch.object(stock.tasks.user_tasks, 'monthly_report', None)
-  mocker.patch.object(stock.tasks.g_logger, 'error', side_effect=lambda msg: fake_logger.store(msg))
-  # Call target function
-  stock.tasks.register_monthly_report(2)
-
-  assert 'Failed to call user function.' in fake_logger.msg
-
-@pytest.mark.stock
 def test_raise_import_exception(mocker):
   import sys
   import importlib
@@ -152,3 +143,108 @@ def test_raise_import_exception(mocker):
 
   assert stock.tasks.user_tasks is None
   assert len(stock.tasks.g_attrs) == 0
+
+# ====================
+# Check monthly report
+# ====================
+@pytest.fixture(scope='module')
+def pseudo_stock_data(django_db_blocker):
+  with django_db_blocker.unblock():
+    industries = [
+      factories.IndustryFactory(name='hoge-company'),
+      factories.IndustryFactory(name='foobar-hd'),
+    ]
+    stock_params = [
+      {'code': '1234', 'name': 'X-company', 'industry': 0, 'price': '1105', 'dividend': '20',
+        'per':  '0.21', 'pbr': '2.01', 'eps': '2.5', 'bps': '2.7', 'roe': '5.2', 'er': '43.2'},
+      {'code': '5678', 'name': 'Y-company', 'industry': 1, 'price': '2401', 'dividend': '35',
+        'per':  '0.32', 'pbr': '3.12', 'eps': '0.7', 'bps': '1.4', 'roe': '5.9', 'er': '21.7'},
+      {'code': 'ABCD', 'name': 'Z-company', 'industry': 1, 'price': '1507', 'dividend': '45',
+        'per':  '1.32', 'pbr': '5.12', 'eps': '1.7', 'bps': '7.4', 'roe': '3.1', 'er': '50.7'},
+    ]
+    stocks = [
+      factories.StockFactory(
+        code=kwargs['code'], name=kwargs['name'], industry=industries[kwargs['industry']],
+        price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
+        per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
+        bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
+      ) for kwargs in stock_params
+    ]
+
+  return stocks
+
+@pytest.fixture(params=['only-one-user', 'multi-users'])
+def get_pseudo_pstock_records(django_db_blocker, pseudo_stock_data, request):
+  with django_db_blocker.unblock():
+    foo = factories.UserFactory(username='monthly-foo', screen_name='monthly foo')
+    stocks = pseudo_stock_data
+    kwargs = {
+      'user': foo,
+      'price': Decimal('1230'),
+      'count': 100,
+    }
+    pstocks = [
+      factories.PurchasedStockFactory(stock=stocks[0], purchase_date=datetime(2000,1,30,1,2,3, tzinfo=timezone.utc), **kwargs),
+      factories.PurchasedStockFactory(stock=stocks[1], purchase_date=datetime(2000,1,31,1,2,3, tzinfo=timezone.utc), **kwargs),
+      factories.PurchasedStockFactory(stock=stocks[1], purchase_date=datetime(2000,2, 1,1,2,3, tzinfo=timezone.utc), **kwargs),
+    ]
+    users = [foo]
+    pattern = 'single'
+    # Check execution pattern
+    if request.param == 'multi-users':
+      bar = factories.UserFactory(username='monthly-bar', screen_name='monthly bar')
+      kwargs = {
+        'user': bar,
+        'price': Decimal('1231'),
+        'count': 200,
+      }
+      pstocks += [
+        factories.PurchasedStockFactory(stock=stocks[1], purchase_date=datetime(2000,1,30,1,2,3, tzinfo=timezone.utc), **kwargs),
+        factories.PurchasedStockFactory(stock=stocks[0], purchase_date=datetime(2000,1,31,1,2,3, tzinfo=timezone.utc), **kwargs),
+        factories.PurchasedStockFactory(stock=stocks[2], purchase_date=datetime(2000,2, 1,1,2,3, tzinfo=timezone.utc), **kwargs),
+      ]
+      users += [bar]
+      pattern = 'multi'
+
+  return pattern, users, pstocks
+
+@pytest.mark.stock
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'offset',
+  'expected_pstock_ids',
+], [
+  (0, {'single': [0, 1, 2], 'multi': [3, 4, 5]}),
+  (1, {'single': [0, 1, 2], 'multi': [3, 4, 5]}),
+  (2, {'single': [0, 1], 'multi': [3, 4]}),
+  (3, {'single': [0], 'multi': [3]}),
+], ids=[
+  'offset-0',
+  'offset-1',
+  'offset-2',
+  'offset-3',
+])
+def test_register_monthly_report(mocker, get_pseudo_pstock_records, offset, expected_pstock_ids):
+  def _check_extracted_pstocks(snapshot, pstocks, indices):
+    data = json.loads(snapshot.detail)
+    dates = [convert_timezone(pstocks[idx].purchase_date, is_string=True) for idx in indices]
+    ret = all([
+      len(data['cash']) == 0,
+      len(data['purchased_stocks']) == len(indices),
+      all([record['purchase_date'] in dates for record in data['purchased_stocks']]),
+    ])
+
+    return ret
+
+  import stock.tasks
+  pattern, users, pstocks = get_pseudo_pstock_records
+  mock_diff_date = mocker.patch.object(stock.tasks.timezone, 'now', return_value=datetime(2000,2,2,1,2,3, tzinfo=timezone.utc))
+  # Call target function
+  try:
+    stock.tasks.register_monthly_report(offset)
+  except Exception as ex:
+    pytest.fail(f'Unexpected Error: {ex}')
+
+  assert mock_diff_date.call_count == 1
+  assert all([user.snapshots.all().count() == 1 for user in users])
+  assert all([_check_extracted_pstocks(user.snapshots.all().first(), pstocks, expected_pstock_ids[pattern]) for user in users])
