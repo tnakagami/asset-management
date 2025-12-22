@@ -168,6 +168,7 @@
                       <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Value" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
@@ -177,11 +178,12 @@
                   </tbody>
                   <tfoot class="table-group-divider text-left" id="asset-totals">
                     <tr>
-                      <th scope="row" colspan="4" class="text-center">{% trans "Total" %}</th>
-                      <th name="total-dividend" data-type="total"></th>
-                      <th name="total-value" data-type="total"></th>
-                      <th name="total-count" data-type="total"></th>
-                      <th name="total-diff" data-type="total"></th>
+                      <th scope="row" colspan="4" class="text-center">{% trans "Total except cash" %}</th>
+                      <th><span name="total-dividend"></span></th>
+                      <th><span name="average-yield"></span>&#37;</th>
+                      <th><span name="total-value"></span></th>
+                      <th><span name="total-count"></span></th>
+                      <th><span name="total-diff"></span></th>
                     </tr>
                   </tfoot>
                 </table>
@@ -290,14 +292,15 @@
 
 <template id="tbody-template">
 <tr>
-  <td scope="row" class="asset-idx"></td>
-  <td class="asset-code"></td>
-  <td class="asset-name"></td>
-  <td class="asset-industry"></td>
-  <td class="asset-realDividend"></td>
-  <td class="asset-value"></td>
-  <td class="asset-count"></td>
-  <td class="asset-diff"></td>
+  <td scope="row"><span class="asset-idx"></span></td>
+  <td><span class="asset-code"></span></td>
+  <td><span class="asset-name"></span></td>
+  <td><span class="asset-industry"></span></td>
+  <td><span class="asset-realDividend"></span></td>
+  <td><span class="asset-yield"></span>&#37;</td>
+  <td><span class="asset-value"></span></td>
+  <td><span class="asset-count"></span></td>
+  <td><span class="asset-diff"></span></td>
 </tr>
 </template>
 {% endblock %}
@@ -340,7 +343,7 @@
         dividend: _stock.dividend,
         realDividend: _stock.dividend * record.count,
         isDefensive: _stock.industry.is_defensive,
-        price: record.price,
+        price: pStockPrice,
         count: record.count,
         diff: diff,
         options: {
@@ -357,6 +360,7 @@
     const stocks = (() => {
       const _dict = {};
       const _calcValue = (item) => Math.floor(item.price * item.count);
+      const _calcYield = (target) => target.realDividend / target.value * 100.0;
 
       for (const item of originalStocks) {
         const code = item.code;
@@ -374,6 +378,7 @@
             industry: item.industry,
             dividend: item.dividend,
             realDividend: item.realDividend,
+            yield: 0,
             isDefensive: item.isDefensive,
             value: _calcValue(item),
             count: item.count,
@@ -381,6 +386,7 @@
             options: item.options,
           };
         }
+        _dict[code].yield = _calcYield(_dict[code]);
       }
 
       return Object.values(_dict);
@@ -391,6 +397,7 @@
       industry: '-',
       dividend: 0,
       realDividend: 0,
+      yield: 0,
       isDefensive: undefined,
       value: (cash || 0),
       count: 0,
@@ -589,6 +596,7 @@
       'name': (val, _) => val,
       'industry': (val, _) => val,
       'realDividend': (val, _) => val.toLocaleString(),
+      'yield': (val, _) => val.toFixed(2),
       'value': (val, _) => val.toLocaleString(),
       'count': (val, _) => val.toLocaleString(),
       'diff': (val, _) => val.toLocaleString(),
@@ -622,8 +630,11 @@
       totals.diff += item.diff;
       tbody.appendChild(clone);
     });
+    // Ignore cash
+    totals.value -= records[0].value;
+    // Set total value
     ['dividend', 'value', 'count', 'diff'].forEach((key) => {
-      const element = tfoot.querySelector(`th[name="total-${key}"]`);
+      const element = tfoot.querySelector(`th > span[name="total-${key}"]`);
       const val = totals[key];
       element.textContent = val.toLocaleString();
 
@@ -634,6 +645,12 @@
         element.classList.remove('text-danger');
       }
     });
+    // Calculate average dividend yield and reflect it to footer
+    (() => {
+      const element = tfoot.querySelector('th > span[name="average-yield"]');
+      const val = totals.dividend / totals.value * 100.0;
+      element.textContent = val.toFixed(2);
+    })();
   };
   const drawPieChart = (chart, target, asset) => {
     const context = document.querySelector(`#${target}`);

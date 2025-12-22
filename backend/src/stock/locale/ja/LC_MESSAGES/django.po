@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-13 19:44+0900\n"
+"POT-Creation-Date: 2025-12-23 00:32+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -398,7 +398,7 @@ msgstr "集計終了日"
 msgid "Creation time"
 msgstr "作成日"
 
-#: stock/tasks.py:33
+#: stock/tasks.py:44
 #, python-brace-format
 msgid "Monthly report - {date}"
 msgstr "{date} 月次報告"

@@ -83,10 +83,14 @@ services:
       - FLOWER_PURGE_OFFLINE_WORKERS=60
       - FLOWER_MAX_WORKERS=16
       - FLOWER_MAX_TASKS=4096
+    user: root
     working_dir: /opt
     entrypoint: /opt/entrypoint.sh
+    command: /opt/command.sh
     volumes:
       - ./flower/entrypoint.sh:/opt/entrypoint.sh:ro
+      - ./flower/command.sh:/opt/command.sh:ro
+      - ./flower/custom-flower.js:/opt/home/custom-flower.js:ro
       - ./backend/src:/opt/app:ro
       - ./backend/bashrc:/opt/home/.bashrc:ro
     logging: *json-logging
