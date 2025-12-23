@@ -16,7 +16,7 @@ COPY ./tester.sh /opt/tester.sh
 
 RUN    apk update \
     && apk upgrade \
-    && apk add --no-cache bash tzdata libmagic libpq-dev pcre-dev libxml2-dev gettext \
+    && apk add --no-cache bash tzdata libmagic libpq-dev pcre-dev libxml2-dev gettext su-exec tini \
     \
     # Install temporary libraries
     \

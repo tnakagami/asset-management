@@ -31,8 +31,11 @@ def your_original_function(pk, logger, **kwargs):
   idx = kwargs.get('idx')
   total = kwargs.get('total')
   stock = Stock.objects.get(pk=pk)
+  #
   # After executing something process
-  stock.price = 0 # It's the updated value
+  #
+  updated_value = run_something()
+  stock.price = updated_value
   stock.save()
 
   logger.info('Success')
