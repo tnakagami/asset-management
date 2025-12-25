@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-23 00:32+0900\n"
+"POT-Creation-Date: 2025-12-25 21:24+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -282,7 +282,7 @@ msgstr "経済動向"
 
 #: templates/stock/dashboard.html:75 templates/stock/dashboard.html:174
 #: templates/stock/dashboard.html:516
-#: templates/stock/investment_history.html:145
+#: templates/stock/investment_history.html:146
 #: templates/stock/purchased_stocks.html:32
 msgid "Diff"
 msgstr "差分"
@@ -317,6 +317,7 @@ msgid "Dividend"
 msgstr "配当金"
 
 #: templates/stock/dashboard.html:171 templates/stock/dashboard.html:249
+#: templates/stock/investment_history.html:148
 #: templates/stock/purchased_stocks.html:137 templates/stock/stocks.html:34
 msgid "Dividend yield"
 msgstr "配当利回り"
@@ -330,12 +331,12 @@ msgid "Total except cash"
 msgstr "現金を除く合計値"
 
 #: templates/stock/dashboard.html:198
-#: templates/stock/investment_history.html:157
+#: templates/stock/investment_history.html:159
 msgid "There is no snapshots. Please add your snapshots in the following link."
 msgstr "特定時点の資産の情報がありません。下記のリンクから登録してください。"
 
 #: templates/stock/dashboard.html:204
-#: templates/stock/investment_history.html:163
+#: templates/stock/investment_history.html:165
 #: templates/stock/snapshots.html:15
 msgid "Register snapshot"
 msgstr "特定時点の資産の登録"
@@ -380,7 +381,7 @@ msgid "Equity Ratio"
 msgstr "自己資本比率"
 
 #: templates/stock/dashboard.html:395
-#: templates/stock/investment_history.html:147
+#: templates/stock/investment_history.html:149
 msgid "Cash"
 msgstr "口座残高"
 
@@ -535,37 +536,41 @@ msgid "#Stocks"
 msgstr "銘柄数"
 
 #: templates/stock/investment_history.html:143
-#: templates/stock/investment_history.html:296
+msgid "Total counts"
+msgstr "総株式数"
+
+#: templates/stock/investment_history.html:144
+#: templates/stock/investment_history.html:312
 msgid "Purchased price"
 msgstr "購入価格"
 
-#: templates/stock/investment_history.html:144
-#: templates/stock/investment_history.html:305
+#: templates/stock/investment_history.html:145
+#: templates/stock/investment_history.html:321
 msgid "Evaluated price"
 msgstr "評価額"
 
-#: templates/stock/investment_history.html:146
-#: templates/stock/investment_history.html:314
+#: templates/stock/investment_history.html:147
+#: templates/stock/investment_history.html:330
 msgid "Dividend (per year)"
 msgstr "配当金（年間）"
 
-#: templates/stock/investment_history.html:201
+#: templates/stock/investment_history.html:205
 msgid "Up"
 msgstr "上へ"
 
-#: templates/stock/investment_history.html:202
+#: templates/stock/investment_history.html:206
 msgid "Down"
 msgstr "下へ"
 
-#: templates/stock/investment_history.html:293
+#: templates/stock/investment_history.html:309
 msgid "Purchased history"
 msgstr "購入価格の実績"
 
-#: templates/stock/investment_history.html:302
+#: templates/stock/investment_history.html:318
 msgid "Portfolio history"
 msgstr "評価額の実績"
 
-#: templates/stock/investment_history.html:311
+#: templates/stock/investment_history.html:327
 msgid "Dividend history (per year)"
 msgstr "配当金の実績（年間）"
 

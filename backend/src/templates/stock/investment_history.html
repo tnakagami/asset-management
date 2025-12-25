@@ -140,10 +140,12 @@
             <tr>
               <th scope="col">{% trans "Title" %}</th>
               <th scope="col" class="text-nowrap">{% trans "#Stocks" %}</th>
+              <th scope="col" class="text-nowrap">{% trans "Total counts" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Evaluated price" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Dividend (per year)" %}</th>
+              <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
               <th scope="col" class="text-nowrap">{% trans "Cash" %}</th>
             </tr>
           </thead>
@@ -169,13 +171,15 @@
 
 <template id="tbody-template">
 <tr>
-  <td scope="row" class="ss-title"></td>
-  <td class="ss-count"></td>
-  <td class="ss-purchasedPrice"></td>
-  <td class="ss-stockPrice"></td>
-  <td class="ss-diff"></td>
-  <td class="ss-dividend"></td>
-  <td class="ss-cash"></td>
+  <td scope="row"><span class="ss-title"></span></td>
+  <td><span class="ss-count"></span></td>
+  <td><span class="ss-total"></span></td>
+  <td><span class="ss-purchasedPrice"></span></td>
+  <td><span class="ss-stockPrice"></span></td>
+  <td><span class="ss-diff"></span></td>
+  <td><span class="ss-dividend"></span></td>
+  <td><span class="ss-yield"></span>&#37;</td>
+  <td><span class="ss-cash"></span></td>
 </tr>
 </template>
 {% endblock %}
@@ -244,6 +248,7 @@
           code: targetStock.code,
           dividend: _scaler(targetStock.dividend),
           price: _scaler(record.price),
+          count: record.count,
           diff: diff,
         };
       });
@@ -255,12 +260,14 @@
           purchasedPairs[code].dividend += item.dividend;
           purchasedPairs[code].price += item.price;
           purchasedPairs[code].diff += item.diff;
+          purchasedPairs[code].count += item.count;
         }
         else {
           purchasedPairs[code] = {
             dividend: item.dividend,
             price: item.price,
             diff: item.diff,
+            count: item.count,
           }
         }
       }
@@ -268,6 +275,7 @@
         dividend: 0,
         price: data.cash.balance,
         diff: 0,
+        count: 0,
       }].concat(Object.values(purchasedPairs));
 
       return output;
@@ -279,14 +287,22 @@
                            .map(getRecords);
     const snapshotNameList = indices.map((idx) => options[idx].text);
     const histories = {
-      ssName: snapshotNameList,
+      ssName:    snapshotNameList,
       count:     records.map((arr) => arr.slice(1).length),
+      total:     records.map((arr) => getTotal(arr.slice(1), (item) => item.count)),
       purchased: records.map((arr) => getTotal(arr.slice(1), (item) => item.price)),
       portfolio: records.map((arr) => getTotal(arr.slice(1), (item) => item.price + item.diff)),
       diff:      records.map((arr) => getTotal(arr.slice(1), (item) => item.diff)),
       dividend:  records.map((arr) => getTotal(arr.slice(1), (item) => item.dividend)),
+      yield:     [],
       cash:      records.map((arr) => arr[0].price),
-    }
+    };
+    histories.yield = histories.dividend.map((dividend, idx) => {
+      const ratio = dividend / histories.purchased[idx] * 100.0;
+      const ret = ratio.toFixed(2);
+
+      return ret;
+    });
     // Create output
     const output = {
       purchasedHistory: {
@@ -331,10 +347,12 @@
     const nodeList = {
       title: histories.ssName,
       count: histories.count,
+      total: histories.total,
       purchasedPrice: histories.purchased,
       stockPrice: histories.portfolio,
       diff: histories.diff,
       dividend: histories.dividend,
+      yield: histories.yield,
       cash: histories.cash,
     };
     tbody.innerHTML = '';
