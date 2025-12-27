@@ -167,6 +167,7 @@
                       <th scope="col" class="text-nowrap">{% trans "Code" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Value" %}</th>
@@ -178,7 +179,7 @@
                   </tbody>
                   <tfoot class="table-group-divider text-left" id="asset-totals">
                     <tr>
-                      <th scope="row" colspan="4" class="text-center">{% trans "Total except cash" %}</th>
+                      <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
                       <th><span name="total-dividend"></span></th>
                       <th><span name="average-yield"></span>&#37;</th>
                       <th><span name="total-value"></span></th>
@@ -296,6 +297,7 @@
   <td><span class="asset-code"></span></td>
   <td><span class="asset-name"></span></td>
   <td><span class="asset-industry"></span></td>
+  <td><span class="asset-trend"></span></td>
   <td><span class="asset-realDividend"></span></td>
   <td><span class="asset-yield"></span>&#37;</td>
   <td><span class="asset-value"></span></td>
@@ -314,6 +316,7 @@
 <script>
 (function () {
   const createChartData = (data, sortCallback) => {
+    const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
     const _getValArr = (arr) => arr.map((item) => item.value);
     const _getDiffArr = (arr) => arr.map((item) => item.diff);
     const _getDividendArr = (arr) => arr.map((item) => item.realDividend);
@@ -335,6 +338,8 @@
       const stockPrice = _stock.price;
       const pStockPrice = record.price;
       const diff = Math.floor((stockPrice - pStockPrice) * record.count);
+      const isDefensive = _stock.industry.is_defensive;
+      const trendIdx = (isDefensive) ? 0 : 1;
 
       return {
         name: _stock.name,
@@ -342,7 +347,8 @@
         industry: _stock.industry.name,
         dividend: _stock.dividend,
         realDividend: _stock.dividend * record.count,
-        isDefensive: _stock.industry.is_defensive,
+        isDefensive: isDefensive,
+        trend: trendNameList[trendIdx],
         price: pStockPrice,
         count: record.count,
         diff: diff,
@@ -380,6 +386,7 @@
             realDividend: item.realDividend,
             yield: 0,
             isDefensive: item.isDefensive,
+            trend: item.trend,
             value: _calcValue(item),
             count: item.count,
             diff: item.diff,
@@ -399,6 +406,7 @@
       realDividend: 0,
       yield: 0,
       isDefensive: undefined,
+      trend: '-',
       value: (cash || 0),
       count: 0,
       diff: 0,
@@ -406,10 +414,14 @@
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
-    const sectorNameList = Object.keys(stocks.reduce((_dict, item) => {
-      _dict[item.industry] = item.code; return _dict;
-    }, {}));
-    const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
+    const sectorList = stocks.reduce((_dict, item) => {
+      const trendIdx = (item.isDefensive) ? 0 : 1;
+      const displayName = `${item.industry}(${trendNameList[trendIdx]})`;
+      _dict[item.industry] = displayName;
+
+      return _dict;
+    }, {});
+    const sectorNameList = Object.values(sectorList);
     // Define color dictionaries
     const stockColorDict = (() => {
       const arr = stockNameList.slice(1);
@@ -457,7 +469,7 @@
         colors: sectorColorDict,
         datasets: [{
           label: '{% trans "Dividend" %}',
-          data: sectorNameList.map((name) => {
+          data: Object.keys(sectorList).map((name) => {
             const targets = records.filter((item) => item.industry === name);
             const total = _dividendValSum(targets);
 
@@ -471,7 +483,7 @@
         colors: sectorColorDict,
         datasets: [{
           label: '{% trans "Price" %}',
-          data: sectorNameList.map((name) => {
+          data: Object.keys(sectorList).map((name) => {
             const targets = records.filter((item) => item.industry === name);
             const score = _stockValSum(targets);
 
@@ -595,6 +607,7 @@
       'code': (val, _) => val,
       'name': (val, _) => val,
       'industry': (val, _) => val,
+      'trend': (val, _) => val,
       'realDividend': (val, _) => val.toLocaleString(),
       'yield': (val, _) => val.toFixed(2),
       'value': (val, _) => val.toLocaleString(),
