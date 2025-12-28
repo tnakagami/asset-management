@@ -9,8 +9,8 @@ class DummyUser:
 
 class DummyModelForm(forms.ModelFormBasedOnUser):
   class Meta:
-    model = models.Industry
-    fields = ('name',)
+    model = models.Cash
+    fields = ('balance',)
 
 @pytest.mark.utils
 @pytest.mark.form

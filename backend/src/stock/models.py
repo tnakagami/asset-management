@@ -134,7 +134,9 @@ class LocalizedQuerySet(models.QuerySet):
     return self.filter(language_code=get_language())
 
   def get_local(self):
-    for target in [get_language(), settings.LANGUAGE_CODE]:
+    default_lang = getattr(settings, 'LANGUAGE_CODE', 'en')
+
+    for target in [get_language(), default_lang]:
       try:
         instance = self.get(language_code=target)
         break

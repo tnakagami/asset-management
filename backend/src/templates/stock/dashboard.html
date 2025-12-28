@@ -337,7 +337,7 @@
     const originalStocks = data.purchased_stocks.map((record) => {
       const _getName = (item) => {
         const lang = '{{ LANGUAGE_CODE|stringformat:"s" }}';
-        const ret = item.name || item.names[lang];
+        const ret = item.names[lang] || item.name;
 
         return ret;
       };

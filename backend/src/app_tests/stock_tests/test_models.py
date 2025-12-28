@@ -25,7 +25,7 @@ def get_judgement_funcs():
   def compare_values(fields, targets, instance):
     _convertor = lambda val: float(val) if isinstance(val, Decimal) else val
     out = [targets[key] == _convertor(getattr(instance, key)) for key in fields]
-    ret= all(out)
+    ret = all(out)
 
     return ret
 
@@ -42,9 +42,14 @@ def pseudo_date(request):
 def pseudo_stock_data(django_db_blocker):
   with django_db_blocker.unblock():
     industries = [
-      factories.IndustryFactory(name='foo-bar'),
-      factories.IndustryFactory(name='foo'),
-      factories.IndustryFactory(name='hogehoge'),
+      factories.IndustryFactory(),
+      factories.IndustryFactory(),
+      factories.IndustryFactory(),
+    ]
+    localized_industries = [
+      factories.LocalizedIndustryFactory(industry=industries[0], name='foo-bar'),
+      factories.LocalizedIndustryFactory(industry=industries[1], name='foo'),
+      factories.LocalizedIndustryFactory(industry=industries[2], name='hogehoge'),
     ]
     stock_params = [
       {'code': '0010', 'name': 'sampel1', 'industry': 0, 'price': '1200', 'dividend': '15',
@@ -60,14 +65,26 @@ def pseudo_stock_data(django_db_blocker):
     ]
     stocks = [
       factories.StockFactory(
-        code=kwargs['code'], name=kwargs['name'], industry=industries[kwargs['industry']],
+        code=kwargs['code'], industry=industries[kwargs['industry']],
         price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
         per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
         bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
       ) for kwargs in stock_params
     ]
+    localized_stocks = [
+      factories.LocalizedStockFactory(stock=stock, name=kwargs['name'])
+      for stock, kwargs in zip(stocks, stock_params)
+    ]
 
   return stocks
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_localized_industry():
+  localized_industry = factories.LocalizedIndustryFactory()
+
+  assert isinstance(localized_industry, models.LocalizedIndustry)
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -84,6 +101,14 @@ def test_snapshot():
   snapshot = factories.SnapshotFactory()
 
   assert isinstance(snapshot, models.Snapshot)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_localized_stocky():
+  localized_stock = factories.LocalizedStockFactory()
+
+  assert isinstance(localized_stock, models.LocalizedStock)
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -287,53 +312,159 @@ def test_no_pairs_for_q_model(condition):
 @pytest.mark.django_db
 @pytest.mark.parametrize([
   'name',
-  'is_defensive',
-  'original_type',
+  'language_code',
 ], [
-  ('same-industry', True, True),
-  ('same-industry', True, False),
-  ('same-industry', False, True),
-  ('same-industry', False, False),
+  ('same-industry', 'en'),
+  ('same-industry', 'ja'),
 ], ids=[
-  'both-are-defensive',
-  'new-one-is-defensive',
-  'new-one-is-not-defensive',
-  'both-are-not-defensive',
+  'language-is-en',
+  'language-is-ja',
 ])
-def test_add_same_name_in_industry(name, is_defensive, original_type):
-  _ = models.Industry.objects.create(name=name, is_defensive=original_type)
+def test_add_same_name_in_industry(name, language_code):
+  industry = factories.IndustryFactory()
+  _ = models.LocalizedIndustry.objects.create(
+    name=name,
+    language_code=language_code,
+    industry=industry,
+  )
 
   with pytest.raises(IntegrityError) as ex:
-    _ = models.Industry.objects.create(
+    _ = models.LocalizedIndustry.objects.create(
       name=name,
-      is_defensive=is_defensive,
+      language_code=language_code,
+      industry=industry,
     )
   assert 'unique constraint' in str(ex.value)
 
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-def test_check_get_dict_function_of_industry(get_judgement_funcs):
-  collector, compare_keys, compare_values = get_judgement_funcs
-  instance = factories.IndustryFactory()
-  out_dict = instance.get_dict()
-  fields = collector(models.Industry)
+@pytest.mark.parametrize([
+  'language_codes',
+  'exact_counts',
+],[
+  ([], 0),
+  (['en'], 1),
+  (['en', 'ja'], 2),
+], ids=[
+  'no-localized-records',
+  'only-one-localized-record',
+  'two-localized-records',
+])
+def test_check_locals_of_industry(language_codes, exact_counts):
+  exact_name = 'hoge-lang'
+  industry = factories.IndustryFactory()
+  for language_code in language_codes:
+    _ = factories.LocalizedIndustryFactory(
+      name=exact_name,
+      language_code=language_code,
+      industry=industry,
+    )
+  records = industry.locals.all()
 
-  assert compare_keys(list(out_dict.keys()), fields)
-  assert compare_values(fields, out_dict, instance)
+  assert records.count() == exact_counts
+  assert all([instance.name == exact_name for instance in records])
 
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-def test_check_industry_str_function():
+def test_check_get_dict_function_of_industry():
   instance = factories.IndustryFactory()
+  en_lang = factories.LocalizedIndustryFactory(language_code='en', industry=instance)
+  ja_lang = factories.LocalizedIndustryFactory(language_code='ja', industry=instance)
+  out_dict = instance.get_dict()
+
+  assert all([key in ['names', 'is_defensive'] for key in out_dict.keys()])
+  assert out_dict['is_defensive'] == instance.is_defensive
+  assert out_dict['names'] == {'en': en_lang.name, 'ja': ja_lang.name}
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'language_code',
+  'name',
+  'exact_name',
+], [
+  ('en', 'hogehoge-en', 'hogehoge-en'),
+  ('fr', 'hogehoge-fr', ''),
+], ids=[
+  'exists-target-language-code-instance',
+  'does-not-exist-target-language-code-instance',
+])
+def test_check_industry_str_function_using_get_name_func(mocker, language_code, name, exact_name):
+  mocker.patch('stock.models.get_language', return_value='en')
+  instance = factories.IndustryFactory()
+  lang = factories.LocalizedIndustryFactory(
+    name=name,
+    language_code=language_code,
+    industry=instance,
+  )
   out = str(instance)
 
-  assert out == instance.name
+  assert out == exact_name
 
 # =====
 # Stock
 # =====
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'name',
+  'language_code',
+], [
+  ('same-stock', 'en'),
+  ('same-stock', 'ja'),
+], ids=[
+  'language-is-en',
+  'language-is-ja',
+])
+def test_add_same_name_in_stock(name, language_code):
+  stock = factories.StockFactory()
+  _ = models.LocalizedStock.objects.create(
+    name=name,
+    language_code=language_code,
+    stock=stock,
+  )
+
+  with pytest.raises(IntegrityError) as ex:
+    _ = models.LocalizedStock.objects.create(
+      name=name,
+      language_code=language_code,
+      stock=stock,
+    )
+  assert 'unique constraint' in str(ex.value)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'language_codes',
+  'exact_counts',
+],[
+  ([], 0),
+  (['en'], 1),
+  (['en', 'ja'], 2),
+], ids=[
+  'no-localized-records',
+  'only-one-localized-record',
+  'two-localized-records',
+])
+def test_check_locals_of_stock(language_codes, exact_counts):
+  exact_name = 'hoge-lang'
+  stock = factories.StockFactory()
+  for language_code in language_codes:
+    _ = factories.LocalizedStockFactory(
+      name=exact_name,
+      language_code=language_code,
+      stock=stock,
+    )
+  records = stock.locals.all()
+
+  assert records.count() == exact_counts
+  assert all([instance.name == exact_name for instance in records])
+
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
@@ -416,8 +547,7 @@ def test_check_valid_inputs_of_stock(options):
 
   try:
     _ = models.Stock.objects.create(
-      code='1234',
-      name='sample',
+      code='12A3C4',
       industry=factories.IndustryFactory(),
       **kwargs,
     )
@@ -462,7 +592,6 @@ def test_check_invalid_inputs_of_stock(options, err_idx, digit):
   with pytest.raises(ValidationError) as ex:
     _ = models.Stock.objects.create(
       code='1234',
-      name='sample',
       industry=factories.IndustryFactory(),
       **options,
     )
@@ -489,7 +618,7 @@ def test_queryset_of_stock():
 ], [
   ('code in "001"', [0, 1]),
   ('name == "gamma_c"', [4]),
-  ('industry__name not in "foo"', [4]),
+  ('industry_name not in "foo"', [4]),
   ('price <= 1000', [1, 4]),
   ('dividend > 6', [0, 2, 4]),
   ('1.1 < per < 2.5', [1, 2, 4]),
@@ -498,7 +627,7 @@ def test_queryset_of_stock():
   ('bps <= 0', [3]),
   ('roe < 2 or 5 < roe', [1, 2, 4]),
   ('8 <= er and er <= 16', [1, 2, 3]),
-  ('code in "1" and price < 1000 or name in "_" or industry__name == "foo" or price > 1000', [0,1,2,3,4]),
+  ('code in "1" and price < 1000 or name in "_" or industry_name == "foo" or price > 1000', [0,1,2,3,4]),
 ], ids=[
   'based-on-code',
   'based-on-name',
@@ -528,46 +657,72 @@ def test_qs_of_stock_with_tree(pseudo_stock_data, expression, indices):
 def test_check_get_dict_function_of_stock(get_judgement_funcs):
   collector, compare_keys, compare_values = get_judgement_funcs
   instance = factories.StockFactory()
+  en_lang = factories.LocalizedStockFactory(language_code='en', stock=instance)
+  ja_lang = factories.LocalizedStockFactory(language_code='ja', stock=instance)
   out_dict = instance.get_dict()
   fields = collector(models.Stock, exclude=['industry', 'skip_task'])
-  _industry = out_dict.pop('industry', None)
-  _skip_task = out_dict.pop('skip_task', None)
+  industry = out_dict.pop('industry', None)
+  skip_task = out_dict.pop('skip_task', None)
+  names = out_dict.pop('names', None)
 
-  assert _industry is not None
-  assert _skip_task is None
+  assert industry is not None
+  assert skip_task is None
+  assert names == {'en': en_lang.name, 'ja': ja_lang.name}
   assert compare_keys(list(out_dict.keys()), fields)
   assert compare_values(fields, out_dict, instance)
 
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-def test_check_stock_str_function():
+@pytest.mark.parametrize([
+  'language_code',
+  'name',
+  'exact_name',
+], [
+  ('en', 'hogehoge-en', 'hogehoge-en'),
+  ('fr', 'hogehoge-fr', ''),
+], ids=[
+  'exists-target-language-code-instance',
+  'does-not-exist-target-language-code-instance',
+])
+def test_check_stock_str_function_using_get_name_func(mocker, language_code, name, exact_name):
+  mocker.patch('stock.models.get_language', return_value='en')
   code = 1234
-  name = 'X'
-  instance = factories.StockFactory(code=code, name=name)
+  instance = factories.StockFactory(code=code)
+  lang = factories.LocalizedStockFactory(
+    name=name,
+    language_code=language_code,
+    stock=instance,
+  )
   out = str(instance)
-  expected = f'{name}({code})'
+  expected = f'{exact_name}({code})'
 
   assert out == expected
 
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-def test_check_choices_as_list_method():
+def test_check_choices_as_list_method(mocker):
+  mocker.patch('stock.models.get_language', return_value='en')
   stocks = [
-    factories.StockFactory(name='stock1', code='0101'),
-    factories.StockFactory(name='stock2', code='0202'),
+    factories.StockFactory(code='0101'),
+    factories.StockFactory(code='0202'),
+  ]
+  localized_stocks = [
+    factories.LocalizedStockFactory(name='stock1-en', language_code='en', stock=stocks[0]),
+    factories.LocalizedStockFactory(name='stock1-ja', language_code='ja', stock=stocks[0]),
+    factories.LocalizedStockFactory(name='stock2-en', language_code='en', stock=stocks[1]),
+    factories.LocalizedStockFactory(name='stock2-ja', language_code='ja', stock=stocks[1]),
   ]
   data = models.Stock.get_choices_as_list()
-  keys = ['pk', 'name', 'code']
 
   assert all([
-    all([key in item.keys() for key in keys]) for item in data
+    all([key in item.keys() for key in ['pk', 'name', 'code']]) for item in data
   ])
   assert len(stocks) == len(data)
   assert all([
-    all([getattr(_stock, key) == item[key] for key in keys])
-    for _stock, item in zip(stocks, data)
+    all([stock.pk == item['pk'], stock.code == item['code'], stock.get_name() == item['name']])
+    for stock, item in zip(stocks, data)
   ])
 
 # ====
@@ -807,17 +962,21 @@ def test_check_get_dict_function_of_purchased_stock(get_judgement_funcs, sold_ou
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-def test_check_purchased_stock_str_function(settings, pseudo_date):
+def test_check_purchased_stock_str_function(mocker, settings, pseudo_date):
+  mocker.patch('stock.models.get_language', return_value='en')
   this_timezone, target_date, exact_date = pseudo_date
   settings.TIME_ZONE = this_timezone
+  stock = factories.StockFactory()
   instance = factories.PurchasedStockFactory(
     user=factories.UserFactory(),
-    stock=factories.StockFactory(),
+    stock=stock,
     purchase_date=target_date,
     count=100,
   )
+  _ = factories.LocalizedStockFactory(language_code='en', stock=stock)
+  _ = factories.LocalizedStockFactory(language_code='ja', stock=stock)
   out = str(instance)
-  expected = f'{instance.stock.name}({exact_date},{instance.count})'
+  expected = f'{instance.stock.get_name()}({exact_date},{instance.count})'
 
   assert out == expected
 
@@ -979,11 +1138,15 @@ def test_check_that_cashes_exist_in_snapshot(balances, months_days, exact_idx):
 ])
 def test_check_that_purchased_stocks_exist_in_snapshot(number_of_purchased_stocks):
   user = factories.UserFactory()
+  stocks = factories.StockFactory.create_batch(number_of_purchased_stocks)
   purchased_stocks = sorted(
-    factories.PurchasedStockFactory.create_batch(number_of_purchased_stocks, user=user),
+    [factories.PurchasedStockFactory(stock=stock, user=user) for stock in stocks],
     key=lambda obj: obj.purchase_date,
     reverse=True,
   )
+  for stock in stocks:
+    factories.LocalizedStockFactory(name='stock-ja', language_code='ja', stock=stock)
+    factories.LocalizedStockFactory(name='stock-en', language_code='en', stock=stock)
   instance = models.Snapshot.objects.create(
     user=user,
     title="User's purchsed stocks exist",
@@ -994,8 +1157,11 @@ def test_check_that_purchased_stocks_exist_in_snapshot(number_of_purchased_stock
   assert len(out_dict['cash']) == 0
   assert len(out_dict['purchased_stocks']) == number_of_purchased_stocks
   assert all([
+    {'en': 'stock-en', 'ja': 'stock-ja'} == extracted['stock']['names']
+    for extracted in out_dict['purchased_stocks']
+  ])
+  assert all([
     all([
-      extracted['stock']['name'] == exact_val.stock.name,
       extracted['price'] == float(exact_val.price),
       extracted['purchase_date'] == models.convert_timezone(exact_val.purchase_date, is_string=True),
       extracted['count'] == exact_val.count,
@@ -1009,11 +1175,15 @@ def test_check_that_purchased_stocks_exist_in_snapshot(number_of_purchased_stock
 def test_check_general_pattern_in_snapshot():
   user = factories.UserFactory()
   cashes = factories.CashFactory.create_batch(4, user=user)
+  stocks = factories.StockFactory.create_batch(4)
   purchased_stocks = sorted(
-    factories.PurchasedStockFactory.create_batch(4, user=user),
+    [factories.PurchasedStockFactory(stock=stock, user=user) for stock in stocks],
     key=lambda obj: obj.purchase_date,
     reverse=True,
   )
+  for stock in stocks:
+    factories.LocalizedStockFactory(name='stock-ja', language_code='ja', stock=stock)
+    factories.LocalizedStockFactory(name='stock-en', language_code='en', stock=stock)
   instance = models.Snapshot.objects.create(
     user=user,
     title="It's general pattern",
@@ -1031,8 +1201,11 @@ def test_check_general_pattern_in_snapshot():
   assert out_dict['cash']['balance'] == cashes[exact_cash_idx].balance
   assert out_dict['cash']['registered_date'] == models.convert_timezone(cashes[exact_cash_idx].registered_date, is_string=True)
   assert all([
+    {'en': 'stock-en', 'ja': 'stock-ja'} == extracted['stock']['names']
+    for extracted in out_dict['purchased_stocks']
+  ])
+  assert all([
     all([
-      extracted['stock']['name'] == exact_val.stock.name,
       extracted['purchase_date'] == models.convert_timezone(exact_val.purchase_date, is_string=True),
       extracted['count'] == exact_val.count,
     ])
@@ -1072,7 +1245,7 @@ def test_check_save_method_in_instance_update():
     'cash': {},
     'purchased_stocks': {
       'stock': {
-        'name': 'hogehoge',
+        'names': {'en': 'hogehoge-en'},
       },
       'purchase_date': None,
     },
@@ -1086,7 +1259,7 @@ def test_check_save_method_in_instance_update():
 
   assert estimated.title == instance.title
   assert len(out_dict['cash']) == 0
-  assert out_dict['purchased_stocks']['stock']['name'] == 'hogehoge'
+  assert out_dict['purchased_stocks']['stock']['names'] == {'en': 'hogehoge-en'}
   assert out_dict['purchased_stocks']['purchase_date'] is None
 
 @pytest.mark.stock
