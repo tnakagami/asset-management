@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-25 21:24+0900\n"
+"POT-Creation-Date: 2025-12-28 17:16+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -58,7 +58,7 @@ msgstr "インデックス"
 msgid "Please login from above link."
 msgstr "上記のリンクからログインしてください。"
 
-#: templates/account/index.html:19 templates/stock/dashboard.html:5
+#: templates/account/index.html:19 templates/stock/dashboard.html:6
 msgid "Dashboard"
 msgstr "ダッシュボード"
 
@@ -146,13 +146,13 @@ msgstr "更新"
 msgid "User profile"
 msgstr "ユーザプロフィール"
 
-#: templates/account/user_profile.html:14 templates/stock/dashboard.html:223
+#: templates/account/user_profile.html:14 templates/stock/dashboard.html:225
 #: templates/stock/purchased_stocks.html:111
 msgid "Element"
 msgstr "項目"
 
-#: templates/account/user_profile.html:15 templates/stock/dashboard.html:172
-#: templates/stock/dashboard.html:224 templates/stock/purchased_stocks.html:112
+#: templates/account/user_profile.html:15 templates/stock/dashboard.html:174
+#: templates/stock/dashboard.html:226 templates/stock/purchased_stocks.html:112
 msgid "Value"
 msgstr "値"
 
@@ -184,7 +184,7 @@ msgstr "対象"
 msgid "Accept"
 msgstr "許可"
 
-#: templates/delete_modal_form.html:25 templates/stock/dashboard.html:284
+#: templates/delete_modal_form.html:25 templates/stock/dashboard.html:286
 #: templates/stock/purchased_stock_form.html:70
 #: templates/stock/purchased_stocks.html:176 templates/stock/snapshots.html:98
 #: templates/stock/stocks.html:210
@@ -225,7 +225,7 @@ msgstr "口座残高"
 msgid "Register cash"
 msgstr "口座残高の登録"
 
-#: templates/stock/cashes.html:24 templates/stock/dashboard.html:166
+#: templates/stock/cashes.html:24 templates/stock/dashboard.html:167
 #: templates/stock/purchased_stocks.html:25 templates/stock/snapshots.html:36
 #: templates/stock/stocks.html:28
 msgid "No."
@@ -248,180 +248,180 @@ msgstr "操作"
 msgid "There is no cashes. Please add the items from the above button."
 msgstr "口座残高の情報がありません。上記のボタンから登録してください。"
 
-#: templates/stock/dashboard.html:11
+#: templates/stock/dashboard.html:12
 msgid "Target snapshot"
 msgstr "対象の特定時点の資産"
 
-#: templates/stock/dashboard.html:19
+#: templates/stock/dashboard.html:20
 msgid "Sort type"
 msgstr "ソート形式"
 
-#: templates/stock/dashboard.html:21
+#: templates/stock/dashboard.html:22
 msgid "Without sorting"
 msgstr "ソートなし"
 
-#: templates/stock/dashboard.html:22
+#: templates/stock/dashboard.html:23
 msgid "Ascending order"
 msgstr "昇順"
 
-#: templates/stock/dashboard.html:23
+#: templates/stock/dashboard.html:24
 msgid "Descending order"
 msgstr "降順"
 
-#: templates/stock/dashboard.html:39
+#: templates/stock/dashboard.html:40
 msgid "Portfolio"
 msgstr "ポートフォリオ"
 
-#: templates/stock/dashboard.html:51
+#: templates/stock/dashboard.html:52
 msgid "Sector"
 msgstr "銘柄"
 
-#: templates/stock/dashboard.html:63
+#: templates/stock/dashboard.html:64 templates/stock/dashboard.html:171
 msgid "Economic trend"
 msgstr "経済動向"
 
-#: templates/stock/dashboard.html:75 templates/stock/dashboard.html:174
-#: templates/stock/dashboard.html:516
+#: templates/stock/dashboard.html:76 templates/stock/dashboard.html:176
+#: templates/stock/dashboard.html:535
 #: templates/stock/investment_history.html:146
 #: templates/stock/purchased_stocks.html:32
 msgid "Diff"
 msgstr "差分"
 
-#: templates/stock/dashboard.html:87
+#: templates/stock/dashboard.html:88
 msgid "Assets"
 msgstr "資産"
 
-#: templates/stock/dashboard.html:167 templates/stock/dashboard.html:229
+#: templates/stock/dashboard.html:168 templates/stock/dashboard.html:231
 #: templates/stock/purchased_stocks.html:26
 #: templates/stock/purchased_stocks.html:117 templates/stock/stocks.html:29
 msgid "Code"
 msgstr "株式コード"
 
-#: templates/stock/dashboard.html:168 templates/stock/dashboard.html:233
+#: templates/stock/dashboard.html:169 templates/stock/dashboard.html:235
 #: templates/stock/purchased_stocks.html:27
 #: templates/stock/purchased_stocks.html:121 templates/stock/stocks.html:30
 msgid "Stock name"
 msgstr "株式会社名"
 
-#: templates/stock/dashboard.html:169 templates/stock/dashboard.html:237
+#: templates/stock/dashboard.html:170 templates/stock/dashboard.html:239
 #: templates/stock/purchased_stocks.html:28
 #: templates/stock/purchased_stocks.html:125 templates/stock/stocks.html:31
 msgid "Industry"
 msgstr "株式会社の業種"
 
-#: templates/stock/dashboard.html:170 templates/stock/dashboard.html:245
-#: templates/stock/dashboard.html:441 templates/stock/dashboard.html:459
-#: templates/stock/dashboard.html:487 templates/stock/purchased_stocks.html:133
+#: templates/stock/dashboard.html:172 templates/stock/dashboard.html:247
+#: templates/stock/dashboard.html:460 templates/stock/dashboard.html:478
+#: templates/stock/dashboard.html:506 templates/stock/purchased_stocks.html:133
 #: templates/stock/stocks.html:33
 msgid "Dividend"
 msgstr "配当金"
 
-#: templates/stock/dashboard.html:171 templates/stock/dashboard.html:249
+#: templates/stock/dashboard.html:173 templates/stock/dashboard.html:251
 #: templates/stock/investment_history.html:148
 #: templates/stock/purchased_stocks.html:137 templates/stock/stocks.html:34
 msgid "Dividend yield"
 msgstr "配当利回り"
 
-#: templates/stock/dashboard.html:173 templates/stock/purchased_stocks.html:31
+#: templates/stock/dashboard.html:175 templates/stock/purchased_stocks.html:31
 msgid "Count"
 msgstr "株式数"
 
-#: templates/stock/dashboard.html:181
+#: templates/stock/dashboard.html:183
 msgid "Total except cash"
 msgstr "現金を除く合計値"
 
-#: templates/stock/dashboard.html:198
+#: templates/stock/dashboard.html:200
 #: templates/stock/investment_history.html:159
 msgid "There is no snapshots. Please add your snapshots in the following link."
 msgstr "特定時点の資産の情報がありません。下記のリンクから登録してください。"
 
-#: templates/stock/dashboard.html:204
+#: templates/stock/dashboard.html:206
 #: templates/stock/investment_history.html:165
 #: templates/stock/snapshots.html:15
 msgid "Register snapshot"
 msgstr "特定時点の資産の登録"
 
-#: templates/stock/dashboard.html:215 templates/stock/purchased_stocks.html:103
+#: templates/stock/dashboard.html:217 templates/stock/purchased_stocks.html:103
 msgid "Detail of target stock"
 msgstr "対象銘柄の詳細"
 
-#: templates/stock/dashboard.html:241 templates/stock/dashboard.html:450
+#: templates/stock/dashboard.html:243 templates/stock/dashboard.html:469
 #: templates/stock/purchased_stocks.html:129 templates/stock/stocks.html:32
 msgid "Stock price"
 msgstr "株価"
 
-#: templates/stock/dashboard.html:253 templates/stock/purchased_stocks.html:141
+#: templates/stock/dashboard.html:255 templates/stock/purchased_stocks.html:141
 #: templates/stock/stocks.html:35
 msgid "Price Earnings Ratio"
 msgstr "株価収益率（PER）"
 
-#: templates/stock/dashboard.html:257 templates/stock/purchased_stocks.html:145
+#: templates/stock/dashboard.html:259 templates/stock/purchased_stocks.html:145
 #: templates/stock/stocks.html:36
 msgid "Price Book-value Ratio"
 msgstr "株価純資産倍率（PBR）"
 
-#: templates/stock/dashboard.html:261 templates/stock/purchased_stocks.html:153
+#: templates/stock/dashboard.html:263 templates/stock/purchased_stocks.html:153
 #: templates/stock/stocks.html:38
 msgid "Earnings Per Share"
 msgstr "1株当たり純利益（EPS）"
 
-#: templates/stock/dashboard.html:265 templates/stock/purchased_stocks.html:157
+#: templates/stock/dashboard.html:267 templates/stock/purchased_stocks.html:157
 #: templates/stock/stocks.html:39
 msgid "Book value Per Share"
 msgstr "1株当たりの純資産（BPS）"
 
-#: templates/stock/dashboard.html:269 templates/stock/purchased_stocks.html:161
+#: templates/stock/dashboard.html:271 templates/stock/purchased_stocks.html:161
 #: templates/stock/stocks.html:40
 msgid "Return On Equity"
 msgstr "自己資本利益率（ROE）"
 
-#: templates/stock/dashboard.html:273 templates/stock/purchased_stocks.html:165
+#: templates/stock/dashboard.html:275 templates/stock/purchased_stocks.html:165
 #: templates/stock/stocks.html:41
 msgid "Equity Ratio"
 msgstr "自己資本比率"
 
-#: templates/stock/dashboard.html:395
+#: templates/stock/dashboard.html:320
+msgid "Defensive"
+msgstr "ディフェンシブ"
+
+#: templates/stock/dashboard.html:320
+msgid "Economically sensitive"
+msgstr "景気敏感"
+
+#: templates/stock/dashboard.html:409
 #: templates/stock/investment_history.html:149
 msgid "Cash"
 msgstr "口座残高"
 
-#: templates/stock/dashboard.html:412
-msgid "Defensive"
-msgstr "ディフェンシブ"
-
-#: templates/stock/dashboard.html:412
-msgid "Economically sensitive"
-msgstr "景気敏感"
-
-#: templates/stock/dashboard.html:437
+#: templates/stock/dashboard.html:456
 msgid "Portfolio (dividend)"
 msgstr "ポートフォリオ（配当金）"
 
-#: templates/stock/dashboard.html:446
+#: templates/stock/dashboard.html:465
 msgid "Portfolio (price)"
 msgstr "ポートフォリオ（価格）"
 
-#: templates/stock/dashboard.html:455
+#: templates/stock/dashboard.html:474
 msgid "Sector distribution (dividend)"
 msgstr "銘柄分布（配当金）"
 
-#: templates/stock/dashboard.html:469
+#: templates/stock/dashboard.html:488
 msgid "Sector distribution (price)"
 msgstr "銘柄分布（価格）"
 
-#: templates/stock/dashboard.html:473 templates/stock/dashboard.html:501
+#: templates/stock/dashboard.html:492 templates/stock/dashboard.html:520
 msgid "Price"
 msgstr "価格"
 
-#: templates/stock/dashboard.html:483
+#: templates/stock/dashboard.html:502
 msgid "Economic trend (dividend)"
 msgstr "経済動向（配当金）"
 
-#: templates/stock/dashboard.html:497
+#: templates/stock/dashboard.html:516
 msgid "Economic trend (price)"
 msgstr "経済動向（価格）"
 
-#: templates/stock/dashboard.html:511
+#: templates/stock/dashboard.html:530
 msgid "Difference between stock price and purchased price"
 msgstr "株価と購入済み価格の差分"
 
