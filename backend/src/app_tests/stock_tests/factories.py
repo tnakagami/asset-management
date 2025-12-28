@@ -22,8 +22,15 @@ class IndustryFactory(factory.django.DjangoModelFactory):
   class Meta:
     model = models.Industry
 
-  name = factory.LazyAttribute(lambda instance: _clip(faker.name(), 64))
   is_defensive = faker.pybool()
+
+class LocalizedIndustryFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = models.LocalizedIndustry
+
+  name = factory.LazyAttribute(lambda instance: _clip(faker.name(), 64))
+  language_code = 'en'
+  industry = factory.SubFactory(IndustryFactory)
 
 class StockFactory(factory.django.DjangoModelFactory):
   class Meta:
@@ -51,7 +58,6 @@ class StockFactory(factory.django.DjangoModelFactory):
     }
 
   code = factory.Sequence(lambda idx: _get_code(idx, max_len=16))
-  name = factory.Sequence(lambda idx: f'stock{idx}')
   industry = factory.SubFactory(IndustryFactory)
   price = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=8, **instance.money_params))
   dividend = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=5, **instance.money_params))
@@ -62,6 +68,14 @@ class StockFactory(factory.django.DjangoModelFactory):
   roe = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.roe_params))
   er  = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.er_params))
   skip_task = False
+
+class LocalizedStockFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = models.LocalizedStock
+
+  name = factory.Sequence(lambda idx: f'stock{idx}')
+  language_code = 'en'
+  stock = factory.SubFactory(StockFactory)
 
 class CashFactory(factory.django.DjangoModelFactory):
   class Meta:

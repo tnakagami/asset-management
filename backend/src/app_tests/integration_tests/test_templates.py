@@ -370,8 +370,20 @@ def test_count_owned_items_in_stock(init_webtest, list_page, factory_class, obje
   'cash-registration-page',
   'purchased-stock-registration-page',
 ])
-def test_registration_form_in_stock(init_webtest, target_page, form_id, param_name, success_link):
-  stock = factories.StockFactory(name='sample-stock', code='a9028')
+def test_registration_form_in_stock(mocker, init_webtest, target_page, form_id, param_name, success_link):
+  mocker.patch('stock.models.get_language', return_value='en')
+  industry = factories.IndustryFactory()
+  _ = factories.LocalizedIndustryFactory(
+    name='sample-industry',
+    language_code='en',
+    industry=industry,
+  )
+  stock = factories.StockFactory(code='a9028', industry=industry)
+  _ = factories.LocalizedStockFactory(
+    name='sample-stock',
+    language_code='en',
+    stock=stock,
+  )
 
   inputs = {
     'snapshot': {
@@ -407,8 +419,8 @@ def test_registration_form_in_stock(init_webtest, target_page, form_id, param_na
     },
     'pstock': {
        'code':         stock.code,
-       'name':         stock.name,
-       'industry':     stock.industry.name,
+       'name':         stock.get_name(),
+       'industry':     str(industry),
        'purchaseDate': '2024-09-22',
        'price':        '4,356.78',
        'count':        '100',
@@ -452,10 +464,22 @@ def test_registration_form_in_stock(init_webtest, target_page, form_id, param_na
   'cash-update-page',
   'purchased-stock-update-page',
 ])
-def test_update_form_in_stock(init_webtest, param_name):
+def test_update_form_in_stock(mocker, init_webtest, param_name):
+  mocker.patch('stock.models.get_language', return_value='en')
   app, _users = init_webtest
   user = _users['owner']
-  stock = factories.StockFactory(name='target-stock', code='796a')
+  industry = factories.IndustryFactory()
+  _ = factories.LocalizedIndustryFactory(
+    name='target-industry',
+    language_code='en',
+    industry=industry,
+  )
+  stock = factories.StockFactory(code='796a', industry=industry)
+  _ = factories.LocalizedStockFactory(
+    name='target-stock',
+    language_code='en',
+    stock=stock,
+  )
   # Define all data
   kwargs = {
     'snapshot': {
@@ -522,8 +546,8 @@ def test_update_form_in_stock(init_webtest, param_name):
     },
     'pstock': {
        'code':         stock.code,
-       'name':         stock.name,
-       'industry':     stock.industry.name,
+       'name':         stock.get_name(),
+       'industry':     str(industry),
        'purchaseDate': '2012-08-17',
        'price':        '1,052.01',
        'count':        '2,200',
@@ -611,8 +635,14 @@ def test_check_snapshot_detail_in_asset_pages(init_webtest, link_name):
     balance=234567,
     registered_date=get_date((2021,12,3)),
   )
-  stock1 = factories.StockFactory(name='stock1', code='4321')
-  stock2 = factories.StockFactory(name='stock2', code='dcba')
+  industry1 = factories.IndustryFactory()
+  industry2 = factories.IndustryFactory()
+  _ = factories.LocalizedIndustryFactory(language_code='ja', industry=industry1)
+  _ = factories.LocalizedIndustryFactory(language_code='en', industry=industry2)
+  stock1 = factories.StockFactory(code='4321', industry=industry1)
+  stock2 = factories.StockFactory(code='dcba', industry=industry2)
+  _ = factories.LocalizedStockFactory(name='stock1', language_code='en', stock=stock1)
+  _ = factories.LocalizedStockFactory(name='stock2', language_code='ja', stock=stock2)
   ps_1st = factories.PurchasedStockFactory(
     user=user,
     stock=stock1,
@@ -834,9 +864,16 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
   }
   user = UserModel.objects.create_user(**user_params)
   industries = factories.IndustryFactory.create_batch(16)
+  for industry in industries:
+    _ = factories.LocalizedIndustryFactory(language_code='en', industry=industry)
+    _ = factories.LocalizedIndustryFactory(language_code='ja', industry=industry)
   # Create stocks by using each industry
   for industry in industries:
     stocks = factories.StockFactory.create_batch(8, industry=industry)
+
+    for stock in stocks:
+      _ = factories.LocalizedStockFactory(language_code='en', stock=stock)
+      _ = factories.LocalizedStockFactory(language_code='ja', stock=stock)
   status_codes = []
   results = []
 
@@ -1005,8 +1042,8 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
   ('name == "skipped"', '-price', 0, []),
   ('name == "sample"', '-price', 1, ['sample']),
   ('name in "hoge"', '-price', 2, ['hogehoge', 'hoge-foo']),
-  ('1000 < price < 1200 and industry__name == "alpha"', '-price', 3, ['hogehoge', 'hoge-foo', 'bar']),
-  ('', 'price', 300, ['stock']),
+  ('1000 < price < 1200 and industry_name == "alpha"', '-price', 3, ['hogehoge', 'hoge-foo', 'bar']),
+  ('', 'price', 150, ['stock']),
 ], ids=[
   'target-does-not-exist',
   'there-is-only-one-target',
@@ -1014,20 +1051,29 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
   'there-are-three-targets',
   'there-are-targets-which-can-show-in-a-page',
 ])
-def test_search_stock_by_using_form(init_webtest, condition, ordering, count, exacts):
+def test_search_stock_by_using_form(mocker, init_webtest, condition, ordering, count, exacts):
+  mocker.patch('stock.models.get_language', return_value='en')
   app, _users = init_webtest
   user = _users['owner']
   # Define all data
   industries = [
-    factories.IndustryFactory(name='alpha'),
-    factories.IndustryFactory(name='beta'),
+    factories.IndustryFactory(),
+    factories.IndustryFactory(),
   ]
-  _ = factories.StockFactory(name='hogehoge', price=1199.0, industry=industries[0])
-  _ = factories.StockFactory(name='hoge-foo', price=1001.0, industry=industries[0])
-  _ = factories.StockFactory(name='bar',      price=1100.0, industry=industries[0])
-  _ = factories.StockFactory(name='sample',   price=2000.0, industry=industries[0])
-  _ = factories.StockFactory(name='skipped',  price=1024.0, industry=industries[0], skip_task=True)
-  _ = factories.StockFactory.create_batch(301, price=1, industry=industries[1])
+  _  = factories.LocalizedIndustryFactory(name='alpha', language_code='en', industry=industries[0])
+  _  = factories.LocalizedIndustryFactory(name='beta', language_code='en', industry=industries[1])
+  stocks = [
+    factories.StockFactory(price=1199.0, industry=industries[0]),
+    factories.StockFactory(price=1001.0, industry=industries[0]),
+    factories.StockFactory(price=1100.0, industry=industries[0]),
+    factories.StockFactory(price=2000.0, industry=industries[0]),
+    factories.StockFactory(price=1024.0, industry=industries[0], skip_task=True),
+  ]
+  other_stocks  = factories.StockFactory.create_batch(151, price=1, industry=industries[1])
+
+  for stock, name in zip(stocks, ['hogehoge', 'hoge-foo', 'bar', 'sample', 'skipped']):
+    _ = factories.LocalizedStockFactory(name=name, language_code='en', stock=stock)
+  _ = [factories.LocalizedStockFactory(language_code='en', stock=stock) for stock in other_stocks]
 
   # Execution
   target_url = reverse('stock:list_stock')

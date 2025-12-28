@@ -28,11 +28,23 @@ docker-compose run --rm backend bash
 python manage.py custom_createsuperuser --username ${DJANGO_SUPERUSER_NAME} --email ${DJANGO_SUPERUSER_EMAIL} --password ${DJANGO_SUPERUSER_PASSWORD}
 ```
 
-### Step3: Create multilingual localization messsages
+### Step3: Load industry and stock data
+You can use default industry data in `stock/fixtures/industry.yaml` and stock data in `stock/fixtures/stock.yaml`.
+
+If you want to load these data, then you should run the following command.
+
+```bash
+python manage.py loaddata industry.yaml stock.yaml
+#
+# Please wait for several minutes...
+#
+```
+
+### Step4: Create multilingual localization messsages
 Run the following commands to reflect translation messages.
 
 ```bash
-# 
+#
 # If you need to create/update translated file, type the following commands and execute them.
 # In the docker environment
 django-admin makemessages -l ${DJANGO_LANGUAGE_CODE:-en}
@@ -42,7 +54,7 @@ exit # or press Ctrl + D
 #
 # In the host environment
 docker-compose run --rm backend bash
-# 
+#
 
 # In the docker environment
 django-admin compilemessages

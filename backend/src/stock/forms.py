@@ -171,8 +171,8 @@ class _ValidateCondition(ast.NodeVisitor):
     _meta = models.Stock._meta
     _stock_fields = {
       'code': _meta.get_field('code'),
-      'name': _meta.get_field('name'),
-      'industry__name': models.Industry._meta.get_field('name'),
+      'name': models.LocalizedStock._meta.get_field('name'),
+      'industry_name': models.LocalizedIndustry._meta.get_field('name'),
       'price': _meta.get_field('price'),
       'dividend': _meta.get_field('dividend'),
       'div_yield': _IgnoredField(),
@@ -190,7 +190,7 @@ class _ValidateCondition(ast.NodeVisitor):
     _stock_comp_ops = {
       'code': _for_str,
       'name': _for_str,
-      'industry__name': _for_str,
+      'industry_name': _for_str,
       'price': _for_number,
       'dividend': _for_number,
       'div_yield': _for_number,
@@ -318,7 +318,7 @@ class StockSearchForm(forms.Form):
     choices=(
       ('code', gettext_lazy('Stock code')),
       ('name', gettext_lazy('Stock name')),
-      ('industry__name', gettext_lazy('Stock industry')),
+      ('industry_name', gettext_lazy('Stock industry')),
       ('price', gettext_lazy('Stock price')),
       ('dividend', gettext_lazy('Dividend')),
       ('div_yield', gettext_lazy('Dividend yield')),
@@ -338,7 +338,7 @@ class StockSearchForm(forms.Form):
       'data-attrs': {
         'code': 'str',
         'name': 'str',
-        'industry__name': 'str',
+        'industry_name': 'str',
         'price': 'number',
         'dividend': 'number',
         'div_yield': 'number',
@@ -412,6 +412,8 @@ class StockSearchForm(forms.Form):
       ('-code', gettext_lazy('Stock code (DESC)')),
       ('name', gettext_lazy('Stock name (ASC)')),
       ('-name', gettext_lazy('Stock name (DESC)')),
+      ('industry_name', gettext_lazy('Stock industry (ASC)')),
+      ('-industry_name', gettext_lazy('Stock industry (DESC)')),
       ('price', gettext_lazy('Stock price (ASC)')),
       ('-price', gettext_lazy('Stock price (DESC)')),
       ('dividend', gettext_lazy('Dividend (ASC)')),

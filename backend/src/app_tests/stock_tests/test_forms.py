@@ -159,7 +159,7 @@ def test_valid_visit_method_for_validateCondition(condition):
 ], [
   ('code == "cone"', ), ('code != "cone"', ), ('code in "cone"', ), ('code not in "cone"', ),
   ('name == "cone"', ), ('name != "cone"', ), ('name in "cone"', ), ('name not in "cone"', ),
-  ('industry__name == "cone"', ), ('industry__name != "cone"', ), ('industry__name in "cone"', ), ('industry__name not in "cone"', ),
+  ('industry_name == "cone"', ), ('industry_name != "cone"', ), ('industry_name in "cone"', ), ('industry_name not in "cone"', ),
   ('price == 10.0', ), ('price != 10.0', ), ('price < 10.0', ), ('price <= 10.0', ), ('price > 10.0', ), ('price >= 10.0', ),
   ('dividend == 10.0', ), ('dividend != 10.0', ), ('dividend < 10.0', ), ('dividend <= 10.0', ), ('dividend > 10.0', ), ('dividend >= 10.0', ),
   ('per == 10.0', ), ('per != 10.0', ), ('per < 10.0', ), ('per <= 10.0', ), ('per > 10.0', ), ('per >= 10.0', ),

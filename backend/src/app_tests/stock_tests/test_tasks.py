@@ -147,12 +147,16 @@ def test_raise_import_exception(mocker):
 # ====================
 # Check monthly report
 # ====================
-@pytest.fixture(scope='module')
+@pytest.fixture
 def pseudo_stock_data(django_db_blocker):
   with django_db_blocker.unblock():
     industries = [
-      factories.IndustryFactory(name='hoge-company'),
-      factories.IndustryFactory(name='foobar-hd'),
+      factories.IndustryFactory(),
+      factories.IndustryFactory(),
+    ]
+    localized_industries = [
+      factories.LocalizedIndustryFactory(industry=industries[0], name='hoge-company'),
+      factories.LocalizedIndustryFactory(industry=industries[1], name='foobar-hd'),
     ]
     stock_params = [
       {'code': '1234', 'name': 'X-company', 'industry': 0, 'price': '1105', 'dividend': '20',
@@ -164,11 +168,15 @@ def pseudo_stock_data(django_db_blocker):
     ]
     stocks = [
       factories.StockFactory(
-        code=kwargs['code'], name=kwargs['name'], industry=industries[kwargs['industry']],
+        code=kwargs['code'], industry=industries[kwargs['industry']],
         price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
         per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
         bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
       ) for kwargs in stock_params
+    ]
+    localized_stocks = [
+      factories.LocalizedStockFactory(stock=stock, name=kwargs['name'])
+      for stock, kwargs in zip(stocks, stock_params)
     ]
 
   return stocks

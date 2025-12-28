@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, ValidationError
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext_lazy, get_language
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
@@ -129,25 +129,82 @@ class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
 
     return node
 
-class Industry(models.Model):
+class LocalizedQuerySet(models.QuerySet):
+  def select_current_lang(self):
+    return self.filter(language_code=get_language())
+
+  def get_local(self):
+    default_lang = getattr(settings, 'LANGUAGE_CODE', 'en')
+
+    for target in [get_language(), default_lang]:
+      try:
+        instance = self.get(language_code=target)
+        break
+      except self.model.DoesNotExist:
+        pass
+    else:
+      instance = None
+
+    return instance
+
+class _BaseLocalization(models.Model):
+  class Meta:
+    abstract = True
+
+  language_code = models.CharField(
+    max_length=10,
+    verbose_name=gettext_lazy('Language code'),
+    choices=settings.LANGUAGES,
+  )
   name = models.CharField(
     max_length=64,
-    verbose_name=gettext_lazy('Industry name'),
+    verbose_name=gettext_lazy('Localized name'),
     help_text=gettext_lazy('Max length of this field is 64.'),
-    unique=True,
   )
+
+  def get_lang_pair(self):
+    return (self.language_code, self.name)
+
+  def __str__(self):
+    return self.name
+
+class LocalizedIndustry(_BaseLocalization):
+  class Meta:
+    unique_together = (('industry', 'language_code'), )
+
+  objects = LocalizedQuerySet.as_manager()
+
+  industry = models.ForeignKey(
+    'Industry',
+    verbose_name=gettext_lazy('Localized industry'),
+    on_delete=models.CASCADE,
+    related_name='locals',
+  )
+
+class IndustryManager(models.Manager):
+  def get_queryset(self):
+    return super().get_queryset().prefetch_related('locals')
+
+class Industry(models.Model):
   is_defensive = models.BooleanField(
     verbose_name=gettext_lazy('Defensive brand'),
   )
 
+  objects = IndustryManager()
+
   def get_dict(self):
+    queryset = self.locals.all()
+
     return {
-      'name': self.name,
+      'names': dict([record.get_lang_pair() for record in queryset]),
       'is_defensive': self.is_defensive,
     }
 
+  def get_name(self):
+    return str(self.locals.get_local() or '')
+
   def __str__(self):
-    return self.name
+    return self.get_name()
 
 def _validate_code(code):
   invalid_match = re.search('[^0-9a-zA-Z]+', code)
@@ -158,6 +215,19 @@ def _validate_code(code):
       code='invalid',
       params={'value': code},
     )
+
+class LocalizedStock(_BaseLocalization):
+  class Meta:
+    unique_together = (('stock', 'language_code'), )
+
+  objects = LocalizedQuerySet.as_manager()
+
+  stock = models.ForeignKey(
+    'Stock',
+    verbose_name=gettext_lazy('Localized stock'),
+    on_delete=models.CASCADE,
+    related_name='locals',
+  )
 
 class StockQuerySet(models.QuerySet):
   def _annotate_dividend(self):
@@ -178,10 +248,22 @@ class StockQuerySet(models.QuerySet):
       )
     )
 
+  def _annotate_names(self):
+    stocks = LocalizedStock.objects.select_current_lang().filter(stock=models.OuterRef('pk'))
+    industries = LocalizedIndustry.objects.select_current_lang().filter(industry=models.OuterRef('industry__pk'))
+    queryset = self.annotate(
+      name=models.Subquery(stocks.values('name'))
+    ).annotate(
+      industry_name=models.Subquery(industries.values('name'))
+    )
+
+    return queryset
+
   def select_targets(self, tree=None):
     queryset = self.filter(skip_task=False) \
                    ._annotate_dividend() \
-                   ._annotate_per_pbr()
+                   ._annotate_per_pbr() \
+                   ._annotate_names()
 
     if tree:
       # Assumption: abstract syntax tree is validated by caller
@@ -190,6 +272,15 @@ class StockQuerySet(models.QuerySet):
       queryset = queryset.filter(visitor.condition)
 
     return queryset
+
+class StockManager(models.Manager):
+  def get_queryset(self):
+    queryset = StockQuerySet(self.model, using=self._db)
+
+    return queryset.select_related('industry').prefetch_related('locals')
+
+  def select_targets(self, tree=None):
+    return self.get_queryset().select_targets(tree)
 
 class Stock(models.Model):
   class Meta:
@@ -201,7 +292,7 @@ class Stock(models.Model):
       models.CheckConstraint(condition=models.Q(pbr__gte=0),      name='pbr_gte_0_in_stock'),
     ]
 
-  objects = StockQuerySet.as_manager()
+  objects = StockManager()
 
   code = models.CharField(
     max_length=16,
@@ -209,11 +300,6 @@ class Stock(models.Model):
     help_text=gettext_lazy('This field consists of either only numbers or both alphabets and numbers.'),
     validators=[_validate_code],
     unique=True,
-  )
-  name = models.CharField(
-    max_length=255,
-    verbose_name=gettext_lazy('Stock name'),
-    help_text=gettext_lazy('Max length of this field is 255.'),
   )
   industry = models.ForeignKey(
     Industry,
@@ -286,12 +372,14 @@ class Stock(models.Model):
 
   @classmethod
   def get_choices_as_list(cls):
-    return list(cls.objects.all().values('pk', 'name', 'code').order_by('pk'))
+    return list(cls.objects.select_targets().values('pk', 'name', 'code').order_by('pk'))
 
   def get_dict(self):
+    queryset = self.locals.all()
+
     return {
       'code': self.code,
-      'name': self.name,
+      'names': dict([record.get_lang_pair() for record in queryset]),
       'industry': self.industry.get_dict(),
       'price': float(self.price),
       'dividend': float(self.dividend),
@@ -303,8 +391,11 @@ class Stock(models.Model):
       'er': float(self.er),
     }
 
+  def get_name(self):
+    return str(self.locals.get_local() or '')
+
   def __str__(self):
-    return f'{self.name}({self.code})'
+    return f'{self.get_name()}({self.code})'
 
 class CashQuerySet(models.QuerySet):
   def selected_range(self, from_date=None, to_date=None):
@@ -357,7 +448,7 @@ class PurchasedStockQuerySet(models.QuerySet):
     return self.order_by('purchase_date')
 
   def selected_range(self, from_date=None, to_date=None):
-    queryset = self.filter(has_been_sold=False)
+    queryset = self.select_related('stock').filter(has_been_sold=False)
 
     if from_date and to_date:
       queryset = queryset.filter(purchase_date__range=[from_date, to_date])
@@ -421,7 +512,7 @@ class PurchasedStock(models.Model):
 
   def __str__(self):
     target_time = convert_timezone(self.purchase_date, is_string=True)
-    out = f'{self.stock.name}({target_time},{self.count})'
+    out = f'{self.stock.get_name()}({target_time},{self.count})'
 
     return out
 

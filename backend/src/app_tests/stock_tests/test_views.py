@@ -129,10 +129,15 @@ def test_without_authentication_for_history_page(client):
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_get_access_to_ajaxview(client):
+def test_get_access_to_ajaxview(mocker, client):
+  mocker.patch('stock.models.get_language', return_value='en')
   stocks = [
-    factories.StockFactory(name='stock01', code='0001'),
-    factories.StockFactory(name='stock02', code='0002'),
+    factories.StockFactory(code='0001'),
+    factories.StockFactory(code='0002'),
+  ]
+  localized_stocks = [
+    factories.LocalizedStockFactory(name='stock01', language_code='en', stock=stocks[0]),
+    factories.LocalizedStockFactory(name='stock02', language_code='en', stock=stocks[1]),
   ]
   url = reverse('stock:ajax_stock')
   response = client.get(url)

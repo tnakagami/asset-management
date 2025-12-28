@@ -1,0 +1,528 @@
+- model: stock.industry
+  pk: 1
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 2
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 3
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 4
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 5
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 6
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 7
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 8
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 9
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 10
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 11
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 12
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 13
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 14
+  fields:
+    is_defensive: true
+- model: stock.industry
+  pk: 15
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 16
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 17
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 18
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 19
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 20
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 21
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 22
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 23
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 24
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 25
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 26
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 27
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 28
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 29
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 30
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 31
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 32
+  fields:
+    is_defensive: false
+- model: stock.industry
+  pk: 33
+  fields:
+    is_defensive: false
+- model: stock.localizedindustry
+  pk: 1
+  fields:
+    language_code: ja
+    name: サービス業
+    industry: 1
+- model: stock.localizedindustry
+  pk: 2
+  fields:
+    language_code: en
+    name: Services
+    industry: 1
+- model: stock.localizedindustry
+  pk: 3
+  fields:
+    language_code: ja
+    name: その他製品
+    industry: 2
+- model: stock.localizedindustry
+  pk: 4
+  fields:
+    language_code: en
+    name: Other products
+    industry: 2
+- model: stock.localizedindustry
+  pk: 5
+  fields:
+    language_code: ja
+    name: 医薬品
+    industry: 3
+- model: stock.localizedindustry
+  pk: 6
+  fields:
+    language_code: en
+    name: Pharmaceuticals
+    industry: 3
+- model: stock.localizedindustry
+  pk: 7
+  fields:
+    language_code: ja
+    name: 金属製品
+    industry: 4
+- model: stock.localizedindustry
+  pk: 8
+  fields:
+    language_code: en
+    name: Metal products
+    industry: 4
+- model: stock.localizedindustry
+  pk: 9
+  fields:
+    language_code: ja
+    name: 小売業
+    industry: 5
+- model: stock.localizedindustry
+  pk: 10
+  fields:
+    language_code: en
+    name: Retail
+    industry: 5
+- model: stock.localizedindustry
+  pk: 11
+  fields:
+    language_code: ja
+    name: 情報・通信
+    industry: 6
+- model: stock.localizedindustry
+  pk: 12
+  fields:
+    language_code: en
+    name: Information and Communication
+    industry: 6
+- model: stock.localizedindustry
+  pk: 13
+  fields:
+    language_code: ja
+    name: 食料品
+    industry: 7
+- model: stock.localizedindustry
+  pk: 14
+  fields:
+    language_code: en
+    name: Food
+    industry: 7
+- model: stock.localizedindustry
+  pk: 15
+  fields:
+    language_code: ja
+    name: 倉庫・運輸関連業
+    industry: 8
+- model: stock.localizedindustry
+  pk: 16
+  fields:
+    language_code: en
+    name: Warehousing and Transportation
+    industry: 8
+- model: stock.localizedindustry
+  pk: 17
+  fields:
+    language_code: ja
+    name: 電気・ガス業
+    industry: 9
+- model: stock.localizedindustry
+  pk: 18
+  fields:
+    language_code: en
+    name: Electricity and Gas
+    industry: 9
+- model: stock.localizedindustry
+  pk: 19
+  fields:
+    language_code: ja
+    name: 不動産業
+    industry: 10
+- model: stock.localizedindustry
+  pk: 20
+  fields:
+    language_code: en
+    name: Real Estate
+    industry: 10
+- model: stock.localizedindustry
+  pk: 21
+  fields:
+    language_code: ja
+    name: 保険業
+    industry: 11
+- model: stock.localizedindustry
+  pk: 22
+  fields:
+    language_code: en
+    name: Insurance
+    industry: 11
+- model: stock.localizedindustry
+  pk: 23
+  fields:
+    language_code: ja
+    name: 水産・農林業
+    industry: 12
+- model: stock.localizedindustry
+  pk: 24
+  fields:
+    language_code: en
+    name: Fisheries and Forestry
+    industry: 12
+- model: stock.localizedindustry
+  pk: 25
+  fields:
+    language_code: ja
+    name: パルプ・紙
+    industry: 13
+- model: stock.localizedindustry
+  pk: 26
+  fields:
+    language_code: en
+    name: Pulp and Paper
+    industry: 13
+- model: stock.localizedindustry
+  pk: 27
+  fields:
+    language_code: ja
+    name: 陸運業
+    industry: 14
+- model: stock.localizedindustry
+  pk: 28
+  fields:
+    language_code: en
+    name: Land transportation
+    industry: 14
+- model: stock.localizedindustry
+  pk: 29
+  fields:
+    language_code: ja
+    name: ガラス・土石製品
+    industry: 15
+- model: stock.localizedindustry
+  pk: 30
+  fields:
+    language_code: en
+    name: Glass and stone products
+    industry: 15
+- model: stock.localizedindustry
+  pk: 31
+  fields:
+    language_code: ja
+    name: ゴム製品
+    industry: 16
+- model: stock.localizedindustry
+  pk: 32
+  fields:
+    language_code: en
+    name: Rubber products
+    industry: 16
+- model: stock.localizedindustry
+  pk: 33
+  fields:
+    language_code: ja
+    name: その他金融業
+    industry: 17
+- model: stock.localizedindustry
+  pk: 34
+  fields:
+    language_code: en
+    name: Other financial services
+    industry: 17
+- model: stock.localizedindustry
+  pk: 35
+  fields:
+    language_code: ja
+    name: 卸売業
+    industry: 18
+- model: stock.localizedindustry
+  pk: 36
+  fields:
+    language_code: en
+    name: Wholesale
+    industry: 18
+- model: stock.localizedindustry
+  pk: 37
+  fields:
+    language_code: ja
+    name: 化学
+    industry: 19
+- model: stock.localizedindustry
+  pk: 38
+  fields:
+    language_code: en
+    name: Chemical
+    industry: 19
+- model: stock.localizedindustry
+  pk: 39
+  fields:
+    language_code: ja
+    name: 機械
+    industry: 20
+- model: stock.localizedindustry
+  pk: 40
+  fields:
+    language_code: en
+    name: Machinery
+    industry: 20
+- model: stock.localizedindustry
+  pk: 41
+  fields:
+    language_code: ja
+    name: 銀行業
+    industry: 21
+- model: stock.localizedindustry
+  pk: 42
+  fields:
+    language_code: en
+    name: Banking
+    industry: 21
+- model: stock.localizedindustry
+  pk: 43
+  fields:
+    language_code: ja
+    name: 建設業
+    industry: 22
+- model: stock.localizedindustry
+  pk: 44
+  fields:
+    language_code: en
+    name: Construction
+    industry: 22
+- model: stock.localizedindustry
+  pk: 45
+  fields:
+    language_code: ja
+    name: 鉱業
+    industry: 23
+- model: stock.localizedindustry
+  pk: 46
+  fields:
+    language_code: en
+    name: Mining
+    industry: 23
+- model: stock.localizedindustry
+  pk: 47
+  fields:
+    language_code: ja
+    name: 繊維製品
+    industry: 24
+- model: stock.localizedindustry
+  pk: 48
+  fields:
+    language_code: en
+    name: Textiles
+    industry: 24
+- model: stock.localizedindustry
+  pk: 49
+  fields:
+    language_code: ja
+    name: 電気機器
+    industry: 25
+- model: stock.localizedindustry
+  pk: 50
+  fields:
+    language_code: en
+    name: Electric equipment
+    industry: 25
+- model: stock.localizedindustry
+  pk: 51
+  fields:
+    language_code: ja
+    name: 石油・石炭製品
+    industry: 26
+- model: stock.localizedindustry
+  pk: 52
+  fields:
+    language_code: en
+    name: Oil and coal products
+    industry: 26
+- model: stock.localizedindustry
+  pk: 53
+  fields:
+    language_code: ja
+    name: 鉄鋼
+    industry: 27
+- model: stock.localizedindustry
+  pk: 54
+  fields:
+    language_code: en
+    name: Steel
+    industry: 27
+- model: stock.localizedindustry
+  pk: 55
+  fields:
+    language_code: ja
+    name: 非鉄金属
+    industry: 28
+- model: stock.localizedindustry
+  pk: 56
+  fields:
+    language_code: en
+    name: Nonferrous metals
+    industry: 28
+- model: stock.localizedindustry
+  pk: 57
+  fields:
+    language_code: ja
+    name: 輸送用機器
+    industry: 29
+- model: stock.localizedindustry
+  pk: 58
+  fields:
+    language_code: en
+    name: Transportation equipment
+    industry: 29
+- model: stock.localizedindustry
+  pk: 59
+  fields:
+    language_code: ja
+    name: 精密機器
+    industry: 30
+- model: stock.localizedindustry
+  pk: 60
+  fields:
+    language_code: en
+    name: Precision equipment
+    industry: 30
+- model: stock.localizedindustry
+  pk: 61
+  fields:
+    language_code: ja
+    name: 海運業
+    industry: 31
+- model: stock.localizedindustry
+  pk: 62
+  fields:
+    language_code: en
+    name: Marine transportation
+    industry: 31
+- model: stock.localizedindustry
+  pk: 63
+  fields:
+    language_code: ja
+    name: 空運業
+    industry: 32
+- model: stock.localizedindustry
+  pk: 64
+  fields:
+    language_code: en
+    name: Air transportation
+    industry: 32
+- model: stock.localizedindustry
+  pk: 65
+  fields:
+    language_code: ja
+    name: 証券業
+    industry: 33
+- model: stock.localizedindustry
+  pk: 66
+  fields:
+    language_code: en
+    name: Securities trading
+    industry: 33

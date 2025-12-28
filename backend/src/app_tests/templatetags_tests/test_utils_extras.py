@@ -89,10 +89,12 @@ def test_check_is_negative_func(value, exact):
   (1000,  20, 2.00),
   ( 143,   7, 4.90), # 7 / 143 * 100 -> 4.895... -> 4.90
   (   0, 123, 0.00),
+  ( 0.0, 0.0, 0.00),
 ], ids=[
   'can-divide',
   'cannot-divide',
   'has-zero-division-error',
+  'has-invalid-operation-error',
 ])
 def test_check_get_yield_func(price, dividend, exact):
   user = factories.UserFactory()

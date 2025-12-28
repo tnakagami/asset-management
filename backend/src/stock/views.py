@@ -204,7 +204,7 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   model = models.Stock
   template_name = 'stock/stocks.html'
   form_class = forms.StockSearchForm
-  paginate_by = 300
+  paginate_by = 150
   context_object_name = 'stocks'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:list_stock',

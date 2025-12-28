@@ -37,7 +37,7 @@
               {% for instance in pstocks %}
               <tr
                 data-code="{{ instance.stock.code }}"
-                data-name="{{ instance.stock.name }}"
+                data-name="{{ instance.stock.get_name }}"
                 data-industry="{{ instance.stock.industry }}"
                 data-price="{{ instance.stock.price|intcomma }}"
                 data-dividend="{{ instance.stock.dividend|intcomma }}"
@@ -53,7 +53,7 @@
                 {% with table_css=instance.has_been_sold|yesno:'table-secondary,' %}
                 <td scope="row" class="{{ table_css }}">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td data-type="code" class="{{ table_css }}">{{ instance.stock.code }}</td>
-                <td data-type="name" class="text-decoration-underline text-primary js-click-link {{ table_css }}">{{ instance.stock.name }}</td>
+                <td data-type="name" class="text-decoration-underline text-primary js-click-link {{ table_css }}">{{ instance.stock.get_name }}</td>
                 <td data-type="industry" class="{{ table_css }}">{{ instance.stock.industry }}</td>
                 <td data-type="purchaseDate" class="{{ table_css }}">{{ instance.purchase_date|date:"Y-m-d" }}</td>
                 <td data-type="price" class="{{ table_css }}">{{ instance.price|intcomma }}</td>
@@ -73,7 +73,7 @@
                 <td data-operate="delete">
                   <div
                     class="text-danger delete-target-record"
-                    data-name="[{{ instance.purchase_date|date:'Y-m-d' }}] {{ instance.stock.name }}({{ instance.stock.code }})"
+                    data-name="[{{ instance.purchase_date|date:'Y-m-d' }}] {{ instance.stock.get_name }}({{ instance.stock.code }})"
                     data-url="{% url 'stock:delete_purchased_stock' pk=instance.pk %}"
                   >
                     <i class="fas fa-trash"></i>
