@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
 
 {% block content %}
 {% include 'breadcrumbs.html' with title=_("Dashboard") %}
@@ -334,6 +335,12 @@
     };
     const cash = data.cash.balance;
     const originalStocks = data.purchased_stocks.map((record) => {
+      const _getName = (item) => {
+        const lang = '{{ LANGUAGE_CODE|stringformat:"s" }}';
+        const ret = item.name || item.names[lang];
+
+        return ret;
+      };
       const _stock = record.stock;
       const stockPrice = _stock.price;
       const pStockPrice = record.price;
@@ -342,9 +349,9 @@
       const trendIdx = (isDefensive) ? 0 : 1;
 
       return {
-        name: _stock.name,
+        name: _getName(_stock),
         code: _stock.code,
-        industry: _stock.industry.name,
+        industry: _getName(_stock.industry),
         dividend: _stock.dividend,
         realDividend: _stock.dividend * record.count,
         isDefensive: isDefensive,

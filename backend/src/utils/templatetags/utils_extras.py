@@ -1,5 +1,5 @@
 from django import template
-from decimal import Decimal
+import decimal
 
 register = template.Library()
 
@@ -30,8 +30,8 @@ def get_yield(instance):
   price = instance.stock.price
 
   try:
-    _yield = dividend / price * Decimal('100.0')
-  except ZeroDivisionError:
+    _yield = dividend / price * decimal.Decimal('100.0')
+  except (ZeroDivisionError, decimal.InvalidOperation):
     _yield = 0
 
   return _yield

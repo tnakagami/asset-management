@@ -46,7 +46,7 @@
               <tr>
                 <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td data-type="code">{{ instance.code }}</td>
-                <td data-type="name">{{ instance.name }}</td>
+                <td data-type="name">{{ instance.get_name }}</td>
                 <td data-type="industry">{{ instance.industry }}</td>
                 <td data-type="price" {% if instance.price|is_negative %}class="text-danger"{% endif %}>{{ instance.price|intcomma }}</td>
                 <td data-type="dividend">{{ instance.dividend|intcomma }}</td>
@@ -193,7 +193,7 @@
                     >
                       <i class="fas fa-trash"></i>
                     </button>
-                  {% endwith %}  
+                  {% endwith %}
                   </div>
                 </div>
               </div>
