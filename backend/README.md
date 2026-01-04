@@ -10,6 +10,8 @@ docker-compose run --rm backend bash
 
 # In the docker environment
 python manage.py migrate django_celery_results
+python manage.py migrate django_celery_beat
+exit # or press Ctrl + D
 ```
 
 Please remember the two-step guides to making model changes:

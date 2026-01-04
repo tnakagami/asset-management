@@ -1,9 +1,19 @@
-from django.views.generic import TemplateView, ListView, DetailView, View, FormView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import (
+  TemplateView,
+  ListView,
+  UpdateView,
+  DeleteView,
+  DetailView,
+  View,
+  FormView,
+)
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.utils.translation import gettext_lazy
 from django.http import JsonResponse
 from django.urls import reverse_lazy
+from django_celery_beat.models import PeriodicTask
 from utils.views import (
+  BaseCreateUpdateView,
   CreateViewBasedOnUser,
   UpdateViewBasedOnUser,
   CustomDeleteView,
@@ -197,6 +207,61 @@ class AjaxUpdateAllSnapshots(View):
     response = JsonResponse(data)
 
     return response
+
+class IsOwnSnapshotTask(UserPassesTestMixin):
+  def test_func(self):
+    instance = self.get_object()
+    user = self.request.user
+    queryset = models.Snapshot.get_queryset_from_periodic_task(user, pk=instance.pk)
+    is_valid = queryset.exists()
+
+    return is_valid
+
+class ListPeriodicTaskForSnapshot(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = PeriodicTask
+  template_name = 'stock/periodic_tasks_for_snapshot.html'
+  paginate_by = 36
+  context_object_name = 'tasks'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:list_snapshot_task',
+    title=gettext_lazy('Periodic task list for snapshot'),
+    parent_view_class=Index,
+  )
+
+  def get_queryset(self):
+    user = self.request.user
+    queryset = models.Snapshot.get_queryset_from_periodic_task(user)
+
+    return queryset
+
+class RegisterPeriodicTaskForSnapshot(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = PeriodicTask
+  form_class = forms.PeriodicTaskForSnapshotForm
+  template_name = 'stock/periodic_task_for_snapshot_form.html'
+  success_url = reverse_lazy('stock:list_snapshot_task')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:register_snapshot_task',
+    title=gettext_lazy('Register periodic task for snapshot'),
+    parent_view_class=ListPeriodicTaskForSnapshot,
+  )
+
+class UpdatePeriodicTaskForSnapshot(BaseCreateUpdateView, IsOwnSnapshotTask, UpdateView, DjangoBreadcrumbsMixin):
+  model = PeriodicTask
+  form_class = forms.PeriodicTaskForSnapshotForm
+  template_name = 'stock/periodic_task_for_snapshot_form.html'
+  success_url = reverse_lazy('stock:list_snapshot_task')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:update_snapshot_task',
+    title=gettext_lazy('Update periodic task for snapshot'),
+    parent_view_class=ListPeriodicTaskForSnapshot,
+    url_keys=['pk'],
+  )
+
+class DeletePeriodicTaskForSnapshot(LoginRequiredMixin, IsOwnSnapshotTask, DeleteView):
+  raise_exception = True
+  http_method_names = ['post']
+  model = PeriodicTask
+  success_url = reverse_lazy('stock:list_snapshot_task')
 
 class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   raise_exception = True

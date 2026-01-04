@@ -57,6 +57,16 @@ def register_monthly_report(day_offset):
     records += [instance]
   Snapshot.objects.bulk_create(records)
 
+@shared_task(ignore_result=True)
+def update_specific_snapshot(user_pk, snapshot_pk):
+  try:
+    user = UserModel.objects.get(pk=user_pk)
+    instance = Snapshot.objects.get(pk=snapshot_pk, user=user)
+    instance.update_record()
+    instance.save()
+  except (UserModel.DoesNotExist, Snapshot.DoesNotExist) as ex:
+    g_logger.error(f'Failed to update the record({ex}).')
+
 @shared_task(bind=True)
 def update_stock_records(self, **kwargs):
   if len(g_attrs) > 0:

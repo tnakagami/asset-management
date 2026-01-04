@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy, get_language
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
+from django_celery_beat.models import PeriodicTask
 from collections import deque
 import re
 import json
@@ -595,6 +596,24 @@ class Snapshot(models.Model):
     out = json_script(data, self.uuid)
 
     return out
+
+  def update_periodic_task(self, periodic_task, crontab):
+    periodic_task.crontab = crontab
+    periodic_task.task = 'stock.tasks.update_specific_snapshot'
+    periodic_task.kwargs = json.dumps({'user_pk': self.user.pk, 'snapshot_pk': self.pk})
+
+    return periodic_task
+
+  @classmethod
+  def get_queryset_from_periodic_task(cls, user, pk=None):
+    kwargs = {'user_pk': user.pk}
+
+    if pk is not None:
+      kwargs.update({'snapshot_pk': pk})
+
+    queryset = PeriodicTask.objects.filter(kwargs__contains=[kwargs]).order_by('-total_run_count')
+
+    return queryset
 
   @classmethod
   def save_all(cls, user):

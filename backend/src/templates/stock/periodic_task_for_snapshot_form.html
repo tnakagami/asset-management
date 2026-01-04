@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Register/Update periodic task for snapshot") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" id="task-form">
+          {% csrf_token %}
+
+          {{ form }}
+
+          {# Register or cancel #}
+          <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <button
+                type="submit"
+                class="btn btn-primary w-100 custom-boxshadow"
+              >
+                {% trans "Register/Update" %}
+              </button>
+            </div>
+            <div class="col">
+              <a
+                href="{% url 'stock:list_snapshot_task' %}"
+                class="btn btn-secondary w-100 custom-boxshadow"
+              >
+                {% trans "Cancel" %}
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<template id="schedule-template">
+<div class="mt-1 row row-cols-1 g-2" name="detailed-schedule">
+  <div class="col">
+    <div class="form-floating" name="target-hour">
+      <select class="form-control">{% with ''|center:'24' as range %}{% for _ in range %}
+        <option value="{{ forloop.counter0 }}"{% if forloop.first %} selected{% endif %}>{{ forloop.counter0 }}</option>{% endfor %}{% endwith %}
+      </select>
+      <label for="" class="form-label">{% trans "Hour" %}</label>
+    </div>
+  </div>
+  <div class="col">
+    <div class="form-floating" name="target-minute">
+      <select class="form-control">{% with ''|center:'60' as range %}{% for _ in range %}
+        <option value="{{ forloop.counter0 }}"{% if forloop.first %} selected{% endif %}>{{ forloop.counter0 }}</option>{% endfor %}{% endwith %}
+      </select>
+      <label for="" class="form-label">{% trans "Minute" %}</label>
+    </div>
+  </div>
+  <div class="col">
+    <div class="form-floating" name="target-week">
+      <select class="form-control">
+        <option value="0" selected>{% trans "Sunday" %}</option>
+        <option value="1">{% trans "Monday" %}</option>
+        <option value="2">{% trans "Tuesday" %}</option>
+        <option value="3">{% trans "Wednesday" %}</option>
+        <option value="4">{% trans "Thursday" %}</option>
+        <option value="5">{% trans "Friday" %}</option>
+        <option value="6">{% trans "Saturday" %}</option>
+      </select>
+      <label for="" class="form-label">{% trans "Day of week" %}</label>
+    </div>
+  </div>
+  <div class="col">
+    <div class="form-floating" name="target-month">
+      <select class="form-control">{% with ''|center:'31' as range %}{% for _ in range %}
+        <option value="{{ forloop.counter }}"{% if forloop.first %} selected{% endif %}>{{ forloop.counter }}</option>{% endfor %}{% endwith %}
+      </select>
+      <label for="" class="form-label">{% trans "Day of month" %}</label>
+    </div>
+  </div>
+</div>
+</template>
+{% endblock %}
+
+{% block bodyjs %}
+{{ block.super }}
+<script>
+(function () {
+  const g_scheduleNodeName = 'target-schedule';
+
+  const setupScheduleType = (scheduleTypeElement) => {
+    const rootNodeName = 'detailed-schedule';
+
+    const updateNode = (clone, name, isDisable=false) => {
+      const element = clone.querySelector(`div[name="${name}"]`);
+
+      if (isDisable) {
+        const parent = element.parentNode;
+        const baseNode = clone.querySelector(`div[name="${rootNodeName}"]`);
+        baseNode.removeChild(parent);
+      }
+      else {
+        const selectObj = element.querySelector('select');
+        const labelObj = element.querySelector('label');
+        selectObj.id = name;
+        labelObj.for = name;
+      }
+    };
+    scheduleTypeElement.addEventListener('change', (event) => {
+      const target = event.target;
+      const currentType = target.value;
+      const template = document.querySelector('#schedule-template');
+      const clone = template.content.cloneNode(true);
+      const baseNode = clone.querySelector(`div[name="${rootNodeName}"]`);
+      baseNode.id = g_scheduleNodeName;
+      updateNode(clone, 'target-hour');
+      updateNode(clone, 'target-minute');
+
+      switch (currentType) {
+        case 'every-day':
+          updateNode(clone, 'target-week', true);
+          updateNode(clone, 'target-month', true);
+          break;
+
+        case 'every-week':
+          updateNode(clone, 'target-week');
+          updateNode(clone, 'target-month', true);
+          break;
+
+        case 'every-month':
+          updateNode(clone, 'target-week', true);
+          updateNode(clone, 'target-month');
+          break;
+
+        default:
+          break;
+      }
+      // Add clone node
+      const baseParent = target.parentNode.parentNode;
+      const oldElem = baseParent.querySelector(`#${g_scheduleNodeName}`);
+
+      if (oldElem) {
+        baseParent.removeChild(oldElem);
+      }
+      baseParent.appendChild(clone);
+    });
+    scheduleTypeElement.dispatchEvent(new Event('change'));
+  };
+  const setupSubmitEvent = (form) => {
+    form.addEventListener('submit', (event) => {
+      const scheduleTypeElement = document.querySelector('#schedule-type');
+      const detailedSchedule = document.querySelector(`#${g_scheduleNodeName}`);
+      const config = document.querySelector('#config');
+      const data = (() => {
+        const currentType = scheduleTypeElement.value;
+        const hourElem = detailedSchedule.querySelector('#target-hour');
+        const minuteElem = detailedSchedule.querySelector('#target-minute');
+        const weekElem = detailedSchedule.querySelector('#target-week');
+        const monthElem = detailedSchedule.querySelector('#target-month');
+        let result = {};
+
+        switch (currentType) {
+          case 'every-day':
+            result = {
+              hour: hourElem.value,
+              minute: minuteElem.value,
+            };
+            break;
+
+          case 'every-week':
+            result = {
+              hour: hourElem.value,
+              minute: minuteElem.value,
+              day_of_week: weekElem.value,
+            };
+            break;
+
+          case 'every-month':
+            result = {
+              hour: hourElem.value,
+              minute: minuteElem.value,
+              day_of_month: monthElem.value,
+            };
+            break;
+
+          default:
+            break;
+        }
+
+        return result;
+      })();
+      config.value = JSON.stringify(data);
+    });
+  };
+
+  // Define initialization function
+  const init = () => {
+    setupScheduleType(document.querySelector('#schedule-type'));
+    setupSubmitEvent(document.querySelector('#task-form'));
+  };
+  // Add DOM event
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+{% endblock %}
