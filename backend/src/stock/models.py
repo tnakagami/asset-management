@@ -5,7 +5,6 @@ from django.utils.translation import gettext_lazy, get_language
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
-from zoneinfo import ZoneInfo
 from collections import deque
 import re
 import json
@@ -23,8 +22,8 @@ def bind_user_function(callback):
   return wrapper
 
 def convert_timezone(target, is_string=False, strformat='%Y-%m-%d'):
-  timezone = ZoneInfo(settings.TIME_ZONE)
-  output = target.astimezone(timezone)
+  tz = timezone.get_current_timezone()
+  output = target.astimezone(tz)
 
   if is_string:
     output = output.strftime(strformat)
