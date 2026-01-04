@@ -24,7 +24,10 @@ g_logger = get_task_logger(__name__)
 
 def _calc_diff_date(offset=1):
   current = timezone.now()
-  shifted_date = datetime(current.year, current.month, current.day, tzinfo=current.tzinfo) - timedelta(days=offset-1, seconds=1)
+  target = datetime(current.year, current.month, current.day) - timedelta(days=offset-1, seconds=1)
+  tz = timezone.get_current_timezone()
+  dt_with_current_tz = timezone.make_aware(target, tz)
+  shifted_date = dt_with_current_tz.astimezone(timezone.timezone.utc)
 
   return shifted_date
 

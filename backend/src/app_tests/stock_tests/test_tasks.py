@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from django_celery_results.models import TaskResult
 from django.contrib.auth import get_user_model
+from zoneinfo import ZoneInfo
 from stock.models import convert_timezone
 from . import factories
 
@@ -31,23 +32,28 @@ class FakeLogger:
 @pytest.mark.parametrize([
   'current_date',
   'offset',
-  'expected_date',
+  'expected_date'
 ], [
-  (datetime(2000,1,2, 9,0,0, tzinfo=timezone.utc), 3, datetime(1999,12,30,23,59,59, tzinfo=timezone.utc)),
-  (datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), 2, datetime(1999,12,31,23,59,59, tzinfo=timezone.utc)),
-  (datetime(2000,1,2,11,0,0, tzinfo=timezone.utc), 1, datetime(2000, 1, 1,23,59,59, tzinfo=timezone.utc)),
-  (datetime(2000,4,1,12,0,0, tzinfo=timezone.utc), 2, datetime(2000, 3,30,23,59,59, tzinfo=timezone.utc)),
-  (datetime(2000,4,1,13,0,0, tzinfo=timezone.utc), 1, datetime(2000, 3,31,23,59,59, tzinfo=timezone.utc)),
+  (datetime(2000,1,2, 9,0,0, tzinfo=ZoneInfo('Asia/Tokyo')),       3, datetime(1999,12,30,14,59,59, tzinfo=timezone.utc)), # UTC+9
+  (datetime(2000,1,2,10,0,0, tzinfo=ZoneInfo('Asia/Tokyo')),       2, datetime(1999,12,31,14,59,59, tzinfo=timezone.utc)), # UTC+9
+  (datetime(2000,1,2,11,0,0, tzinfo=ZoneInfo('Asia/Tokyo')),       1, datetime(2000, 1, 1,14,59,59, tzinfo=timezone.utc)), # UTC+9
+  (datetime(2000,4,1,12,0,0, tzinfo=ZoneInfo('Asia/Tokyo')),       2, datetime(2000, 3,30,14,59,59, tzinfo=timezone.utc)), # UTC+9
+  (datetime(2000,4,1,13,0,0, tzinfo=ZoneInfo('Asia/Tokyo')),       1, datetime(2000, 3,31,14,59,59, tzinfo=timezone.utc)), # UTC+9
+  (datetime(2000,1,1, 8,0,0, tzinfo=ZoneInfo('America/New_York')), 1, datetime(2000, 1, 1, 4,59,59, tzinfo=timezone.utc)), # UTC-5
+  (datetime(2000,1,1,18,0,0, tzinfo=ZoneInfo('Asia/Karachi')),     1, datetime(1999,12,31,18,59,59, tzinfo=timezone.utc)), # UTC+5
 ], ids=[
   'offset-3-20000102',
   'offset-2-20000102',
   'offset-1-20000102',
   'offset-2-20000401',
   'offset-1-20000401',
+  'offset-1-20000101-NY',
+  'offset-1-20000101-India',
 ])
 def test_check_calc_diff_date(mocker, current_date, offset, expected_date):
   import stock.tasks
   mocker.patch.object(stock.tasks.timezone, 'now', return_value=current_date)
+  mocker.patch.object(stock.tasks.timezone, 'get_current_timezone', return_value=current_date.tzinfo)
   estimated_date = stock.tasks._calc_diff_date(offset)
 
   assert estimated_date.year == expected_date.year
