@@ -1,7 +1,7 @@
 from django import forms
-from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy
 from django.utils.html import format_html
+from django_celery_beat.models import CrontabSchedule, PeriodicTask
 from utils.forms import ModelFormBasedOnUser, BaseModelDatalistForm
 from utils.widgets import (
   SelectWithDataAttr,
@@ -161,6 +161,125 @@ class SnapshotForm(_BaseModelFormWithCSS):
 
     return instance
 
+class PeriodicTaskForSnapshotForm(forms.ModelForm):
+  template_name = 'renderer/custom_form.html'
+
+  class Meta:
+    model = PeriodicTask
+    fields = ('name', 'task', 'enabled', 'snapshot', 'schedule_type', 'config')
+    field_order = ('name', 'snapshot', 'schedule_type', 'enabled', 'task', 'config')
+    widgets = {
+      'name': forms.TextInput(attrs={
+        'class': 'form-control',
+      }),
+    }
+
+  task = forms.CharField(
+    label=gettext_lazy('Task name'),
+    required=False,
+    initial='---',
+    widget=forms.HiddenInput(),
+    max_length=200,
+  )
+  enabled = forms.TypedChoiceField(
+    label=gettext_lazy('Enabled/Disabled'),
+    coerce=bool_converter,
+    initial=True,
+    empty_value=True,
+    choices=(
+      (True, gettext_lazy('Enabled')),
+      (False, gettext_lazy('Disabled')),
+    ),
+    widget=forms.Select(attrs={
+      'class': 'form-control',
+    }),
+    help_text=gettext_lazy('Describes whether this record is enabled or not.'),
+  )
+  snapshot = forms.ModelChoiceField(
+    label=gettext_lazy('Snapshot'),
+    queryset=models.Snapshot.objects.none(),
+    empty_label=None,
+    widget=forms.Select(attrs={
+      'class': 'form-control',
+    }),
+    help_text=gettext_lazy('Select a snapshot to update.'),
+  )
+  schedule_type = forms.ChoiceField(
+    label=gettext_lazy('Schedule type'),
+    initial='every-day',
+    choices=(
+      ('every-day', gettext_lazy('Every day')),
+      ('every-week', gettext_lazy('Every week')),
+      ('every-month', gettext_lazy('Every month')),
+    ),
+    widget=forms.Select(attrs={
+      'id': 'schedule-type',
+      'class': 'form-control',
+    }),
+    help_text=gettext_lazy('Select a schedule type.'),
+  )
+  config = forms.JSONField(
+    widget=forms.HiddenInput(attrs={
+      'id': 'config',
+      'name': 'config',
+    }),
+  )
+
+  def __init__(self, user, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.fields['snapshot'].queryset = user.snapshots.all()
+
+  def clean(self):
+    schedule_restriction = {
+      'every-day': ['minute', 'hour'],
+      'every-week': ['minute', 'hour', 'day_of_week'],
+      'every-month': ['minute', 'hour', 'day_of_month'],
+    }
+    cleaned_data = super().clean()
+    schedule_type = cleaned_data.get('schedule_type', 'every-day')
+    config = cleaned_data.get('config', {})
+    restriction = schedule_restriction[schedule_type]
+    given_keys = list(config.keys())
+    rested = {key: key not in given_keys for key in restriction}
+
+    # Validate config data
+    if any(list(rested.values())):
+      required_keys = ','.join([key for key, is_not_included in rested.items() if is_not_included])
+
+      raise forms.ValidationError(
+        gettext_lazy('Required keys: %(key)s'),
+        code='invalid_data',
+        params={'key': required_keys},
+      )
+    # Validate crontab instance
+    kwargs = {key: config[key] for key in restriction}
+    crontab = CrontabSchedule(**kwargs)
+    # Execute full clean method
+    try:
+      crontab.full_clean()
+    except forms.ValidationError as ex:
+      raise forms.ValidationError(
+        gettext_lazy('Invalid crontab config: %(err)s'),
+          code='invalid_data',
+          params={'err': str(ex)},
+        )
+    # Skip to execute `validate_unique` function when form.clean() was ran.
+    self._validate_unique = False
+
+    return cleaned_data
+
+  def save(self, commit=True):
+    snapshot = self.cleaned_data.get('snapshot')
+    config = self.cleaned_data.get('config')
+    crontab, _ = CrontabSchedule.objects.get_or_create(**config)
+    self.instance = snapshot.update_periodic_task(self.instance, crontab)
+    instance = super().save(commit=False)
+
+    if commit:
+      instance.save()
+
+    return instance
+
 class _IgnoredField:
   def clean(self, value, option):
     pass
@@ -300,13 +419,13 @@ def validate_filtering_condition(value):
     visitor.visit(tree)
     visitor.validate()
   except (SyntaxError, IndexError) as ex:
-    raise ValidationError(
+    raise forms.ValidationError(
       gettext_lazy('Invalid syntax: %(ex)s'),
       code='invalid_syntax',
       params={'ex': str(ex)},
     )
   except KeyError as ex:
-    raise ValidationError(
+    raise forms.ValidationError(
       gettext_lazy('Invalid variable: %(ex)s'),
       code='invalid_variable',
       params={'ex': str(ex)},

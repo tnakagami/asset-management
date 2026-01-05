@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-28 17:16+0900\n"
+"POT-Creation-Date: 2026-01-06 00:29+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -99,26 +99,34 @@ msgid "Check/Register/Update/Delete purchsed sotcks"
 msgstr "購入済み株式の確認/登録/更新/削除"
 
 #: templates/account/index.html:69
+msgid "Periodic task list for snapshot"
+msgstr "特定時点の資産に対する定期実行タスク"
+
+#: templates/account/index.html:70
+msgid "Check/Register/Update/Delete periodic tasks for snapshot"
+msgstr "特定時点の資産に対する定期実行タスクの確認/登録/更新/削除"
+
+#: templates/account/index.html:79
 msgid "Stock list"
 msgstr "株価"
 
-#: templates/account/index.html:70
+#: templates/account/index.html:80
 msgid "Check sotcks"
 msgstr "株価の確認"
 
-#: templates/account/index.html:79 templates/stock/explanation.html:5
+#: templates/account/index.html:89 templates/stock/explanation.html:5
 msgid "Explanation"
 msgstr "用語説明"
 
-#: templates/account/index.html:80
+#: templates/account/index.html:90
 msgid "Explain terms with relevant to stock."
 msgstr "株式に関する用語を説明する"
 
-#: templates/account/index.html:90
+#: templates/account/index.html:100
 msgid "Monitoring celery tasks"
 msgstr "Celeryタスクの監視"
 
-#: templates/account/index.html:91
+#: templates/account/index.html:101
 msgid "Monitor celery tasks using flower."
 msgstr "Flowerを用いてCeleryタスクを監視する"
 
@@ -129,6 +137,7 @@ msgstr "ログイン"
 
 #: templates/account/login.html:29 templates/account/profile_form.html:27
 #: templates/stock/cash_form.html:30
+#: templates/stock/periodic_task_for_snapshot_form.html:30
 #: templates/stock/purchased_stock_form.html:49
 #: templates/stock/snapshot_form.html:30
 msgid "Cancel"
@@ -212,6 +221,7 @@ msgid "Register/Update cash"
 msgstr "口座残高の登録/更新"
 
 #: templates/stock/cash_form.html:22
+#: templates/stock/periodic_task_for_snapshot_form.html:22
 #: templates/stock/purchased_stock_form.html:41
 #: templates/stock/snapshot_form.html:22
 msgid "Register/Update"
@@ -226,6 +236,7 @@ msgid "Register cash"
 msgstr "口座残高の登録"
 
 #: templates/stock/cashes.html:24 templates/stock/dashboard.html:167
+#: templates/stock/periodic_tasks_for_snapshot.html:36
 #: templates/stock/purchased_stocks.html:25 templates/stock/snapshots.html:36
 #: templates/stock/stocks.html:28
 msgid "No."
@@ -239,8 +250,9 @@ msgstr "口座残高"
 msgid "Registered date"
 msgstr "登録日"
 
-#: templates/stock/cashes.html:27 templates/stock/purchased_stocks.html:33
-#: templates/stock/snapshots.html:40
+#: templates/stock/cashes.html:27
+#: templates/stock/periodic_tasks_for_snapshot.html:41
+#: templates/stock/purchased_stocks.html:33 templates/stock/snapshots.html:40
 msgid "Operate"
 msgstr "操作"
 
@@ -337,6 +349,7 @@ msgstr "特定時点の資産の情報がありません。下記のリンクか
 
 #: templates/stock/dashboard.html:206
 #: templates/stock/investment_history.html:165
+#: templates/stock/periodic_tasks_for_snapshot.html:26
 #: templates/stock/snapshots.html:15
 msgid "Register snapshot"
 msgstr "特定時点の資産の登録"
@@ -573,6 +586,102 @@ msgstr "評価額の実績"
 #: templates/stock/investment_history.html:327
 msgid "Dividend history (per year)"
 msgstr "配当金の実績（年間）"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:5
+msgid "Register/Update periodic task for snapshot"
+msgstr "特定時点の資産に対する定期実行タスクの登録/更新"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:47
+msgid "Hour"
+msgstr "時"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:55
+msgid "Minute"
+msgstr "分"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:61
+msgid "Sunday"
+msgstr "日曜日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:62
+msgid "Monday"
+msgstr "月曜日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:63
+msgid "Tuesday"
+msgstr "火曜日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:64
+msgid "Wednesday"
+msgstr "水曜日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:65
+msgid "Thursday"
+msgstr "木曜日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:66
+msgid "Friday"
+msgstr "金曜日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:67
+msgid "Saturday"
+msgstr "土曜日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:68
+msgid "Weekday"
+msgstr "平日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:69
+msgid "Weekend"
+msgstr "休日"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:71
+msgid "Day of week"
+msgstr "毎週の実行タイミング"
+
+#: templates/stock/periodic_task_for_snapshot_form.html:79
+msgid "Day of month"
+msgstr "毎月の実行タイミング"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:6
+msgid "Periodic tasks for snapshot"
+msgstr "特定時点の資産に対する定期実行タスク"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:17
+msgid "Register periodic task for snapshot"
+msgstr "特定時点の資産に対する定期実行タスクの登録"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:37
+msgid "Task name"
+msgstr "タスク名"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:38
+msgid "Schedule"
+msgstr "スケジュール"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:39
+msgid "Total run count"
+msgstr "総実行回数"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:40
+msgid "Enabled/Disabled"
+msgstr "有効／無効"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:52
+msgid "Enabled"
+msgstr "有効"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:52
+msgid "Disabled"
+msgstr "無効"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:77
+msgid "There is no periodic tasks for snapshot. Please add the tasks from the above button."
+msgstr "特定時点の資産に対する定期実行タスクの情報がありません。上記のボタンから登録してください。"
+
+#: templates/stock/periodic_tasks_for_snapshot.html:79
+msgid "There is no snapshots. Please add the snapshots from the above button."
+msgstr "特定時点の資産の情報がありません。上記のボタンからデータを登録してください。"
 
 #: templates/stock/purchased_stock_form.html:9
 msgid "Register/Update purchsed stock"

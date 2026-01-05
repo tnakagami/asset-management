@@ -15,7 +15,7 @@ class IsOwner(UserPassesTestMixin):
 
     return is_valid
 
-class _BaseCreateUpdateView(LoginRequiredMixin):
+class BaseCreateUpdateView(LoginRequiredMixin):
   raise_exception = True
 
   def get_form_kwargs(self, *args, **kwargs):
@@ -24,10 +24,10 @@ class _BaseCreateUpdateView(LoginRequiredMixin):
 
     return kwargs
 
-class CreateViewBasedOnUser(_BaseCreateUpdateView, CreateView):
+class CreateViewBasedOnUser(BaseCreateUpdateView, CreateView):
   pass
 
-class UpdateViewBasedOnUser(_BaseCreateUpdateView, IsOwner, UpdateView):
+class UpdateViewBasedOnUser(BaseCreateUpdateView, IsOwner, UpdateView):
   pass
 
 class CustomDeleteView(LoginRequiredMixin, IsOwner, DeleteView):

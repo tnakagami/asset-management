@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Periodic tasks for snapshot") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="row row-cols-1 g-2">
+    {% with snapshot=user.snapshots.all.exists %}
+      {% if snapshot %}
+      <div class="col">
+        <a
+          href="{% url 'stock:register_snapshot_task' %}"
+          class="btn btn-primary w-100 custom-boxshadow"
+        >
+          {% trans "Register periodic task for snapshot" %}
+        </a>
+      </div>
+      {% else %}
+      <div class="col">
+        <a
+          href="{% url 'stock:register_snapshot' %}"
+          class="btn btn-primary w-100 custom-boxshadow"
+        >
+          {% trans "Register snapshot" %}
+        </a>
+      </div>
+      {% endif %}
+      <div class="col">
+        {% if tasks %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">{% trans "No." %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Task name" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Schedule" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Total run count" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Enabled/Disabled" %}</th>
+                <th colspan="2">{% trans "Operate" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider">
+              {% for instance in tasks %}
+              <tr>
+                {% with table_css=instance.enabled|yesno:',table-secondary' %}
+                <td scope="row" class="{{ table_css }}">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                <td data-type="taskName" class="{{ table_css }}">{{ instance.name }}</td>
+                <td data-type="schedule" class="{{ table_css }}">{{ instance.scheduler }}</td>
+                <td data-type="totalRunCount" class="{{ table_css }}">{{ instance.total_run_count|intcomma }}</td>
+                <td data-type="isEnabled" class="{{ table_css }}">{% if instance.enabled %}{% trans "Enabled" %}{% else %}{% trans "Disabled" %}{% endif %}</td>
+                {% endwith %}
+                <td data-operate="edit">
+                  <a
+                    href="{% url 'stock:update_snapshot_task' pk=instance.pk %}"
+                    class="text-success link-underline link-underline-opacity-0"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </a>
+                </td>
+                <td data-operate="delete">
+                  <div
+                    class="text-danger delete-target-record"
+                    data-name="{{ instance.name }} ({% if instance.enabled %}{% trans 'Enabled' %}{% else %}{% trans 'Disabled' %}{% endif %})"
+                    data-url="{% url 'stock:delete_snapshot_task' pk=instance.pk %}"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% elif snapshot %}
+        <span>{% trans "There is no periodic tasks for snapshot. Please add the tasks from the above button." %}</span>
+        {% else %}
+        <span>{% trans "There is no snapshots. Please add the snapshots from the above button." %}</span>
+        {% endif %}
+      </div>
+      <div class="col">
+      {% include "renderer/custom_pagenate.html" with page_obj=page_obj %}
+      </div>
+    {% endwith %}
+    </div>
+  </div>
+</div>
+
+{# Delete-modal #}
+{% include "delete_modal_form.html" with modal_id="delete-modal" form_id="delete-form" %}
+{% endblock %}
+
+{% block bodyjs %}
+{{ block.super }}
+<script>
+(function () {
+  g_registerDeleteModalEvent({
+    targetCSS: 'delete-target-record',
+    formID: 'delete-form',
+    modalID: 'delete-modal',
+  });
+})();
+</script>
+{% endblock %}

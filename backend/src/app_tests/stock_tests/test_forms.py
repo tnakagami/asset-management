@@ -1,6 +1,8 @@
 import pytest
 import ast
 import json
+from django.core.exceptions import ValidationError
+from django_celery_beat.models import PeriodicTask
 from datetime import datetime, timezone
 from stock.models import PurchasedStock, Stock, Snapshot
 from stock import forms
@@ -103,7 +105,7 @@ def test_invalid_patterns_of_validate_filtering_condition(mocker, method_name, e
   mocker.patch('stock.forms._ValidateCondition', new=_DummyASTCondition)
   mocker.patch(f'stock.forms._ValidateCondition.{method_name}', side_effect=exception)
 
-  with pytest.raises(forms.ValidationError) as ex:
+  with pytest.raises(ValidationError) as ex:
     forms.validate_filtering_condition('price < 100')
 
   assert err_msg in str(ex.value)
@@ -238,9 +240,9 @@ def test_invalid_operator_for_validateCondition(condition, err_msg):
   'err_msg',
 ], [
   ('industry == "hoge"', KeyError, 'industry does not exist'),
-  ('price < 10.001', forms.ValidationError, 'Invalid data (price, 10.001): '),
-  ('code < "1200"', forms.ValidationError, 'Invalid operator between code and 1200'),
-  ('price in 1200', forms.ValidationError, 'Invalid operator between price and 1200'),
+  ('price < 10.001', ValidationError, 'Invalid data (price, 10.001): '),
+  ('code < "1200"', ValidationError, 'Invalid operator between code and 1200'),
+  ('price in 1200', ValidationError, 'Invalid operator between price and 1200'),
 ], ids=[
   'invalid-keyname',
   'invalid-field-value',
@@ -490,7 +492,7 @@ def test_check_invalid_custom_modeldatalist_field(arg_idx):
   ]
   field = forms.CustomModelDatalistField(queryset=Stock.objects.all())
 
-  with pytest.raises(forms.ValidationError) as ex:
+  with pytest.raises(ValidationError) as ex:
     _ = field.to_python(_vals[arg_idx])
 
   assert 'Select a valid choice' in str(ex.value)
@@ -576,6 +578,216 @@ def test_save_method_of_snapshot(get_user, forced_update, commit, output_dlen, r
   assert is_valid
   assert len(detail_output) == output_dlen
   assert len(detail_estimated) == record_dlen
+
+@pytest.fixture
+def pseudo_periodic_task_params(django_db_blocker, get_user):
+  with django_db_blocker.unblock():
+    user = get_user
+    _ = factories.CashFactory.create_batch(2, user=user)
+    _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+    _ = factories.SnapshotFactory(user=user)
+    _ = factories.CashFactory.create_batch(3, user=user)
+    _ = factories.PurchasedStockFactory.create_batch(2, user=user)
+    snapshot = factories.SnapshotFactory(user=user)
+  # It is the pattern of  `schedule_type` == `every-day`
+  params = {
+    'name': 'hoge',
+    'enabled': True,
+    'snapshot': snapshot.pk,
+    'schedule_type': 'every-day',
+    'config': {'minute': 23, 'hour': 13},
+  }
+
+  return user, params
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+def test_basic_pattern_of_ptask_for_ss_form(pseudo_periodic_task_params):
+  user, params = pseudo_periodic_task_params
+  form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
+
+  assert form.is_valid()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'commit',
+  'expected_count',
+], [
+  (True, 1),
+  (False, 0),
+], ids=[
+  'commit',
+  'not-commit',
+])
+def test_check_save_method_of_ptask_for_ss_form(pseudo_periodic_task_params, commit, expected_count):
+  user, params = pseudo_periodic_task_params
+  form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
+  is_valid = form.is_valid()
+  instance = form.save(commit=commit)
+  kwargs = json.dumps({'user_pk': user.pk, 'snapshot_pk': params['snapshot']})
+  count = PeriodicTask.objects.filter(kwargs__contains=kwargs).count()
+
+  assert is_valid
+  assert count == expected_count
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'kwargs_to_update',
+], [
+  ({'schedule_type': 'every-day', 'config': {'minute': 23, 'hour': 13, 'hoge': 3, 'foo': 'ok'}},),
+  ({'schedule_type': 'every-week', 'config': {'minute': 23, 'hour': 13, 'day_of_week': 6}},),
+  ({'schedule_type': 'every-week', 'config': {'minute': 23, 'hour': 13, 'day_of_week': 'fri'}},),
+  ({'schedule_type': 'every-week', 'config': {'minute': 23, 'hour': 13, 'day_of_week': 'mon-fri'}},),
+  ({'schedule_type': 'every-month', 'config': {'minute': 23, 'hour': 13, 'day_of_month': 9}},),
+  ({'enabled': False},),
+], ids=[
+  'every-day-with-garbage',
+  'every-week-num',
+  'every-week-str',
+  'every-week-range',
+  'every-month',
+  'is-disable',
+])
+def test_customized_valid_pattern_of_ptask_for_ss_form(pseudo_periodic_task_params, kwargs_to_update):
+  user, params = pseudo_periodic_task_params
+  params.update(kwargs_to_update)
+  form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
+
+  assert form.is_valid()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'kwargs_to_update',
+  'delete_list',
+  'err_msg',
+], [
+  # For name
+  ({'name': ''}, [], 'This field is required.'),
+  ({'name': '1'*201}, [], 'Ensure this value has at most 200 characters (it has 201).'),
+  ({}, ['name'], 'This field is required.'),
+  # For task
+  ({'name': '1'*201}, [], 'Ensure this value has at most 200 characters (it has 201).'),
+  # For enabled
+  ({}, ['enabled'], 'This field is required.'),
+  # For snapshot
+  ({'snapshot': 0}, [], 'Select a valid choice. That choice is not one of the available choices.'),
+  ({}, ['snapshot'], 'This field is required.'),
+  # For schedule type
+  ({'schedule_type': 'XXX'}, [], 'Select a valid choice. XXX is not one of the available choices.'),
+  ({}, ['schedule_type'], 'This field is required.'),
+  # ----------
+  # For config
+  # ----------
+  # For every-day
+  ({'schedule_type': 'every-day',   'config': {                                           }}, [], 'Required keys: minute,hour'),
+  ({'schedule_type': 'every-day',   'config': {'minute': 23,                              }}, [], 'Required keys: hour'),
+  ({'schedule_type': 'every-day',   'config': {              'hour': 13,                  }}, [], 'Required keys: minute'),
+  # For every-week
+  ({'schedule_type': 'every-week',  'config': {                                           }}, [], 'Required keys: minute,hour,day_of_week'),
+  ({'schedule_type': 'every-week',  'config': {'minute': 23,                              }}, [], 'Required keys: hour,day_of_week'),
+  ({'schedule_type': 'every-week',  'config': {'minute': 23, 'hour': 13,                  }}, [], 'Required keys: day_of_week'),
+  ({'schedule_type': 'every-week',  'config': {              'hour': 13                   }}, [], 'Required keys: minute,day_of_week'),
+  ({'schedule_type': 'every-week',  'config': {              'hour': 13, 'day_of_week':  6}}, [], 'Required keys: minute'),
+  ({'schedule_type': 'every-week',  'config': {'minute': 23,             'day_of_week':  6}}, [], 'Required keys: hour'),
+  ({'schedule_type': 'every-week',  'config': {                          'day_of_week':  6}}, [], 'Required keys: minute,hour'),
+  # For every-month
+  ({'schedule_type': 'every-month', 'config': {                                           }}, [], 'Required keys: minute,hour,day_of_month'),
+  ({'schedule_type': 'every-month', 'config': {'minute': 23,                              }}, [], 'Required keys: hour,day_of_month'),
+  ({'schedule_type': 'every-month', 'config': {'minute': 23, 'hour': 13,                  }}, [], 'Required keys: day_of_month'),
+  ({'schedule_type': 'every-month', 'config': {              'hour': 13                   }}, [], 'Required keys: minute,day_of_month'),
+  ({'schedule_type': 'every-month', 'config': {              'hour': 13, 'day_of_month': 9}}, [], 'Required keys: minute'),
+  ({'schedule_type': 'every-month', 'config': {'minute': 23,             'day_of_month': 9}}, [], 'Required keys: hour'),
+  ({'schedule_type': 'every-month', 'config': {                          'day_of_month': 9}}, [], 'Required keys: minute,hour'),
+  ({'schedule_type': 'every-day'}, ['config'], 'This field is required.'),
+], ids=[
+  # For name
+  'empty-name',
+  'name-is-too-long',
+  'name-is-not-set',
+  # For task
+  'task-is-too-long',
+  # For enabled
+  'empty-enabled',
+  # For snapshot
+  'invalid-snapshot-pk',
+  'snapshot-is-not-set',
+  # For schedule type
+  'invalid-schedule-type',
+  'schedule-type-is-not-set',
+  # ----------
+  # For config
+  # ----------
+  # For every-day
+  'empty-config-for-every-day',
+  'without-hour-for-every-day',
+  'without-minute-for-every-day',
+  # For every week
+  'empty-config-for-every-week',
+  'without-hour-week-for-every-week',
+  'without-week-for-every-week',
+  'without-minute-week-for-every-week',
+  'without-minute-for-every-week',
+  'without-hour-for-every-week',
+  'without-minute-hour-for-every-week',
+  # For every month
+  'empty-config-for-every-month',
+  'without-hour-month-for-every-month',
+  'without-month-for-every-month',
+  'without-minute-month-for-every-month',
+  'without-minute-for-every-month',
+  'without-hour-for-every-month',
+  'without-minute-hour-for-every-month',
+  'config-is-not-set',
+])
+def test_invalid_pattern_of_ptask_for_ss_form(pseudo_periodic_task_params, kwargs_to_update, delete_list, err_msg):
+  user, params = pseudo_periodic_task_params
+  params.update(kwargs_to_update)
+
+  for key in delete_list:
+    del params[key]
+  form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
+  is_valid = form.is_valid()
+
+  assert not is_valid
+  assert err_msg in str(form.errors)
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'schedule_type',
+  'kwargs_to_update',
+], [
+  ('every-day', {'minute': -1, 'hour': 13}),
+  ('every-day', {'minute': 23, 'hour': -1}),
+  ('every-week', {'minute': 23, 'hour': 13, 'day_of_week': -1}),
+  ('every-month', {'minute': 23, 'hour': 13, 'day_of_month': -1}),
+], ids=[
+  'invalid-minute-of-every-day',
+  'invalid-hour-of-every-day',
+  'invalid-week-of-every-week',
+  'invalid-month-of-every-month',
+])
+def test_invalid_crontab_of_ptask_for_ss_form(pseudo_periodic_task_params, schedule_type, kwargs_to_update):
+  user, params = pseudo_periodic_task_params
+  params.update({
+    'schedule_type': schedule_type,
+    'config': kwargs_to_update,
+  })
+  print(params)
+  form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
+  is_valid = form.is_valid()
+  err_msg = 'Invalid crontab config:'
+
+  assert not is_valid
+  assert err_msg in str(form.errors)
 
 @pytest.mark.stock
 @pytest.mark.form

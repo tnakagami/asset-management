@@ -1347,6 +1347,69 @@ def test_get_jsonfield_function_of_snapshot(mocker, json_data):
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
+def test_update_periodic_task():
+  user = factories.UserFactory()
+  _ = factories.CashFactory.create_batch(2, user=user)
+  _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+  snapshot = factories.SnapshotFactory(user=user)
+  task = factories.PeriodicTaskFactory.build(crontab=None)
+  crontab = factories.CrontabScheduleFactory()
+  instance = snapshot.update_periodic_task(task, crontab)
+  kwargs = json.loads(instance.kwargs)
+
+  assert instance.crontab.pk == crontab.pk
+  assert instance.task == 'stock.tasks.update_specific_snapshot'
+  assert kwargs['user_pk'] == user.pk
+  assert kwargs['snapshot_pk'] == snapshot.pk
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'pk_type',
+  'exact_counts',
+], [
+  ('not-set', 2),
+  ('set', 1),
+], ids=[
+  'snapshot-pk-is-not-set',
+  'snapshot-pk-is-set',
+])
+def test_get_queryset_from_periodic_task(pk_type, exact_counts):
+  user = factories.UserFactory()
+  other = factories.UserFactory()
+  _ = factories.CashFactory.create_batch(2, user=user)
+  _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+  ss1 = factories.SnapshotFactory(user=user)
+  # Another snapshot
+  _ = factories.CashFactory.create_batch(3, user=user)
+  _ = factories.PurchasedStockFactory.create_batch(2, user=user)
+  ss2 = factories.SnapshotFactory(user=user)
+  # Other
+  _ = factories.CashFactory.create_batch(2, user=other)
+  _ = factories.PurchasedStockFactory.create_batch(2, user=other)
+  _ = factories.SnapshotFactory(user=other)
+  # Setup
+  crontab = factories.CrontabScheduleFactory()
+  task1 = factories.PeriodicTaskFactory(
+    crontab=crontab,
+    kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': ss1.pk}),
+  )
+  task2 = factories.PeriodicTaskFactory(
+    crontab=crontab,
+    kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': ss2.pk}),
+  )
+  if pk_type == 'not-set':
+    config = {'user': user}
+  else:
+    config = {'user': user, 'pk': task2.pk}
+  queryset = models.Snapshot.get_queryset_from_periodic_task(**config)
+
+  assert queryset.count() == exact_counts
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
 def test_save_all_function_of_snapshot():
   get_date = lambda day: datetime(2020,3,day,3,4,5, tzinfo=timezone.utc)
   user = factories.UserFactory()

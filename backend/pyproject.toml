@@ -24,6 +24,7 @@ crumbles = "^0.1.2"
 PyYAML = "^6.0.2"
 celery = { extras = ["redis"], version = "^5.5.2" }
 django-celery-results = "^2.6.0"
+django-celery-beat = "^2.8.1"
 flower = "^2.0.1"
 beautifulsoup4 = "^4.13.4"
 
@@ -58,6 +59,7 @@ markers = [
   "view: mark tests as Django View",
   "account: mark tests as account application",
   "stock: mark tests as stock application",
+  "task: mark tests as task application",
   "utils: mark tests as utils",
   "webtest: mark tests as django-webtest",
 ]

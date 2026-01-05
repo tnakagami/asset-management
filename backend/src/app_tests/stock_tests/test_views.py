@@ -16,7 +16,7 @@ def login_process(client, django_db_blocker):
 
   return client, user
 
-@pytest.fixture(params=['cash', 'purchased_stock', 'snapshot'], ids=lambda val: f'link-{val}')
+@pytest.fixture(params=['cash', 'purchased_stock', 'snapshot', 'snapshot_task'], ids=lambda val: f'link-{val}')
 def get_link(request):
   yield request.param
 
@@ -61,6 +61,22 @@ def get_snapshot_kwargs():
   }
   model_class = models.Snapshot
   factory_class = factories.SnapshotFactory
+
+  return link, form_data, model_class, factory_class
+
+@pytest.fixture
+def get_snapshot_task_kwargs():
+  dt = datetime.now()
+  link = 'snapshot_task'
+  form_data = {
+    'name': 'ss-task{}'.format(dt.strftime('%H%M%S%f')),
+    'enabled': True,
+    'snapshot': None,
+    'schedule_type': 'every-week',
+    'config': json.dumps({'minute': 10, 'hour': 20, 'day_of_week': 3}),
+  }
+  model_class = models.PeriodicTask
+  factory_class = factories.PeriodicTaskFactory
 
   return link, form_data, model_class, factory_class
 
@@ -402,6 +418,180 @@ def test_post_access_with_invalid_response_to_ajaxview(client, mocker):
   assert 'status' in data.keys()
   assert not data['status']
   assert _mock.call_count == 1
+
+# ==========================
+# Periodic task for snapshot
+# ==========================
+@pytest.fixture
+def create_snapshots(django_db_blocker):
+  with django_db_blocker.unblock():
+    def callback(user):
+      _ = factories.CashFactory.create_batch(2, user=user)
+      _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+      snapshot = factories.SnapshotFactory(user=user)
+      # Other snapshot
+      other = factories.UserFactory()
+      _ = factories.CashFactory.create_batch(3, user=other)
+      _ = factories.PurchasedStockFactory.create_batch(2, user=other)
+      _ = factories.SnapshotFactory(user=user)
+
+      return snapshot
+
+  return callback
+
+# Createview
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_post_access_to_createview_in_ptask_for_ss(login_process, create_snapshots, get_snapshot_task_kwargs):
+  client, user = login_process
+  snapshot = create_snapshots(user)
+  ss_pk = snapshot.pk
+  link, form_data, model_class, _ = get_snapshot_task_kwargs
+  form_data['snapshot'] = ss_pk
+  url = reverse(f'stock:register_{link}')
+  response = client.post(url, data=form_data)
+  params = json.dumps({'user_pk': user.pk, 'snapshot_pk': ss_pk})[1:-1]
+  total = model_class.objects.filter(kwargs__contains=params).count()
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == reverse(f'stock:list_{link}')
+  assert total == 1
+
+# UpdateView
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_updateview_in_ptask_for_ss(login_process, create_snapshots, get_snapshot_task_kwargs):
+  client, user = login_process
+  snapshot = create_snapshots(user)
+  link, _, _, factory_class = get_snapshot_task_kwargs
+  instance = factory_class(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk}))
+  url = reverse(f'stock:update_{link}', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_200_OK
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_updateview_without_authentication_in_ptask_for_ss(client, create_snapshots, get_snapshot_task_kwargs):
+  user = factories.UserFactory()
+  snapshot = create_snapshots(user)
+  link, _, _, factory_class = get_snapshot_task_kwargs
+  instance = factory_class(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk}))
+  url = reverse(f'stock:update_{link}', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_valid_post_access_to_updateview_in_ptask_for_ss(login_process, create_snapshots, get_snapshot_task_kwargs):
+  client, user = login_process
+  snapshot = create_snapshots(user)
+  link, form_data, model_class, factory_class = get_snapshot_task_kwargs
+  form_data['snapshot'] = snapshot.pk
+  params = json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk})
+  target = factory_class(kwargs=params, enabled=False)
+  pk = target.pk
+  url = reverse(f'stock:update_{link}', kwargs={'pk': pk})
+  response = client.post(url, data=urlencode(form_data), content_type='application/x-www-form-urlencoded')
+  instance = model_class.objects.get(pk=pk)
+  total = model_class.objects.filter(kwargs__contains=params).count()
+  config = json.loads(form_data['config'])
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == reverse(f'stock:list_{link}')
+  assert instance.name == form_data['name']
+  assert instance.enabled == form_data['enabled']
+  assert instance.crontab.minute == str(config['minute'])
+  assert instance.crontab.hour == str(config['hour'])
+  assert instance.crontab.day_of_week == str(config['day_of_week'])
+  assert total == 1
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_invalid_post_access_to_updateview_in_ptask_for_ss(login_process, create_snapshots, get_snapshot_task_kwargs):
+  client, _ = login_process
+  other = factories.UserFactory()
+  snapshot = create_snapshots(other)
+  link, form_data, model_class, factory_class = get_snapshot_task_kwargs
+  form_data['snapshot'] = snapshot.pk
+  params = json.dumps({'user_pk': other.pk, 'snapshot_pk': snapshot.pk})
+  target = factory_class(kwargs=params, enabled=False)
+  pk = target.pk
+  url = reverse(f'stock:update_{link}', kwargs={'pk': pk})
+  response = client.post(url, data=urlencode(form_data), content_type='application/x-www-form-urlencoded')
+  instance = model_class.objects.get(pk=pk)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+  assert instance.name == target.name
+  assert instance.enabled == target.enabled
+  assert instance.kwargs == target.kwargs
+
+# DeleteView
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_deleteview_in_ptask_for_ss(login_process, create_snapshots, get_snapshot_task_kwargs):
+  client, user = login_process
+  snapshot = create_snapshots(user)
+  link, _, _, factory_class = get_snapshot_task_kwargs
+  instance = factory_class(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk}))
+  url = reverse(f'stock:delete_{link}', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_without_authentication_in_deleteview_in_ptask_for_ss(client, create_snapshots, get_snapshot_task_kwargs):
+  user = factories.UserFactory()
+  snapshot = create_snapshots(user)
+  link, _, _, factory_class = get_snapshot_task_kwargs
+  instance = factory_class(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk}))
+  url = reverse(f'stock:delete_{link}', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_valid_post_access_to_deleteview_in_ptask_for_ss(login_process, create_snapshots, get_snapshot_task_kwargs):
+  client, user = login_process
+  snapshot = create_snapshots(user)
+  link, _, model_class, factory_class = get_snapshot_task_kwargs
+  params = json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk})
+  target = factory_class(kwargs=params)
+  url = reverse(f'stock:delete_{link}', kwargs={'pk': target.pk})
+  response = client.post(url)
+  total = model_class.objects.filter(kwargs__contains=params).count()
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == reverse(f'stock:list_{link}')
+  assert total == 0
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_invalid_post_access_to_deleteview_in_ptask_for_ss(login_process, create_snapshots, get_snapshot_task_kwargs):
+  client, _ = login_process
+  other = factories.UserFactory()
+  snapshot = create_snapshots(other)
+  link, _, model_class, factory_class = get_snapshot_task_kwargs
+  params = json.dumps({'user_pk': other.pk, 'snapshot_pk': snapshot.pk})
+  target = factory_class(kwargs=params)
+  url = reverse(f'stock:delete_{link}', kwargs={'pk': target.pk})
+  response = client.post(url)
+  total = model_class.objects.filter(kwargs__contains=params).count()
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+  assert total == 1
 
 # =========
 # ListStock

@@ -217,12 +217,14 @@ def test_invalid_page_access_in_account(init_webtest, page_link, method, params)
   ('Snapshot list', 'list_snapshot'),
   ('Cash list', 'list_cash'),
   ('Purchased stock list', 'list_purchased_stock'),
+  ('Periodic task list for snapshot', 'list_snapshot_task'),
 ], ids=[
   'dashboard-page',
   'history-page',
   'cash-list-page',
   'purchased-stock-list-page',
   'snapshot-list-page',
+  'periodic-task-for-snapshot-list-page',
 ])
 def test_can_move_to_target_page_from_index_page(init_webtest, page_title, page_link):
   app, users = init_webtest
@@ -233,7 +235,7 @@ def test_can_move_to_target_page_from_index_page(init_webtest, page_title, page_
   assert response.status_code == status.HTTP_200_OK
   assert get_current_path(response) == exact_url
 
-# Page transition between list-page and registration-page
+# [X1] Page transition between list-page and registration-page
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -251,6 +253,7 @@ def test_can_move_to_target_page_from_index_page(init_webtest, page_title, page_
   ('register_snapshot', 'Cancel', 'list_snapshot'),
   ('register_cash', 'Cancel', 'list_cash'),
   ('register_purchased_stock', 'Cancel', 'list_purchased_stock'),
+  ('register_snapshot_task', 'Cancel', 'list_snapshot_task'),
 ], ids=[
   'register-page-from-dashboard-page',
   'register-page-from-history-page',
@@ -260,6 +263,7 @@ def test_can_move_to_target_page_from_index_page(init_webtest, page_title, page_
   'list-page-from-snapshot-registration-page',
   'list-page-from-cash-registration-page',
   'list-page-from-purchased-stock-registration-page',
+  'list-page-from-periodic-task-registration-page',
 ])
 def test_can_move_to_related_page_between_list_and_registration_in_stock(init_webtest, base_page, page_title, page_link):
   app, users = init_webtest
@@ -270,7 +274,35 @@ def test_can_move_to_related_page_between_list_and_registration_in_stock(init_we
   assert response.status_code == status.HTTP_200_OK
   assert get_current_path(response) == exact_url
 
-# Page transition between list-page and update-page
+# Periodic task of snapshot version for the above [X1] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'snapshots_exist',
+  'page_title',
+  'page_link',
+], [
+  (True, 'Register periodic task for snapshot', 'register_snapshot_task'),
+  (False, 'Register snapshot', 'register_snapshot'),
+], ids=[
+  'snapshot-exits',
+  'snapshot-doesnot-exit',
+])
+def test_can_move_to_ss_periodic_task_registration_page(init_webtest, snapshots_exist, page_title, page_link):
+  app, users = init_webtest
+  owner = users['owner']
+
+  if snapshots_exist:
+    _ = factories.SnapshotFactory(user=owner)
+
+  page = app.get(reverse('stock:list_snapshot_task'), user=owner)
+  response = page.click(page_title)
+  exact_url = reverse(f'stock:{page_link}')
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == exact_url
+
+# [X2] Page transition between list-page and update-page
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -298,6 +330,23 @@ def test_can_move_to_update_page_in_stock(init_webtest, base_page, factory_class
   assert response.status_code == status.HTTP_200_OK
   assert get_current_path(response) == target_url
 
+# Periodic task of snapshot version for the above [X2] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_can_move_to_ss_periodic_task_update_page(init_webtest):
+  app, users = init_webtest
+  owner = users['owner']
+  ss = factories.SnapshotFactory(user=owner)
+  params = json.dumps({'user_pk': owner.pk, 'snapshot_pk': ss.pk})
+  instance = factories.PeriodicTaskFactory(kwargs=params)
+  target_url = reverse('stock:update_snapshot_task', kwargs={'pk': instance.pk})
+  page = app.get(reverse('stock:list_snapshot_task'), user=owner)
+  response = page.click(href=target_url)
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == target_url
+
+# [X3] Page transition to come back from update-page
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -325,7 +374,23 @@ def test_can_move_to_list_page_in_stock(init_webtest, base_page, factory_class, 
   assert response.status_code == status.HTTP_200_OK
   assert get_current_path(response) == target_url
 
-# Check list items
+# Periodic task of snapshot version for the above [X3] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_can_move_to_list_page_from_ss_periodic_task_update_page(init_webtest):
+  app, users = init_webtest
+  owner = users['owner']
+  ss = factories.SnapshotFactory(user=owner)
+  params = json.dumps({'user_pk': owner.pk, 'snapshot_pk': ss.pk})
+  instance = factories.PeriodicTaskFactory(kwargs=params)
+  target_url = reverse('stock:list_snapshot_task')
+  page = app.get(reverse('stock:update_snapshot_task', kwargs={'pk': instance.pk}), user=owner)
+  response = page.click('Cancel')
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == target_url
+
+# [X4] Check list items
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -353,7 +418,26 @@ def test_count_owned_items_in_stock(init_webtest, list_page, factory_class, obje
   assert response.status_code == status.HTTP_200_OK
   assert len(response.context[object_name]) == 2
 
-# Registration form
+# Periodic task of snapshot version for the above [X4] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_count_owned_items_in_ss_periodic_task(init_webtest):
+  app, users = init_webtest
+  owner = users['owner']
+  other = users['other']
+
+  for (current, name) in [(owner, 'owner'), (other, 'other')]:
+    for title_suffix in ['1st', '2nd']:
+      ss = factories.SnapshotFactory(user=current, title=f'{name}_{title_suffix}')
+      params = json.dumps({'user_pk': current.pk, 'snapshot_pk': ss.pk})
+      _ = factories.PeriodicTaskFactory(kwargs=params)
+
+  response = app.get(reverse('stock:list_snapshot_task'), user=owner)
+
+  assert response.status_code == status.HTTP_200_OK
+  assert len(response.context['tasks']) == 2
+
+# [X5] Registration form
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -450,7 +534,47 @@ def test_registration_form_in_stock(mocker, init_webtest, target_page, form_id, 
   assert len(records) == 1
   assert all([elements[key] == _exactval for key, _exactval in exact_vals.items()])
 
-# Update form
+# Periodic task of snapshot version for the above [X5] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_registration_form_in_ss_periodic_task(init_webtest, settings):
+  settings.TIME_ZONE = 'Asia/Tokyo'
+  app, users = init_webtest
+  owner = users['owner']
+  snapshot = factories.SnapshotFactory(user=owner)
+  forms = app.get(reverse('stock:register_snapshot_task'), user=owner).forms
+  form = forms['task-form']
+  # Setup form data and exact values
+  params = {
+    'name': 'sample-periodic-task-v2',
+    'enabled': True,
+    'snapshot': snapshot.pk,
+    'schedule_type': 'every-day',
+    'config': json.dumps({'minute': 23, 'hour': 13}),
+  }
+  exact_vals = {
+    'taskName': params['name'],
+    'schedule' : '23 13 * * * (m/h/dM/MY/d) Asia/Tokyo',
+    'totalRunCount': '0',
+    'isEnabled': 'Enabled',
+  }
+  # Update form data
+  for key, val in params.items():
+    form[key] = val
+  response = form.submit().follow()
+  # Collect response data
+  records = response.context['tasks']
+  elements = {
+    element.attrs['data-type']: element.contents[0]
+    for element in response.html.find_all('td', attrs={'data-type': True})
+  }
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == reverse('stock:list_snapshot_task')
+  assert len(records) == 1
+  assert all([elements[key] == _exactval for key, _exactval in exact_vals.items()])
+
+# [X6] Update form
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -577,7 +701,54 @@ def test_update_form_in_stock(mocker, init_webtest, param_name):
   assert len(records) == 1
   assert all([elements[key] == _exactval for key, _exactval in exact_vals.items()])
 
-# Delete form
+# Periodic task of snapshot version for the above [X6] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_update_form_in_ss_periodic_task(init_webtest, settings):
+  settings.TIME_ZONE = 'Asia/Tokyo'
+  app, users = init_webtest
+  owner = users['owner']
+  snapshot = factories.SnapshotFactory(user=owner)
+  instance = factories.PeriodicTaskFactory(
+    name='sample-periodic-task-v3',
+    enabled=True,
+    kwargs=json.dumps({'user_pk': owner.pk, 'snapshot_pk': snapshot.pk}),
+    crontab=factories.CrontabScheduleFactory(minute=23, hour=10),
+  )
+  # Execution
+  forms = app.get(reverse('stock:update_snapshot_task', kwargs={'pk': instance.pk}), user=owner).forms
+  form = forms['task-form']
+  # Setup form data and exact values
+  params = {
+    'name': 'updated-periodic-task-v4',
+    'enabled': False,
+    'snapshot': snapshot.pk,
+    'schedule_type': 'every-week',
+    'config': json.dumps({'minute': 20, 'hour': 9, 'day_of_week': 'fri'}),
+  }
+  exact_vals = {
+    'taskName': params['name'],
+    'schedule' : '20 9 * * fri (m/h/dM/MY/d) Asia/Tokyo',
+    'totalRunCount': '0',
+    'isEnabled': 'Disabled',
+  }
+  # Update form data
+  for key, val in params.items():
+    form[key] = val
+  response = form.submit().follow()
+  # Collect response data
+  records = response.context['tasks']
+  elements = {
+    element.attrs['data-type']: element.contents[0]
+    for element in response.html.find_all('td', attrs={'data-type': True})
+  }
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == reverse('stock:list_snapshot_task')
+  assert len(records) == 1
+  assert all([elements[key] == _exactval for key, _exactval in exact_vals.items()])
+
+# [X7] Delete form
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -595,11 +766,11 @@ def test_update_form_in_stock(mocker, init_webtest, param_name):
   'purchased-stock-update-page',
 ])
 def test_delete_instance_in_stock(init_webtest, factory_class, delete_link, list_link, object_name):
-  app, _user = init_webtest
-  user = _user['owner']
-  target, rest = factory_class.create_batch(2, user=user)
+  app, users = init_webtest
+  owner = users['owner']
+  target, rest = factory_class.create_batch(2, user=owner)
   url = reverse(f'stock:{list_link}')
-  forms = app.get(url, user=user).forms
+  forms = app.get(url, user=owner).forms
   form = forms['delete-form']
   form.action = reverse(f'stock:{delete_link}', kwargs={'pk': target.pk})
   response = form.submit().follow()
@@ -608,6 +779,37 @@ def test_delete_instance_in_stock(init_webtest, factory_class, delete_link, list
   assert get_current_path(response) == url
   assert len(response.context[object_name]) == 1
   assert response.context[object_name].first().pk == rest.pk
+
+# Periodic task of snapshot version for the above [X7] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_delete_instance_in_ss_periodic_task(init_webtest):
+  app, users = init_webtest
+  owner = users['owner']
+  snapshots = factories.SnapshotFactory.create_batch(2, user=owner)
+  crontab = factories.CrontabScheduleFactory(minute=23, hour=10)
+  target = factories.PeriodicTaskFactory(
+    name='periodic-task-for-deletion-ss1',
+    enabled=False,
+    kwargs=json.dumps({'user_pk': owner.pk, 'snapshot_pk': snapshots[0].pk}),
+    crontab=crontab,
+  )
+  rest = factories.PeriodicTaskFactory(
+    name='periodic-task-for-deletion-ss2',
+    enabled=True,
+    kwargs=json.dumps({'user_pk': owner.pk, 'snapshot_pk': snapshots[1].pk}),
+    crontab=crontab,
+  )
+  url = reverse('stock:list_snapshot_task')
+  forms = app.get(url, user=owner).forms
+  form = forms['delete-form']
+  form.action = reverse('stock:delete_snapshot_task', kwargs={'pk': target.pk})
+  response = form.submit().follow()
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == url
+  assert len(response.context['tasks']) == 1
+  assert response.context['tasks'].first().pk == rest.pk
 
 # Check dashboard and history page
 @pytest.mark.webtest
@@ -719,12 +921,14 @@ def test_check_snapshot_detail_in_asset_pages(init_webtest, link_name):
   ('list_snapshot',),
   ('list_cash',),
   ('list_purchased_stock',),
+  ('list_snapshot_task',),
 ], ids=[
   'dashboard-page',
   'history-page',
   'snapshot-list-page',
   'cash-list-page',
   'purchased-stock-list-page',
+  'periodic-task-for-snapshot-list-page',
 ])
 def test_redirect_login_page_without_authentication(csrf_exempt_django_app, target_page):
   app = csrf_exempt_django_app
@@ -740,10 +944,12 @@ def test_redirect_login_page_without_authentication(csrf_exempt_django_app, targ
   ('register_snapshot',),
   ('register_cash',),
   ('register_purchased_stock',),
+  ('register_snapshot_task',),
 ], ids=[
   'snapshot-registration-page',
   'cash-registration-page',
   'purchased-stock-registration-page',
+  'periodic-task-for-snapshot-registration-page',
 ])
 def test_cannot_move_to_target_page_without_authentication(csrf_exempt_django_app, target_page):
   app = csrf_exempt_django_app
@@ -753,6 +959,7 @@ def test_cannot_move_to_target_page_without_authentication(csrf_exempt_django_ap
 
   assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
+# [Y1] Invalid access for update page
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -778,6 +985,27 @@ def test_cannot_access_update_page_except_owner(init_webtest, page_link, factory
 
   assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
+# Periodic task of snapshot version for the above [Y1] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_cannot_access_ss_periodic_task_update_page_except_owner(init_webtest):
+  app, users = init_webtest
+  owner = users['owner']
+  other = users['other']
+  snapshot = factories.SnapshotFactory(user=owner)
+  instance = factories.PeriodicTaskFactory(
+    name='periodic-task-v5',
+    enabled=False,
+    kwargs=json.dumps({'user_pk': owner.pk, 'snapshot_pk': snapshot.pk}),
+    crontab=factories.CrontabScheduleFactory(minute=23, hour=10),
+  )
+
+  with pytest.raises(AppError) as ex:
+    app.get(reverse('stock:update_snapshot_task', kwargs={'pk': instance.pk}), user=other)
+
+  assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
+
+# [Y2] Invalid post request for update page
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -806,6 +1034,29 @@ def test_invalid_post_method_in_update_page(init_webtest, page_link, factory_cla
 
   assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
+# Periodic task of snapshot version for the above [Y2] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_invalid_post_method_in_ss_periodic_task_update_page(init_webtest):
+  app, users = init_webtest
+  owner = users['owner']
+  other = users['other']
+  snapshot = factories.SnapshotFactory(user=owner)
+  instance = factories.PeriodicTaskFactory(
+    name='periodic-task-v6',
+    enabled=False,
+    kwargs=json.dumps({'user_pk': owner.pk, 'snapshot_pk': snapshot.pk}),
+    crontab=factories.CrontabScheduleFactory(minute=23, hour=10),
+  )
+  forms = app.get(reverse('stock:update_snapshot_task', kwargs={'pk': instance.pk}), user=owner).forms
+  form = forms['task-form']
+
+  with pytest.raises(AppError) as ex:
+    form.submit(user=other)
+
+  assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
+
+# [Y3] Invalid post request for delete page
 @pytest.mark.webtest
 @pytest.mark.django_db
 @pytest.mark.parametrize([
@@ -816,9 +1067,9 @@ def test_invalid_post_method_in_update_page(init_webtest, page_link, factory_cla
   ('pstock',),
 ], ids=lambda val: f'invalid-delete-request-in-{val}')
 def test_invalid_request_for_delete_method(init_webtest, param_name):
-  app, _users = init_webtest
-  owner = _users['owner']
-  other = _users['other']
+  app, users = init_webtest
+  owner = users['owner']
+  other = users['other']
 
   kwargs = {
     'snapshot': {
@@ -839,10 +1090,33 @@ def test_invalid_request_for_delete_method(init_webtest, param_name):
   }
   options = kwargs[param_name]
   factory_class = options['factory_class']
-  instance = factory_class(user=other)
-  forms = app.get(reverse(f'stock:{options["list_link"]}'), user=owner).forms
+  instance = factory_class(user=owner)
+  forms = app.get(reverse(f'stock:{options["list_link"]}'), user=other).forms
   form = forms['delete-form']
   form.action = reverse(f'stock:{options["delete_link"]}', kwargs={'pk': instance.pk})
+
+  with pytest.raises(AppError) as ex:
+    form.submit()
+
+  assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
+
+# Periodic task of snapshot version for the above [Y3] tests
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_invalid_request_for_in_ss_periodic_task_delete_method(init_webtest):
+  app, users = init_webtest
+  owner = users['owner']
+  other = users['other']
+  snapshot = factories.SnapshotFactory(user=owner)
+  instance = factories.PeriodicTaskFactory(
+    name='periodic-task-v6',
+    enabled=False,
+    kwargs=json.dumps({'user_pk': owner.pk, 'snapshot_pk': snapshot.pk}),
+    crontab=factories.CrontabScheduleFactory(minute=23, hour=10),
+  )
+  forms = app.get(reverse('stock:list_snapshot_task'), user=other).forms
+  form = forms['delete-form']
+  form.action = reverse('stock:delete_snapshot_task', kwargs={'pk': instance.pk})
 
   with pytest.raises(AppError) as ex:
     form.submit()

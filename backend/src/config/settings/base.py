@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'django.forms',
     'django_celery_results',
+    'django_celery_beat',
     # apps
     'account.apps.AccountConfig',
     'stock.apps.StockConfig',
@@ -185,6 +186,7 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_EXTENDED = True
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Define custom user model
 AUTH_USER_MODEL = 'account.User'
