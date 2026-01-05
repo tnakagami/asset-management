@@ -62,7 +62,7 @@
                 <td data-operate="delete">
                   <div
                     class="text-danger delete-target-record"
-                    data-name="[{{ instance.created_at|date:'Y-m-d' }}] {{ instance.title }}"
+                    data-name="{{ instance.name }} ({% if instance.enabled %}{% trans 'Enabled' %}{% else %}{% trans 'Disabled' %}{% endif %})"
                     data-url="{% url 'stock:delete_snapshot_task' pk=instance.pk %}"
                   >
                     <i class="fas fa-trash"></i>
