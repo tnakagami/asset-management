@@ -166,8 +166,8 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
 
   class Meta:
     model = PeriodicTask
-    fields = ('name', 'task', 'crontab', 'enabled', 'snapshot', 'schedule_type', 'config')
-    field_order = ('name', 'snapshot', 'schedule_type', 'enabled', 'task', 'crontab', 'config')
+    fields = ('name', 'task', 'enabled', 'snapshot', 'schedule_type', 'config')
+    field_order = ('name', 'snapshot', 'schedule_type', 'enabled', 'task', 'config')
     widgets = {
       'name': forms.TextInput(attrs={
         'class': 'form-control',
@@ -179,14 +179,7 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
     required=False,
     initial='---',
     widget=forms.HiddenInput(),
-    max_length=4,
-  )
-  crontab = forms.ModelChoiceField(
-    label=gettext_lazy('Crontab'),
-    required=False,
-    queryset=CrontabSchedule.objects.none(),
-    empty_label=None,
-    widget=forms.HiddenInput(),
+    max_length=200,
   )
   enabled = forms.TypedChoiceField(
     label=gettext_lazy('Enabled/Disabled'),
@@ -213,7 +206,6 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
   )
   schedule_type = forms.ChoiceField(
     label=gettext_lazy('Schedule type'),
-    required=True,
     initial='every-day',
     choices=(
       ('every-day', gettext_lazy('Every day')),
@@ -227,7 +219,6 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
     help_text=gettext_lazy('Select a schedule type.'),
   )
   config = forms.JSONField(
-    required=True,
     widget=forms.HiddenInput(attrs={
       'id': 'config',
       'name': 'config',
@@ -245,26 +236,35 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
       'every-month': ['minute', 'hour', 'day_of_month'],
     }
     cleaned_data = super().clean()
-    schedule_type = cleaned_data.get('schedule_type')
-    config = cleaned_data.get('config')
+    schedule_type = cleaned_data.get('schedule_type', 'every-day')
+    config = cleaned_data.get('config', {})
     restriction = schedule_restriction[schedule_type]
-    judgement = {key: key in restriction for key in config.keys()}
+    given_keys = list(config.keys())
+    rested = {key: key not in given_keys for key in restriction}
 
     # Validate config data
-    if not all(list(judgement.values())):
-      invalid_keys = ','.join([key for key, val in judgement.items() if not val])
+    if any(list(rested.values())):
+      required_keys = ','.join([key for key, is_not_included in rested.items() if is_not_included])
 
       raise forms.ValidationError(
-        gettext_lazy('Invalid keys: %(key)s'),
+        gettext_lazy('Required keys: %(key)s'),
         code='invalid_data',
-        params={'key': invalid_keys},
+        params={'key': required_keys},
       )
     # Validate crontab instance
     kwargs = {key: config[key] for key in restriction}
     crontab = CrontabSchedule(**kwargs)
-    crontab.full_clean()
-    # Force update
-    cleaned_data['crontab'] = crontab
+    # Execute full clean method
+    try:
+      crontab.full_clean()
+    except forms.ValidationError as ex:
+      raise forms.ValidationError(
+        gettext_lazy('Invalid crontab config: %(err)s'),
+          code='invalid_data',
+          params={'err': str(ex)},
+        )
+    # Skip to execute `validate_unique` function when form.clean() was ran.
+    self._validate_unique = False
 
     return cleaned_data
 
@@ -272,8 +272,8 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
     snapshot = self.cleaned_data.get('snapshot')
     config = self.cleaned_data.get('config')
     crontab, _ = CrontabSchedule.objects.get_or_create(**config)
-    periodic_task = super().save(commit=False)
-    instance = snapshot.update_periodic_task(periodic_task, crontab)
+    self.instance = snapshot.update_periodic_task(self.instance, crontab)
+    instance = super().save(commit=False)
 
     if commit:
       instance.save()

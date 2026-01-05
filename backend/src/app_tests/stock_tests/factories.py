@@ -4,6 +4,7 @@ from django.utils import timezone
 from faker import Factory as FakerFactory
 from stock import models
 from django_celery_results.models import TaskResult
+from django_celery_beat import models as beat_models
 from celery import states
 from app_tests.account_tests import factories as account_factories
 
@@ -132,3 +133,39 @@ class TaskResultFactory(factory.django.DjangoModelFactory):
   task_id = factory.LazyFunction(lambda: str(uuid.uuid4()))
   task_name = factory.LazyAttribute(lambda instance: f'task{instance.task_id}')
   status = states.PENDING
+
+class CrontabScheduleFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = beat_models.CrontabSchedule
+
+  class Params:
+    minute_params = {
+      'min_value': 0,
+      'max_value': 59,
+      'step': 1,
+    }
+    hour_params = {
+      'min_value': 0,
+      'max_value': 23,
+      'step': 1,
+    }
+    month_params = {
+      'min_value': 1,
+      'max_value': 31,
+      'step': 1,
+    }
+
+  minute = factory.LazyAttribute(lambda obj: str(faker.pyint(**obj.minute_params)))
+  hour = factory.LazyAttribute(lambda obj: str(faker.pyint(**obj.hour_params)))
+  day_of_month = factory.LazyAttribute(lambda obj: str(faker.pyint(**obj.month_params)))
+  month_of_year = '*'
+  day_of_week = '*'
+
+class PeriodicTaskFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = beat_models.PeriodicTask
+
+  name = factory.Sequence(lambda idx: _clip(f'No.{idx}-task', 200))
+  task = 'stock.tasks.update_specific_snapshot'
+  crontab = factory.SubFactory(CrontabScheduleFactory)
+  enabled = True

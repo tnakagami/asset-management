@@ -60,11 +60,10 @@ def register_monthly_report(day_offset):
 @shared_task(ignore_result=True)
 def update_specific_snapshot(user_pk, snapshot_pk):
   try:
-    user = UserModel.objects.get(pk=user_pk)
-    instance = Snapshot.objects.get(pk=snapshot_pk, user=user)
+    instance = Snapshot.objects.get(pk=snapshot_pk, user__pk=user_pk)
     instance.update_record()
     instance.save()
-  except (UserModel.DoesNotExist, Snapshot.DoesNotExist) as ex:
+  except Exception as ex:
     g_logger.error(f'Failed to update the record({ex}).')
 
 @shared_task(bind=True)

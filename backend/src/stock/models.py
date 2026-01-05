@@ -606,12 +606,14 @@ class Snapshot(models.Model):
 
   @classmethod
   def get_queryset_from_periodic_task(cls, user, pk=None):
-    kwargs = {'user_pk': user.pk}
+    # Convert dict object to string data without curly brackets
+    params = {'kwargs__contains': json.dumps({'user_pk': user.pk})[1:-1]}
 
     if pk is not None:
-      kwargs.update({'snapshot_pk': pk})
-
-    queryset = PeriodicTask.objects.filter(kwargs__contains=[kwargs]).order_by('-total_run_count')
+      params.update({'pk': pk})
+    queryset = PeriodicTask.objects.filter(**params) \
+                                   .prefetch_related('interval', 'crontab', 'solar', 'clocked') \
+                                   .order_by('-total_run_count')
 
     return queryset
 

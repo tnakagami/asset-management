@@ -29,8 +29,6 @@
       {% endif %}
     </div>
   </div>
-  {% else %}
-    {{ field.as_hidden }}
   {% endif %}
   {% if forloop.last and hidden_fields %}
   <div class="col">{% for field in hidden_fields %}{{ field }}{% endfor %}</div>

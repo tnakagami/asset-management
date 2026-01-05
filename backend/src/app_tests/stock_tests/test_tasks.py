@@ -6,7 +6,7 @@ from decimal import Decimal
 from django_celery_results.models import TaskResult
 from django.contrib.auth import get_user_model
 from zoneinfo import ZoneInfo
-from stock.models import convert_timezone
+from stock.models import convert_timezone, Snapshot
 from . import factories
 
 UserModel = get_user_model()
@@ -29,6 +29,7 @@ class FakeLogger:
     self.msg = msg
 
 @pytest.mark.stock
+@pytest.mark.task
 @pytest.mark.parametrize([
   'current_date',
   'offset',
@@ -64,6 +65,7 @@ def test_check_calc_diff_date(mocker, current_date, offset, expected_date):
   assert estimated_date.second == expected_date.second
 
 @pytest.mark.stock
+@pytest.mark.task
 @pytest.mark.django_db
 @pytest.mark.parametrize([
   'num_tasks',
@@ -100,6 +102,7 @@ def test_check_delete_task_records(mocker, num_tasks, is_raise, expected, log_me
   assert total == expected
 
 @pytest.mark.stock
+@pytest.mark.task
 @pytest.mark.django_db
 @pytest.mark.parametrize([
   'attrs',
@@ -126,6 +129,7 @@ def test_check_update_stock_records(mocker, attrs, checker, expected_kwargs):
   assert all([expected_kwargs[key] == val for key, val in _user_task.kwargs.items()])
 
 @pytest.mark.stock
+@pytest.mark.task
 def test_raise_import_exception(mocker):
   import sys
   import importlib
@@ -223,6 +227,7 @@ def get_pseudo_pstock_records(django_db_blocker, pseudo_stock_data, request):
   return pattern, users, pstocks
 
 @pytest.mark.stock
+@pytest.mark.task
 @pytest.mark.django_db
 @pytest.mark.parametrize([
   'offset',
@@ -262,3 +267,49 @@ def test_register_monthly_report(mocker, get_pseudo_pstock_records, offset, expe
   assert mock_diff_date.call_count == 1
   assert all([user.snapshots.all().count() == 1 for user in users])
   assert all([_check_extracted_pstocks(user.snapshots.all().first(), pstocks, expected_pstock_ids[pattern]) for user in users])
+
+# ================================
+# Check updating specific snapshot
+# ================================
+@pytest.mark.stock
+@pytest.mark.task
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'is_raise',
+  'log_message',
+], [
+  (False, ''),
+  (True, 'Failed to update the record'),
+], ids=[
+  'valid-inputs',
+  'invalid-inputs',
+])
+def test_check_update_specific_snapshot(mocker, get_pseudo_pstock_records, is_raise, log_message):
+  import stock.tasks
+  fake_logger = FakeLogger()
+  mocker.patch.object(stock.tasks.g_logger, 'error', side_effect=lambda msg: fake_logger.store(msg))
+  pattern, users, pstocks = get_pseudo_pstock_records
+  table = {'single': [0, 1, 2], 'multi': [3, 4, 5]}
+  indices = table[pattern]
+
+  for _user in users:
+    ss = factories.SnapshotFactory(user=_user, end_date=datetime(2000,1,31,9,3,0, tzinfo=timezone.utc))
+  ss.end_date = datetime(2000,2,2,1,2,3, tzinfo=timezone.utc)
+  ss.save()
+
+  if is_raise:
+    mocker.patch('stock.models.Snapshot.update_record', side_effect=Exception('Err'))
+    detail = json.loads(ss.detail)
+    expected_len = len(detail['purchased_stocks'])
+    dates = [record['purchase_date'] for record in detail['purchased_stocks']]
+  else:
+    expected_len = len(indices)
+    dates = [convert_timezone(pstocks[idx].purchase_date, is_string=True) for idx in indices]
+  # Call target method
+  stock.tasks.update_specific_snapshot(user_pk=users[-1].pk, snapshot_pk=ss.pk)
+  instance = Snapshot.objects.get(pk=ss.pk)
+  data = json.loads(instance.detail)
+
+  assert log_message in fake_logger.msg
+  assert len(data['purchased_stocks']) == expected_len
+  assert all([record['purchase_date'] in dates for record in data['purchased_stocks']])

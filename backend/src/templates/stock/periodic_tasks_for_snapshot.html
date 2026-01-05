@@ -7,6 +7,8 @@
 <div class="row justify-content-center">
   <div class="col">
     <div class="row row-cols-1 g-2">
+    {% with snapshot=user.snapshots.all.exists %}
+      {% if snapshot %}
       <div class="col">
         <a
           href="{% url 'stock:register_snapshot_task' %}"
@@ -15,6 +17,16 @@
           {% trans "Register periodic task for snapshot" %}
         </a>
       </div>
+      {% else %}
+      <div class="col">
+        <a
+          href="{% url 'stock:register_snapshot' %}"
+          class="btn btn-primary w-100 custom-boxshadow"
+        >
+          {% trans "Register snapshot" %}
+        </a>
+      </div>
+      {% endif %}
       <div class="col">
         {% if tasks %}
         <div class="table-responsive">
@@ -61,13 +73,16 @@
             </tbody>
           </table>
         </div>
+        {% elif snapshot %}
+        <span>{% trans "There is no periodic tasks for snapshot. Please add the tasks from the above button." %}</span>
         {% else %}
-        <span>{% trans "There is no periodic tasks for snapshot. Please add the items from the above button." %}</span>
+        <span>{% trans "There is no snapshots. Please add the snapshots from the above button." %}</span>
         {% endif %}
       </div>
       <div class="col">
       {% include "renderer/custom_pagenate.html" with page_obj=page_obj %}
       </div>
+    {% endwith %}
     </div>
   </div>
 </div>

@@ -59,6 +59,7 @@ markers = [
   "view: mark tests as Django View",
   "account: mark tests as account application",
   "stock: mark tests as stock application",
+  "task: mark tests as task application",
   "utils: mark tests as utils",
   "webtest: mark tests as django-webtest",
 ]

@@ -9,3 +9,5 @@ LocalizedStockFactory = stock_factories.LocalizedStockFactory
 CashFactory = stock_factories.CashFactory
 PurchasedStockFactory = stock_factories.PurchasedStockFactory
 SnapshotFactory = stock_factories.SnapshotFactory
+CrontabScheduleFactory = stock_factories.CrontabScheduleFactory
+PeriodicTaskFactory = stock_factories.PeriodicTaskFactory
