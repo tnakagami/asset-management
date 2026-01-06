@@ -624,14 +624,18 @@ def test_basic_pattern_of_ptask_for_ss_form(pseudo_periodic_task_params):
 ])
 def test_check_save_method_of_ptask_for_ss_form(pseudo_periodic_task_params, commit, expected_count):
   user, params = pseudo_periodic_task_params
+  ss_pk = params['snapshot']
   form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
   is_valid = form.is_valid()
   instance = form.save(commit=commit)
-  kwargs = json.dumps({'user_pk': user.pk, 'snapshot_pk': params['snapshot']})
+  kwargs = json.dumps({'user_pk': user.pk, 'snapshot_pk': ss_pk})
   count = PeriodicTask.objects.filter(kwargs__contains=kwargs).count()
+  snapshot = Snapshot.objects.get(pk=ss_pk)
 
   assert is_valid
   assert count == expected_count
+  assert instance.task == 'stock.tasks.update_specific_snapshot'
+  assert instance.description == snapshot.title
 
 @pytest.mark.stock
 @pytest.mark.form

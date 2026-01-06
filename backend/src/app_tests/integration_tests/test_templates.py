@@ -554,6 +554,7 @@ def test_registration_form_in_ss_periodic_task(init_webtest, settings):
   }
   exact_vals = {
     'taskName': params['name'],
+    'snapshotName': snapshot.title,
     'schedule' : '23 13 * * * (m/h/dM/MY/d) Asia/Tokyo',
     'totalRunCount': '0',
     'isEnabled': 'Enabled',
@@ -728,6 +729,7 @@ def test_update_form_in_ss_periodic_task(init_webtest, settings):
   }
   exact_vals = {
     'taskName': params['name'],
+    'snapshotName': snapshot.title,
     'schedule' : '20 9 * * fri (m/h/dM/MY/d) Asia/Tokyo',
     'totalRunCount': '0',
     'isEnabled': 'Disabled',

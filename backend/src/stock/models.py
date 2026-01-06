@@ -601,6 +601,7 @@ class Snapshot(models.Model):
     periodic_task.crontab = crontab
     periodic_task.task = 'stock.tasks.update_specific_snapshot'
     periodic_task.kwargs = json.dumps({'user_pk': self.user.pk, 'snapshot_pk': self.pk})
+    periodic_task.description = self.title
 
     return periodic_task
 

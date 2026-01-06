@@ -1359,6 +1359,7 @@ def test_update_periodic_task():
 
   assert instance.crontab.pk == crontab.pk
   assert instance.task == 'stock.tasks.update_specific_snapshot'
+  assert instance.description == snapshot.title
   assert kwargs['user_pk'] == user.pk
   assert kwargs['snapshot_pk'] == snapshot.pk
 
