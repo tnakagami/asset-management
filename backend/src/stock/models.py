@@ -606,12 +606,25 @@ class Snapshot(models.Model):
     return periodic_task
 
   @classmethod
+  def get_instance_from_periodic_task_kwargs(cls, periodic_task):
+    kwargs = json.loads(periodic_task.kwargs)
+    pk = kwargs['snapshot_pk']
+    # Get target instance
+    try:
+      instance = cls.objects.get(pk=pk)
+    except cls.DoesNotExist:
+      instance = None
+
+    return instance
+
+  @classmethod
   def get_queryset_from_periodic_task(cls, user, pk=None):
     # Convert dict object to string data without curly brackets
     params = {'kwargs__contains': json.dumps({'user_pk': user.pk})[1:-1]}
-
+    # Add primary key of snapshot if it exists
     if pk is not None:
       params.update({'pk': pk})
+    # Get queryset
     queryset = PeriodicTask.objects.filter(**params) \
                                    .prefetch_related('interval', 'crontab', 'solar', 'clocked') \
                                    .order_by('-total_run_count')

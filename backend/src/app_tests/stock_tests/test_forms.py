@@ -603,6 +603,69 @@ def pseudo_periodic_task_params(django_db_blocker, get_user):
 @pytest.mark.stock
 @pytest.mark.form
 @pytest.mark.django_db
+def test_check_init_func_of_ptask_for_ss_form(get_user):
+  user = get_user
+  form = forms.PeriodicTaskForSnapshotForm(user=user)
+
+  assert form.default_schedule == 'every-day'
+  assert form.schedule_restriction['every-day'] == ['minute', 'hour']
+  assert form.schedule_restriction['every-week'] == ['minute', 'hour', 'day_of_week']
+  assert form.schedule_restriction['every-month'] == ['minute', 'hour', 'day_of_month']
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'param_cron',
+  'callback',
+  'expected_schedule_type',
+], [
+  ({'day_of_week': '*', 'day_of_month': '3'}, (lambda config: config['day_of_month'] == '3'), 'every-month'),
+  ({'day_of_week': '1', 'day_of_month': '*'}, (lambda config: config['day_of_week'] == '1'), 'every-week'),
+  ({'day_of_week': '*', 'day_of_month': '*'}, (lambda config: True), 'every-day'),
+], ids=[
+  'every-month',
+  'every-week',
+  'every-day',
+])
+def test_check_update_initial(get_user, param_cron, callback, expected_schedule_type):
+  minute, hour = 9, 13
+  user = get_user
+  _ = factories.CashFactory.create_batch(2, user=user)
+  _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+  snapshot = factories.SnapshotFactory(user=user)
+  crontab = factories.CrontabScheduleFactory(minute=minute, hour=hour, **param_cron)
+  task = factories.PeriodicTaskFactory(
+    crontab=crontab,
+    kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk}),
+  )
+  form = forms.PeriodicTaskForSnapshotForm(user=user)
+  form.update_initial(task)
+  config = json.loads(form.fields['config'].initial)
+  schedule_type = form.fields['schedule_type'].initial
+  instance = form.fields['snapshot'].initial
+
+  assert instance.pk == snapshot.pk
+  assert schedule_type == expected_schedule_type
+  assert config['minute'] == minute
+  assert config['hour'] == hour
+  assert callback(config)
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+def test_unexpected_kwargs_in_update_initial(get_user):
+  user = get_user
+  task = factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': 0}))
+  form = forms.PeriodicTaskForSnapshotForm(user=user)
+  form.update_initial(task)
+  instance = form.fields['snapshot'].initial
+
+  assert instance is None
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
 def test_basic_pattern_of_ptask_for_ss_form(pseudo_periodic_task_params):
   user, params = pseudo_periodic_task_params
   form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
@@ -785,7 +848,6 @@ def test_invalid_crontab_of_ptask_for_ss_form(pseudo_periodic_task_params, sched
     'schedule_type': schedule_type,
     'config': kwargs_to_update,
   })
-  print(params)
   form = forms.PeriodicTaskForSnapshotForm(user=user, data=params)
   is_valid = form.is_valid()
   err_msg = 'Invalid crontab config:'
