@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-06 00:29+0900\n"
+"POT-Creation-Date: 2026-01-06 22:56+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -28,7 +28,7 @@ msgstr "株式"
 
 #: stock/forms.py:93
 msgid "Has been sold/Is holding"
-msgstr "売却済み／保有中"
+msgstr "売却済み/保有中"
 
 #: stock/forms.py:98
 msgid "Has been sold"
@@ -44,7 +44,7 @@ msgstr "購入済み株式が売却済みかどうかを示す"
 
 #: stock/forms.py:141
 msgid "Force update/Nothing"
-msgstr "強制的に更新／何もしない"
+msgstr "強制的に更新/何もしない"
 
 #: stock/forms.py:147
 msgid "Force update"
@@ -64,7 +64,7 @@ msgstr "タスク名"
 
 #: stock/forms.py:185
 msgid "Enabled/Disabled"
-msgstr "有効／無効"
+msgstr "有効/無効"
 
 #: stock/forms.py:190
 msgid "Enabled"
@@ -80,11 +80,11 @@ msgstr "該当データを有効化するかどうかを示す"
 
 #: stock/forms.py:199
 msgid "Snapshot"
-msgstr "特定時点の資産"
+msgstr "スナップショット"
 
 #: stock/forms.py:205
 msgid "Select a snapshot to update."
-msgstr "更新対象の特定時点の資産を選択"
+msgstr "更新対象のスナップショットを選択"
 
 #: stock/forms.py:208
 msgid "Schedule type"
@@ -112,6 +112,7 @@ msgid "Required keys: %(key)s"
 msgstr "設定必須項目：%(key)s"
 
 #: stock/forms.py:262
+#, python-format
 msgid "Invalid crontab config: %(err)s"
 msgstr "無効なスケジュール情報：%(err)s"
 
@@ -465,7 +466,7 @@ msgstr "作成時点での関連資産（JSON形式）"
 
 #: stock/models.py:546
 msgid "Priority to show the snapshot"
-msgstr "特定時点の資産表示時の優先度"
+msgstr "スナップショット表示時の優先度"
 
 #: stock/models.py:551
 msgid "Start date"
@@ -518,27 +519,27 @@ msgstr "購入済み株式の更新"
 
 #: stock/views.py:160
 msgid "Snapshot list"
-msgstr "特定時点の資産一覧"
+msgstr "スナップショット一覧"
 
 #: stock/views.py:177
 msgid "Register snapshot"
-msgstr "特定時点の資産の登録"
+msgstr "スナップショットの登録"
 
 #: stock/views.py:188
 msgid "Update snapshot"
-msgstr "特定時点の資産の更新"
+msgstr "スナップショットの更新"
 
 #: stock/views.py:227
 msgid "Periodic task list for snapshot"
-msgstr "特定時点の資産に対する定期実行タスク一覧"
+msgstr "スナップショットに対する定期実行タスク一覧"
 
 #: stock/views.py:244
 msgid "Register periodic task for snapshot"
-msgstr "特定時点の資産に対する定期実行タスクの登録"
+msgstr "スナップショットに対する定期実行タスクの登録"
 
 #: stock/views.py:255
 msgid "Update periodic task for snapshot"
-msgstr "特定時点の資産に対する定期実行タスクの更新"
+msgstr "スナップショットに対する定期実行タスクの更新"
 
 #: stock/views.py:276
 msgid "Stock list"

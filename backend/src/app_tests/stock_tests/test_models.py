@@ -1359,8 +1359,35 @@ def test_update_periodic_task():
 
   assert instance.crontab.pk == crontab.pk
   assert instance.task == 'stock.tasks.update_specific_snapshot'
+  assert instance.description == snapshot.title
   assert kwargs['user_pk'] == user.pk
   assert kwargs['snapshot_pk'] == snapshot.pk
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_get_instance_from_periodic_task_kwargs():
+  user = factories.UserFactory()
+  _ = factories.CashFactory.create_batch(2, user=user)
+  _ = factories.PurchasedStockFactory.create_batch(3, user=user)
+  snapshot = factories.SnapshotFactory(user=user)
+  crontab = factories.CrontabScheduleFactory()
+  task = factories.PeriodicTaskFactory(
+    crontab=crontab,
+    kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk}),
+  )
+  instance = models.Snapshot.get_instance_from_periodic_task_kwargs(task)
+
+  assert instance.pk == snapshot.pk
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_exception_pattern_for_getting_instance_from_periodic_task_kwargs():
+  task = factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': 0, 'snapshot_pk': 0}))
+  instance = models.Snapshot.get_instance_from_periodic_task_kwargs(task)
+
+  assert instance is None
 
 @pytest.mark.stock
 @pytest.mark.model

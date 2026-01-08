@@ -35,6 +35,7 @@
               <tr>
                 <th scope="col">{% trans "No." %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Task name" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Snapshot name" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Schedule" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Total run count" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Enabled/Disabled" %}</th>
@@ -47,6 +48,7 @@
                 {% with table_css=instance.enabled|yesno:',table-secondary' %}
                 <td scope="row" class="{{ table_css }}">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td data-type="taskName" class="{{ table_css }}">{{ instance.name }}</td>
+                <td data-type="snapshotName" class="{{ table_css }}">{{ instance.description }}</td>
                 <td data-type="schedule" class="{{ table_css }}">{{ instance.scheduler }}</td>
                 <td data-type="totalRunCount" class="{{ table_css }}">{{ instance.total_run_count|intcomma }}</td>
                 <td data-type="isEnabled" class="{{ table_css }}">{% if instance.enabled %}{% trans "Enabled" %}{% else %}{% trans "Disabled" %}{% endif %}</td>

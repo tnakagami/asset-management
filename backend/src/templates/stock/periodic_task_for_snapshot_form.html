@@ -84,7 +84,6 @@
 {% endblock %}
 
 {% block bodyjs %}
-{{ block.super }}
 <script>
 (function () {
   const g_scheduleNodeName = 'target-schedule';
@@ -146,6 +145,31 @@
       baseParent.appendChild(clone);
     });
     scheduleTypeElement.dispatchEvent(new Event('change'));
+    {% if object %}
+    (() => {
+      const node = document.querySelector(`#${g_scheduleNodeName}`);
+      const config = (() => {
+        const element = document.querySelector('#config');
+        const rawValue = element.value.replace('&quot;', '"');
+        const data = JSON.parse(JSON.parse(rawValue));
+
+        return data;
+      })();
+      const convTable = Object.freeze({
+        minute: 'target-minute',
+        hour: 'target-hour',
+        day_of_week: 'target-week',
+        day_of_month: 'target-month',
+      });
+
+      for (const key of Object.keys(config)) {
+        const name = convTable[key];
+        const element = node.querySelector(`div[name="${name}"]`);
+        const selectObj = element.querySelector('select');
+        selectObj.value = config[key];
+      }
+    })();
+    {% endif %}
   };
 
   const setupSubmitEvent = (form) => {

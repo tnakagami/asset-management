@@ -257,6 +257,12 @@ class UpdatePeriodicTaskForSnapshot(BaseCreateUpdateView, IsOwnSnapshotTask, Upd
     url_keys=['pk'],
   )
 
+  def get_form(self, form_class=None):
+    form = super().get_form(form_class=form_class)
+    form.update_initial(self.object)
+
+    return form
+
 class DeletePeriodicTaskForSnapshot(LoginRequiredMixin, IsOwnSnapshotTask, DeleteView):
   raise_exception = True
   http_method_names = ['post']

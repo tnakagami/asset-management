@@ -15,6 +15,7 @@ from . import models
 from collections import deque
 import ast
 import urllib.parse
+import json
 
 def bool_converter(value):
   return value not in ['False', 'false', 'FALSE', '0', False]
@@ -228,17 +229,38 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
   def __init__(self, user, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.fields['snapshot'].queryset = user.snapshots.all()
-
-  def clean(self):
-    schedule_restriction = {
+    self.schedule_restriction = {
       'every-day': ['minute', 'hour'],
       'every-week': ['minute', 'hour', 'day_of_week'],
       'every-month': ['minute', 'hour', 'day_of_month'],
     }
+    self.default_schedule = 'every-day'
+
+  def update_initial(self, task):
+    # Set pre-defined snapshot instance
+    self.fields['snapshot'].initial = models.Snapshot.get_instance_from_periodic_task_kwargs(task)
+    # Set base-config
+    config = {
+      'minute': task.crontab.minute,
+      'hour': task.crontab.hour,
+    }
+    # Check crontab schedule
+    if task.crontab.day_of_month != '*' and task.crontab.day_of_week == '*':
+      self.fields['schedule_type'].initial = 'every-month'
+      config['day_of_month'] = task.crontab.day_of_month
+    elif task.crontab.day_of_month == '*' and task.crontab.day_of_week != '*':
+      self.fields['schedule_type'].initial = 'every-week'
+      config['day_of_week'] = task.crontab.day_of_week
+    else:
+      self.fields['schedule_type'].initial = 'every-day'
+    # Update initial value of config data
+    self.fields['config'].initial = json.dumps(config)
+
+  def clean(self):
     cleaned_data = super().clean()
-    schedule_type = cleaned_data.get('schedule_type', 'every-day')
+    schedule_type = cleaned_data.get('schedule_type', self.default_schedule)
     config = cleaned_data.get('config', {})
-    restriction = schedule_restriction[schedule_type]
+    restriction = self.schedule_restriction[schedule_type]
     given_keys = list(config.keys())
     rested = {key: key not in given_keys for key in restriction}
 
@@ -263,7 +285,7 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
           code='invalid_data',
           params={'err': str(ex)},
         )
-    # Skip to execute `validate_unique` function when form.clean() was ran.
+    # Skip to execute `validate_unique` function when form.clean() is run.
     self._validate_unique = False
 
     return cleaned_data
