@@ -30,5 +30,6 @@ urlpatterns = [
   path('delete/periodic-snapshot-task/<int:pk>', views.DeletePeriodicTaskForSnapshot.as_view(), name='delete_snapshot_task'),
   # Stock
   path('list/stocks', views.ListStock.as_view(), name='list_stock'),
+  path('download/stocks', views.DownloadStockPage.as_view(), name='download_stock'),
   path('explanation', views.ExplanationPage.as_view(), name='explanation'),
 ]

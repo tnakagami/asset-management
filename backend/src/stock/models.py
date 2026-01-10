@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.html import json_script
 from django_celery_beat.models import PeriodicTask
 from collections import deque
+import urllib.parse
 import re
 import json
 import uuid
@@ -30,6 +31,12 @@ def convert_timezone(target, is_string=False, strformat='%Y-%m-%d'):
     output = output.strftime(strformat)
 
   return output
+
+def generate_default_filename():
+  current_time = timezone.now()
+  filename = convert_timezone(current_time, is_string=True, strformat='%Y%m%d-%H%M%S')
+
+  return filename
 
 class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
   def __init__(self, *args, **kwargs):
@@ -393,6 +400,42 @@ class Stock(models.Model):
 
   def get_name(self):
     return str(self.locals.get_local() or '')
+
+  @classmethod
+  def get_response_kwargs(cls, filename, tree, ordering):
+    if not filename:
+      filename = generate_default_filename()
+    name = urllib.parse.quote(filename.encode('utf-8'))
+    queryset = cls.objects.select_targets(tree=tree).order_by(*ordering)
+    rows = (
+      [
+        obj.code, obj.get_name(), str(obj.industry), str(obj.price), str(obj.dividend),
+        f'{obj.div_yield:.2f}', str(obj.per), str(obj.pbr), f'{obj.multi_pp:.2f}',
+        str(obj.eps), str(obj.bps), str(obj.roe), str(obj.er),
+      ] for obj in queryset.iterator(chunk_size=300)
+    )
+    header = [
+      gettext_lazy('Stock code'),
+      gettext_lazy('Stock name'),
+      gettext_lazy('Stock industry'),
+      gettext_lazy('Stock price'),
+      gettext_lazy('Dividend'),
+      gettext_lazy('Dividend yield'),
+      gettext_lazy('Price Earnings Ratio (PER)'),
+      gettext_lazy('Price Book-value Ratio (PBR)'),
+      gettext_lazy('PER x PBR'),
+      gettext_lazy('Earnings Per Share (EPS)'),
+      gettext_lazy('Book value Per Share (BPS)'),
+      gettext_lazy('Return On Equity (ROE)'),
+      gettext_lazy('Equity Ratio (ER)'),
+    ]
+    kwargs = {
+      'rows': rows,
+      'header': header,
+      'filename': f'stock-{name}.csv',
+    }
+
+    return kwargs
 
   def __str__(self):
     return f'{self.get_name()}({self.code})'

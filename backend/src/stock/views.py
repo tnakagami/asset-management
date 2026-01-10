@@ -7,9 +7,10 @@ from django.views.generic import (
   View,
   FormView,
 )
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.utils.translation import gettext_lazy
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.urls import reverse_lazy
 from django_celery_beat.models import PeriodicTask
 from utils.views import (
@@ -21,6 +22,7 @@ from utils.views import (
 )
 from account.views import Index
 from . import models, forms
+from utils.models import streaming_csv_file
 
 class Dashboard(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.Snapshot
@@ -294,8 +296,33 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   def get_context_data(self, **kwargs):
     context = super().get_context_data(**kwargs)
     context['form'] = self.form
+    context['download_form'] = forms.StockDownloadForm()
+    context['is_secure'] = 'Secure' if settings.IS_SECURE_COOKIE else ''
 
     return context
+
+class DownloadStockPage(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
+  raise_exception = True
+  http_method_names = ['post']
+  form_class = forms.StockDownloadForm
+
+  def form_valid(self, form):
+    kwargs = form.create_response_kwargs()
+    # Create response
+    filename = kwargs['filename']
+    response = StreamingHttpResponse(
+      streaming_csv_file(kwargs['rows'], header=kwargs['header']),
+      content_type='text/csv;charset=UTF-8',
+      headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+    response.set_cookie(
+      'stock_download_status',
+      value='completed',
+      max_age=settings.CSV_DOWNLOAD_MAX_AGE,
+      secure=settings.IS_SECURE_COOKIE,
+    )
+
+    return response
 
 class ExplanationPage(LoginRequiredMixin, TemplateView, DjangoBreadcrumbsMixin):
   template_name = 'stock/explanation.html'

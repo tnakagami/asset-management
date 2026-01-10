@@ -9,15 +9,30 @@
   <div class="col">
     <div class="row row-cols-1 g-3">
       <div class="col">
-        <button
-          type="button"
-          id="stock-search"
-          class="btn btn-success w-100 custom-boxshadow"
-          data-bs-toggle="modal"
-          data-bs-target="#stock-search-modal"
-        >
-          {% trans "Search stock (Shift + f)" %}
-        </button>
+        <div class="row row-cols-1 row-cols-md-2 g-2">
+          <div class="col">
+            <button
+              type="button"
+              id="stock-search"
+              class="btn btn-success w-100 custom-boxshadow"
+              data-bs-toggle="modal"
+              data-bs-target="#stock-search-modal"
+            >
+              {% trans "Search stock (Shift + f)" %}
+            </button>
+          </div>
+          <div class="col">
+            <button
+              type="button"
+              id="download-stock"
+              class="btn btn-primary w-100 custom-boxshadow"
+              data-bs-toggle="modal"
+              data-bs-target="#download-stock-modal"
+            >
+              {% trans "Download stock (Shift + s)" %}
+            </button>
+          </div>
+        </div>
       </div>
       <div class="col">
         {% if stocks %}
@@ -74,6 +89,7 @@
   </div>
 </div>
 
+{# Search stock modal #}
 <div class="modal fade" id="stock-search-modal" tabindex="-1" aria-labelledby="stock-search-label" aria-hidden="true">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
@@ -207,10 +223,50 @@
                   </button>
                 </div>
                 <div class="col">
-                  <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">{% trans "Close" %}</button>
+                  <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+                    {% trans "Close" %}
+                  </button>
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Download stock modal #}
+<div class="modal fade" id="download-stock-modal" tabindex="-1" aria-labelledby="download-stock-label" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title h3" id="download-stock-label">{% trans "Download stock" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{% url 'stock:download_stock' %}" id="download-stock-form">
+          {% csrf_token %}
+
+          {{ download_form }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <div class="mt-1 row row-cols-1 row-cols-md-2 g-2 w-100">
+          <div class="col">
+            <button
+              type="submit"
+              id="download-stock-btn"
+              form="download-stock-form"
+              class="btn btn-primary w-100 custom-boxshadow"
+            >
+              {% trans "Download" %}
+            </button>
+          </div>
+          <div class="col">
+            <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+              {% trans "Close" %}
+            </button>
           </div>
         </div>
       </div>
@@ -222,6 +278,11 @@
 {% block bodyjs %}
 <script>
 (function () {
+  const callbackOrdering = (isDisabled) => {
+    const ordering = document.querySelector('#column-ordering');
+    ordering.disabled = isDisabled;
+  };
+
   const setupSearchForm = () => {
     const removeAllAttrs = (element, ...attrs) => attrs.forEach((_attr) => element.removeAttribute(_attr));
     const targetColumn = document.querySelector('#target-column-name');
@@ -308,29 +369,75 @@
     });
     targetColumn.dispatchEvent(new Event('change'));
   };
+  // Setup download form
+  const setupDownloadForm = () => {
+    const downloadForm = document.querySelector('#download-stock-form');
+    const filenameField = document.querySelector('#download-filename');
+    // Add keyup event
+    filenameField.addEventListener('keyup', (event) => {
+      if (!event.ctrlKey && (event.key === 'Enter')) {
+        downloadForm.submit();
+      }
+    });
+    // Add submit event
+    downloadForm.addEventListener('submit', (event) => {
+      const form = event.target;
+      const execDownload = document.querySelector('#download-stock-btn');
+      const searchCondition = document.querySelector('#condition');
+      const searchOrdering = document.querySelector('#column-ordering');
+      const downloadCondition = form.querySelector('#download-condition');
+      const downloadOrdering = form.querySelector('#download-ordering');
+      callbackOrdering(false);
+      downloadCondition.value = searchCondition.value;
+      downloadOrdering.value = searchOrdering.value;
+      callbackOrdering(true);
+      execDownload.disabled = true;
+      // Setup timer
+      const timerId = window.setInterval(() => {
+        // Check whether targetCookieValue exists or not
+        const key = 'stock_download_status';
+        const target = `${key}=completed`;
+
+        if (document.cookie.includes(target)) {
+          window.clearInterval(timerId);
+          execDownload.disabled = false;
+          const modal = new bootstrap.Modal('#download-stock-modal');
+          modal.hide();
+          // Execute post-process
+          document.cookie = `${key}=; max-age=0; path=/; {{ is_secure }}`;
+        }
+      }, 1000);
+    });
+  };
   // Define initialization function
   const init = () => {
-    const searchBtn = document.querySelector('#stock-search');
-    const form = document.querySelector('#stock-search-form');
     // Setup search form
+    const searchBtn = document.querySelector('#stock-search');
+    const searchForm = document.querySelector('#stock-search-form');
     setupSearchForm();
     // Add submit event
-    form.addEventListener('submit', (event) => {
-      const ordering = document.querySelector('#column-ordering');
-      ordering.disabled = false;
+    searchForm.addEventListener('submit', (event) => {
+      callbackOrdering(false);
     });
     // Add key event
     document.addEventListener('keyup', (event) => {
       if (event.key === 'F') { /* F := Shift + f */
         searchBtn.click();
       }
+      else if (event.key === 'S') { /* S := Shift + s */
+        const downloadBtn = document.querySelector('#download-stock');
+        downloadBtn.click();
+      }
       else if (event.ctrlKey && (event.key === 'Enter')) {
-        form.submit();
+        searchForm.submit();
       }
     });
     {% if form.errors %}
     searchBtn.click();
     {% endif %}
+
+    // Setup download form
+    setupDownloadForm();
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);
