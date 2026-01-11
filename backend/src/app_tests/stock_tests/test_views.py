@@ -1,5 +1,6 @@
 import pytest
 import json
+import urllib.parse
 from pytest_django.asserts import assertTemplateUsed, assertQuerySetEqual
 from django.urls import reverse
 from app_tests import status
@@ -652,6 +653,79 @@ def test_post_invalid_access_to_list_stock(login_process):
   response = client.post(url)
 
   assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+# =================
+# DownloadStockPage
+# =================
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_in_download_stock_page(login_process):
+  client, _ = login_process
+  url = reverse(f'stock:download_stock')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+@pytest.mark.stock
+@pytest.mark.view
+def test_without_authentication_in_download_stock_page(client):
+  url = reverse('stock:download_stock')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_valid_post_access_to_download_stock_page(login_process, mocker):
+  client, user = login_process
+  output = {
+    'rows': (row for row in [['0001'], ['0002']]),
+    'header': ['Code'],
+    'filename': 'stock-test001.csv',
+  }
+  mocker.patch('stock.forms.StockDownloadForm.create_response_kwargs', return_value=output)
+  params = {
+    'filename': 'dummy-name',
+  }
+  expected = bytes('Code\n0001\n0002\n', 'utf-8')
+  # Post access
+  response = client.post(reverse('stock:download_stock'), data=params)
+  cookie = response.cookies.get('stock_download_status')
+  attachment = response.get('content-disposition')
+  stream = response.getvalue()
+
+  assert response.has_header('content-disposition')
+  assert output['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
+  assert cookie.value == 'completed'
+  assert expected in stream
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'params',
+  'expected_cond',
+  'expected_order',
+], [
+  ({'filename': '1'*129, 'condition': 'price > 100', 'ordering': 'code'}, 'price > 100', 'code'),
+  ({'filename': 'hoge', 'condition': '1'*1025, 'ordering': 'code'}, '', 'code'),
+  ({'filename': 'hoge', 'condition': 'price > 100', 'ordering': '1'*1025}, 'price > 100', ''),
+], ids=[
+  'too-long-filename',
+  'too-long-condition',
+  'too-long-ordering',
+])
+def test_invalid_post_request_to_download_stock_page(login_process, params, expected_cond, expected_order):
+  client, _ = login_process
+  # Post access
+  response = client.post(reverse('stock:download_stock'), data=params)
+  query_string = urllib.parse.quote('condition={}&ordering={}'.format(expected_cond, expected_order))
+  location = '{}?{}'.format(reverse('stock:list_stock'), query_string)
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == location
 
 # ===============
 # ExplanationPage

@@ -415,6 +415,10 @@
     const searchBtn = document.querySelector('#stock-search');
     const searchForm = document.querySelector('#stock-search-form');
     setupSearchForm();
+
+    // Setup download form
+    setupDownloadForm();
+
     // Add submit event
     searchForm.addEventListener('submit', (event) => {
       callbackOrdering(false);
@@ -435,9 +439,6 @@
     {% if form.errors %}
     searchBtn.click();
     {% endif %}
-
-    // Setup download form
-    setupDownloadForm();
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);

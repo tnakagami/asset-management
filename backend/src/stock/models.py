@@ -412,7 +412,7 @@ class Stock(models.Model):
         obj.code, obj.get_name(), str(obj.industry), str(obj.price), str(obj.dividend),
         f'{obj.div_yield:.2f}', str(obj.per), str(obj.pbr), f'{obj.multi_pp:.2f}',
         str(obj.eps), str(obj.bps), str(obj.roe), str(obj.er),
-      ] for obj in queryset.iterator(chunk_size=300)
+      ] for obj in queryset.iterator(chunk_size=512)
     )
     header = [
       gettext_lazy('Stock code'),

@@ -2,6 +2,7 @@ import pytest
 import json
 import re
 import ast
+import urllib.parse
 from django.db.models import Q as dbQ
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
@@ -173,6 +174,19 @@ def test_check_convert_timezone(settings, this_timezone, target, is_string, strf
   output = models.convert_timezone(target, is_string=is_string, strformat=strformat)
 
   assert output == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_generate_default_filename(mocker, settings):
+  settings.TIME_ZONE = 'Asia/Tokyo'
+  mocker.patch(
+    'stock.models.timezone.now',
+    return_value=datetime(2021,7,3,11,7,48,microsecond=123456,tzinfo=timezone.utc),
+  )
+  expected = '20210703-200748'
+  filename = models.generate_default_filename()
+
+  assert filename == expected
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -643,10 +657,10 @@ def test_queryset_of_stock():
   'complex-expression-by-using-several-columns',
 ])
 def test_qs_of_stock_with_tree(pseudo_stock_data, expression, indices):
-  stock = pseudo_stock_data
+  stocks = pseudo_stock_data
   tree = ast.parse(expression, mode='eval')
   qs = models.Stock.objects.select_targets(tree=tree).order_by('pk')
-  expected = [stock[idx].pk for idx in indices]
+  expected = [stocks[idx].pk for idx in indices]
 
   assert qs.count() == len(expected)
   assert all([record.pk == pk for record, pk in zip(qs, expected)])
@@ -698,6 +712,66 @@ def test_check_stock_str_function_using_get_name_func(mocker, language_code, nam
   expected = f'{exact_name}({code})'
 
   assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'filename',
+  'condition',
+  'ordering',
+  'total',
+  'start_idx',
+  'end_idx',
+], [
+  ('hoge', '', 'code', 5, 0, -1),
+  ('', 'price >= 1200', '-price', 3, 2, 0),
+  ('foo', '1.3 <= pbr <= 4.5', 'pbr,-per', 4, 3, 2),
+  ('日本語', 'bps < 0', 'er', 1, 3, 3),
+], ids=[
+  'no-condition',
+  'empty-filename',
+  'same-values-exist',
+  'use-multi-byte-string-in-filename',
+])
+def test_get_response_kwargs_for_stock(mocker, pseudo_stock_data, filename, condition, ordering, total, start_idx, end_idx):
+  stocks = pseudo_stock_data
+  default_fname = '20010917-213456'
+  mocker.patch('stock.models.generate_default_filename', return_value=default_fname)
+  tree = ast.parse(condition, mode='eval') if condition else None
+  # Call target function
+  kwargs = models.Stock.get_response_kwargs(filename, tree, ordering.split(','))
+  # Create expected values
+  first_obj = stocks[start_idx]
+  last_obj = stocks[end_idx]
+  _tmp_name = filename if filename else default_fname
+  expected_name = urllib.parse.quote(_tmp_name.encode('utf-8'))
+  expected_header = [
+    'Stock code', 'Stock name', 'Stock industry', 'Stock price', 'Dividend', 'Dividend yield',
+    'Price Earnings Ratio (PER)', 'Price Book-value Ratio (PBR)', 'PER x PBR',
+    'Earnings Per Share (EPS)', 'Book value Per Share (BPS)', 'Return On Equity (ROE)',
+    'Equity Ratio (ER)',
+  ]
+  # Get estimated values
+  rows = list(kwargs['rows'])
+  estimated_first = rows[0]
+  estimated_last = rows[-1]
+
+  assert len(rows) == total
+  assert estimated_first[0] == first_obj.code
+  assert estimated_first[1] == first_obj.get_name()
+  assert estimated_last[0] == last_obj.code
+  assert estimated_last[1] == last_obj.get_name()
+  assert all([str(est) == exact for est, exact in zip(kwargs['header'], expected_header)])
+  assert kwargs['filename'] == f'stock-{expected_name}.csv'
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_get_response_kwargs_with_no_data_for_stock():
+  kwargs = models.Stock.get_response_kwargs('', None, ['code'])
+
+  assert len(list(kwargs['rows'])) == 0
 
 @pytest.mark.stock
 @pytest.mark.model

@@ -10,8 +10,8 @@ from django.views.generic import (
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.utils.translation import gettext_lazy
-from django.http import JsonResponse, StreamingHttpResponse
-from django.urls import reverse_lazy
+from django.http import JsonResponse, StreamingHttpResponse, HttpResponseRedirect
+from django.urls import reverse_lazy, reverse
 from django_celery_beat.models import PeriodicTask
 from utils.views import (
   BaseCreateUpdateView,
@@ -294,10 +294,11 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
     return queryset
 
   def get_context_data(self, **kwargs):
+    is_secure = getattr(settings, 'IS_SECURE_COOKIE', True)
     context = super().get_context_data(**kwargs)
     context['form'] = self.form
     context['download_form'] = forms.StockDownloadForm()
-    context['is_secure'] = 'Secure' if settings.IS_SECURE_COOKIE else ''
+    context['is_secure'] = 'Secure' if is_secure else ''
 
     return context
 
@@ -309,6 +310,8 @@ class DownloadStockPage(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
   def form_valid(self, form):
     kwargs = form.create_response_kwargs()
     # Create response
+    max_age = getattr(settings, 'CSV_DOWNLOAD_MAX_AGE', 5 * 60)
+    is_secure = getattr(settings, 'IS_SECURE_COOKIE', True)
     filename = kwargs['filename']
     response = StreamingHttpResponse(
       streaming_csv_file(kwargs['rows'], header=kwargs['header']),
@@ -318,9 +321,16 @@ class DownloadStockPage(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
     response.set_cookie(
       'stock_download_status',
       value='completed',
-      max_age=settings.CSV_DOWNLOAD_MAX_AGE,
-      secure=settings.IS_SECURE_COOKIE,
+      max_age=max_age,
+      secure=is_secure,
     )
+
+    return response
+
+  def form_invalid(self, form):
+    query_string = form.get_query_string()
+    url = '{}?{}'.format(reverse('stock:list_stock'), query_string)
+    response = HttpResponseRedirect(url)
 
     return response
 
