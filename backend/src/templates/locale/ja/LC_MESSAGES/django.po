@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-06 22:56+0900\n"
+"POT-Creation-Date: 2026-01-12 11:46+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -195,8 +195,8 @@ msgstr "許可"
 
 #: templates/delete_modal_form.html:25 templates/stock/dashboard.html:286
 #: templates/stock/purchased_stock_form.html:70
-#: templates/stock/purchased_stocks.html:176 templates/stock/snapshots.html:98
-#: templates/stock/stocks.html:210
+#: templates/stock/purchased_stocks.html:176 templates/stock/stocks.html:227
+#: templates/stock/stocks.html:268
 msgid "Close"
 msgstr "閉じる"
 
@@ -238,7 +238,7 @@ msgstr "口座残高の登録"
 #: templates/stock/cashes.html:24 templates/stock/dashboard.html:167
 #: templates/stock/periodic_tasks_for_snapshot.html:36
 #: templates/stock/purchased_stocks.html:25 templates/stock/snapshots.html:36
-#: templates/stock/stocks.html:28
+#: templates/stock/stocks.html:43
 msgid "No."
 msgstr "No."
 
@@ -305,32 +305,32 @@ msgstr "資産"
 
 #: templates/stock/dashboard.html:168 templates/stock/dashboard.html:231
 #: templates/stock/purchased_stocks.html:26
-#: templates/stock/purchased_stocks.html:117 templates/stock/stocks.html:29
+#: templates/stock/purchased_stocks.html:117 templates/stock/stocks.html:44
 msgid "Code"
 msgstr "株式コード"
 
 #: templates/stock/dashboard.html:169 templates/stock/dashboard.html:235
 #: templates/stock/purchased_stocks.html:27
-#: templates/stock/purchased_stocks.html:121 templates/stock/stocks.html:30
+#: templates/stock/purchased_stocks.html:121 templates/stock/stocks.html:45
 msgid "Stock name"
 msgstr "株式会社名"
 
 #: templates/stock/dashboard.html:170 templates/stock/dashboard.html:239
 #: templates/stock/purchased_stocks.html:28
-#: templates/stock/purchased_stocks.html:125 templates/stock/stocks.html:31
+#: templates/stock/purchased_stocks.html:125 templates/stock/stocks.html:46
 msgid "Industry"
 msgstr "株式会社の業種"
 
 #: templates/stock/dashboard.html:172 templates/stock/dashboard.html:247
 #: templates/stock/dashboard.html:460 templates/stock/dashboard.html:478
 #: templates/stock/dashboard.html:506 templates/stock/purchased_stocks.html:133
-#: templates/stock/stocks.html:33
+#: templates/stock/stocks.html:48
 msgid "Dividend"
 msgstr "配当金"
 
 #: templates/stock/dashboard.html:173 templates/stock/dashboard.html:251
 #: templates/stock/investment_history.html:148
-#: templates/stock/purchased_stocks.html:137 templates/stock/stocks.html:34
+#: templates/stock/purchased_stocks.html:137 templates/stock/stocks.html:49
 msgid "Dividend yield"
 msgstr "配当利回り"
 
@@ -359,37 +359,37 @@ msgid "Detail of target stock"
 msgstr "対象銘柄の詳細"
 
 #: templates/stock/dashboard.html:243 templates/stock/dashboard.html:469
-#: templates/stock/purchased_stocks.html:129 templates/stock/stocks.html:32
+#: templates/stock/purchased_stocks.html:129 templates/stock/stocks.html:47
 msgid "Stock price"
 msgstr "株価"
 
 #: templates/stock/dashboard.html:255 templates/stock/purchased_stocks.html:141
-#: templates/stock/stocks.html:35
+#: templates/stock/stocks.html:50
 msgid "Price Earnings Ratio"
 msgstr "株価収益率（PER）"
 
 #: templates/stock/dashboard.html:259 templates/stock/purchased_stocks.html:145
-#: templates/stock/stocks.html:36
+#: templates/stock/stocks.html:51
 msgid "Price Book-value Ratio"
 msgstr "株価純資産倍率（PBR）"
 
 #: templates/stock/dashboard.html:263 templates/stock/purchased_stocks.html:153
-#: templates/stock/stocks.html:38
+#: templates/stock/stocks.html:53
 msgid "Earnings Per Share"
 msgstr "1株当たり純利益（EPS）"
 
 #: templates/stock/dashboard.html:267 templates/stock/purchased_stocks.html:157
-#: templates/stock/stocks.html:39
+#: templates/stock/stocks.html:54
 msgid "Book value Per Share"
 msgstr "1株当たりの純資産（BPS）"
 
 #: templates/stock/dashboard.html:271 templates/stock/purchased_stocks.html:161
-#: templates/stock/stocks.html:40
+#: templates/stock/stocks.html:55
 msgid "Return On Equity"
 msgstr "自己資本利益率（ROE）"
 
 #: templates/stock/dashboard.html:275 templates/stock/purchased_stocks.html:165
-#: templates/stock/stocks.html:41
+#: templates/stock/stocks.html:56
 msgid "Equity Ratio"
 msgstr "自己資本比率"
 
@@ -686,13 +686,14 @@ msgid ""
 "There is no periodic tasks for snapshot. Please add the tasks from the above "
 "button."
 msgstr ""
-"スナップショットに対する定期実行タスクの情報がありません。上記のボタンから登録"
-"してください。"
+"スナップショットに対する定期実行タスクの情報がありません。上記のボタンから登"
+"録してください。"
 
 #: templates/stock/periodic_tasks_for_snapshot.html:81
 msgid "There is no snapshots. Please add the snapshots from the above button."
 msgstr ""
-"スナップショットの情報がありません。上記のボタンからデータを登録してください。"
+"スナップショットの情報がありません。上記のボタンからデータを登録してくださ"
+"い。"
 
 #: templates/stock/purchased_stock_form.html:9
 msgid "Register/Update purchsed stock"
@@ -731,7 +732,7 @@ msgid ""
 "There is no purchased stocks. Please add the items from the above button."
 msgstr "購入済み株式の情報がありません。下記のボタンから登録してください。"
 
-#: templates/stock/purchased_stocks.html:149 templates/stock/stocks.html:37
+#: templates/stock/purchased_stocks.html:149 templates/stock/stocks.html:52
 msgid "PER &times; PBR"
 msgstr "PER &times; PBR"
 
@@ -751,58 +752,68 @@ msgstr "集計開始日"
 msgid "End date"
 msgstr "集計終了日"
 
-#: templates/stock/snapshots.html:73
+#: templates/stock/snapshots.html:81
 msgid "There is no snapshots. Please add the items from the above button."
 msgstr "スナップショットの情報がありません。上記のボタンから登録してください。"
-
-#: templates/stock/snapshots.html:88
-msgid "Result of updating all snapshots"
-msgstr "スナップショットの一括更新結果"
-
-#: templates/stock/snapshots.html:92
-msgid "Failed to update some snapshots."
-msgstr "スナップショットの情報更新に失敗しました。"
 
 #: templates/stock/stocks.html:7
 msgid "Stocks"
 msgstr "株価一覧"
 
-#: templates/stock/stocks.html:19
+#: templates/stock/stocks.html:21
 msgid "Search stock (Shift + f)"
 msgstr "銘柄検索（Shift + f）"
 
-#: templates/stock/stocks.html:67
+#: templates/stock/stocks.html:32
+msgid "Download stock (Shift + s)"
+msgstr "銘柄一覧ダウンロード（Shift + s）"
+
+#: templates/stock/stocks.html:82
 msgid "There is no stocks. Please register them using fixture data."
 msgstr "株式の情報がありません。fixtureデータを使って追加してください。"
 
-#: templates/stock/stocks.html:81
+#: templates/stock/stocks.html:97
 msgid "Seach stock"
 msgstr "銘柄検索"
 
-#: templates/stock/stocks.html:116
+#: templates/stock/stocks.html:132
 msgid "Add (Enter)"
 msgstr "追加 (Enter)"
 
-#: templates/stock/stocks.html:125
+#: templates/stock/stocks.html:141
 msgid "AND"
 msgstr "AND"
 
-#: templates/stock/stocks.html:134
+#: templates/stock/stocks.html:150
 msgid "OR"
 msgstr "OR"
 
-#: templates/stock/stocks.html:143
+#: templates/stock/stocks.html:159
 msgid "("
 msgstr "("
 
-#: templates/stock/stocks.html:152
+#: templates/stock/stocks.html:168
 msgid ")"
 msgstr ")"
 
-#: templates/stock/stocks.html:161
+#: templates/stock/stocks.html:177
 msgid "Errors"
 msgstr "エラー"
 
-#: templates/stock/stocks.html:206
+#: templates/stock/stocks.html:222
 msgid "Search (Ctrl + Enter)"
 msgstr "検索 (Ctrl + Enter)"
+
+#: templates/stock/stocks.html:244
+msgid "Download stock"
+msgstr "銘柄一覧ダウンロード"
+
+#: templates/stock/stocks.html:263
+msgid "Download"
+msgstr "ダウンロード"
+
+#~ msgid "Result of updating all snapshots"
+#~ msgstr "スナップショットの一括更新結果"
+
+#~ msgid "Failed to update some snapshots."
+#~ msgstr "スナップショットの情報更新に失敗しました。"
