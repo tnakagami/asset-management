@@ -1,6 +1,8 @@
 import pytest
+import csv
 import json
 import urllib.parse
+from io import StringIO
 from webtest.app import AppError
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -1456,10 +1458,32 @@ def test_send_post_request_for_download_stock_form(mocker, init_webtest, filenam
   cookie = response.client.cookies.get('stock_download_status')
   attachment = response['content-disposition']
   stream = response.content
+  #
+  # Check stream data
+  #
+  def check_stream_data(recieved_stream, exact_stream):
+     # Decode recieved stream as 'utf-8-sig' because of using BOM
+    estimated_reader = csv.DictReader(StringIO(recieved_stream.decode('utf-8-sig')), delimiter=',')
+    exact_reader = csv.DictReader(StringIO(exact_stream.decode('utf-8')), delimiter=',')
+    results = []
+
+    for recv, exact in zip(estimated_reader, exact_reader):
+      outs = []
+
+      for key in exact.keys():
+        if key in ['Stock code', 'Stock name', 'Stock industry']:
+          outs += [recv[key] == exact[key]]
+        else:
+          # Because the number of significant digits is up to two decimal places (LSB: 0.01),
+          # an error of two decimal places is allowed.
+          outs += [abs(float(recv[key]) - float(exact[key])) < 0.015]
+      results += [all(outs)]
+
+    return results
 
   assert expected['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
   assert cookie.value == 'completed'
-  assert expected['data'] in stream
+  assert check_stream_data(stream, expected['data'])
 
 @pytest.mark.webtest
 @pytest.mark.django_db

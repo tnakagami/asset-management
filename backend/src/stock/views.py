@@ -210,6 +210,32 @@ class AjaxUpdateAllSnapshots(View):
 
     return response
 
+class IsSnapshotOwner(UserPassesTestMixin):
+  def test_func(self):
+    pk = self.kwargs['pk']
+    user = self.request.user
+    queryset = user.snapshots.all().filter(pk=pk)
+    is_valid = queryset.exists()
+
+    return is_valid
+
+class DownloadSnapshot(LoginRequiredMixin, IsSnapshotOwner, View):
+  raise_exception = True
+  http_method_names = ['get']
+
+  def get(self, request, *args, **kwargs):
+    instance = models.Snapshot.objects.get(pk=kwargs['pk'])
+    params = instance.create_response_kwargs()
+    # Create response
+    filename = params['filename']
+    response = StreamingHttpResponse(
+      streaming_csv_file(params['rows'], header=params['header']),
+      content_type='text/csv;charset=UTF-8',
+      headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+    return response
+
 class IsOwnSnapshotTask(UserPassesTestMixin):
   def test_func(self):
     instance = self.get_object()

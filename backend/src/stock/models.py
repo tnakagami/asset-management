@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
 from django_celery_beat.models import PeriodicTask
+from dataclasses import dataclass
 from collections import deque
 import urllib.parse
 import re
@@ -559,6 +560,121 @@ class PurchasedStock(models.Model):
 
     return out
 
+@dataclass
+class _SnapshotRecord:
+  code: str
+  price: float
+  dividend: float
+  per: float
+  pbr: float
+  eps: float
+  bps: float
+  roe: float
+  er: float
+  name: str = ''
+  industry: str = ''
+  trend: str = ''
+  purchased_value: float = 0.0
+  count: int = 0
+
+  def _get_trend(self, is_defensive):
+    table = {
+      True: gettext_lazy('Defensive'),
+      False: gettext_lazy('Economically sensitive'),
+    }
+    trend = table[is_defensive]
+
+    return trend
+
+  def _get_name(self, dict_item):
+    if 'name' in dict_item.keys():
+      name = dict_item['name']
+    else:
+      lang = get_language()
+      name = dict_item['names'][lang]
+
+    return name
+
+  def set_name(self, stock):
+    self.name = self._get_name(stock)
+
+  def set_industry(self, industry):
+    self.industry = self._get_name(industry)
+    self.trend = self._get_trend(industry['is_defensive'])
+
+  def add_count(self, count):
+    self.count += count
+
+  def add_value(self, value, count):
+    self.purchased_value += value * float(count)
+
+  @property
+  def div_yield(self):
+    total_dividend = self.dividend * self.count
+
+    try:
+      div_yield = total_dividend / self.purchased_value * 100.0
+    except:
+      div_yield = 0.0
+
+    return div_yield
+
+  @property
+  def diff(self):
+    if self.count > 0:
+      total_price = self.price * self.count
+      diff = total_price - self.purchased_value
+    else:
+      diff = 0.0
+
+    return diff
+
+  def get_record(self):
+    formatter = lambda val: f'{val:.2f}'
+    record = [
+      self.code,
+      self.name,
+      self.industry,
+      self.trend,
+      formatter(self.dividend * self.count),
+      formatter(self.div_yield),
+      formatter(self.purchased_value),
+      str(self.count),
+      formatter(self.diff),
+      formatter(self.price),
+      formatter(self.per),
+      formatter(self.pbr),
+      formatter(self.eps),
+      formatter(self.bps),
+      formatter(self.roe),
+      formatter(self.er),
+    ]
+
+    return record
+
+  @classmethod
+  def get_header(self):
+    header = [
+      gettext_lazy('Stock code'),
+      gettext_lazy('Name'),
+      gettext_lazy('Stock industry'),
+      gettext_lazy('Economic trend'),
+      gettext_lazy('Dividend'),
+      gettext_lazy('Dividend yield'),
+      gettext_lazy('Purchased value'),
+      gettext_lazy('Number of stocks'),
+      gettext_lazy('Diff'),
+      gettext_lazy('Stock price'),
+      gettext_lazy('Price Earnings Ratio (PER)'),
+      gettext_lazy('Price Book-value Ratio (PBR)'),
+      gettext_lazy('Earnings Per Share (EPS)'),
+      gettext_lazy('Book value Per Share (BPS)'),
+      gettext_lazy('Return On Equity (ROE)'),
+      gettext_lazy('Equity Ratio (ER)'),
+    ]
+
+    return header
+
 class Snapshot(models.Model):
   class Meta:
     ordering = ('priority', '-created_at', )
@@ -639,6 +755,70 @@ class Snapshot(models.Model):
     out = json_script(data, self.uuid)
 
     return out
+
+  def _replace_title(self):
+    return re.sub(r'[\\|/|:|?|.|"|<|>|\|]', '-', self.title)
+
+  def create_response_kwargs(self):
+    filename = self._replace_title()
+    name = urllib.parse.quote(filename.encode('utf-8'))
+    data = json.loads(self.detail)
+    records = {}
+    #
+    # Setup cash
+    #
+    records['cash'] = _SnapshotRecord(
+      code='-',
+      price=0.0,
+      dividend=0.0,
+      per=0.0,
+      pbr=0.0,
+      eps=0.0,
+      bps=0.0,
+      roe=0.0,
+      er=0.0,
+      name=str(gettext_lazy('Cash')),
+      industry='-',
+      trend='-',
+      purchased_value=data['cash'].get('balance', 0.0),
+    )
+    #
+    # Setup stocks
+    #
+    for record in data['purchased_stocks']:
+      stock = record['stock']
+      code = stock['code']
+      instance = records.get(code, None)
+
+      if instance is None:
+        instance = _SnapshotRecord(
+          code=code,
+          price=stock['price'],
+          dividend=stock['dividend'],
+          per=stock['per'],
+          pbr=stock['pbr'],
+          eps=stock['eps'],
+          bps=stock['bps'],
+          roe=stock['roe'],
+          er=stock['er'],
+        )
+        instance.set_name(stock)
+        instance.set_industry(stock['industry'])
+      # Update relevant data
+      instance.add_count(record['count'])
+      instance.add_value(record['price'], record['count'])
+      records[code] = instance
+    #
+    # Create output
+    #
+    rows = (instance.get_record() for instance in records.values())
+    kwargs = {
+      'rows': rows,
+      'header': _SnapshotRecord.get_header(),
+      'filename': f'snapshot-{name}.csv',
+    }
+
+    return kwargs
 
   def update_periodic_task(self, periodic_task, crontab):
     periodic_task.crontab = crontab

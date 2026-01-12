@@ -420,6 +420,64 @@ def test_post_access_with_invalid_response_to_ajaxview(client, mocker):
   assert not data['status']
   assert _mock.call_count == 1
 
+# ================
+# DownloadSnapshot
+# ================
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_download_snapshot_without_authentication(client):
+  instance = factories.SnapshotFactory()
+  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_post_access_in_download_snapshot(login_process):
+  client, user = login_process
+  instance = factories.SnapshotFactory(user=user)
+  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  response = client.post(url)
+
+  assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_invalid_request_to_download_snapshot(login_process):
+  client, _ = login_process
+  instance = factories.SnapshotFactory()
+  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_request_to_download_snapshot(mocker, login_process):
+  output = {
+    'rows': [['hoge','foo'], ['bar', '123']],
+    'header': ['Col1', 'Col2'],
+    'filename': urllib.parse.unquote('snapshot-test.csv'),
+  }
+  expected = bytes('Col1,Col2\nhoge,foo\nbar,123\n', 'utf-8')
+  mocker.patch('stock.models.Snapshot.create_response_kwargs', return_value=output)
+  # Post access
+  client, user = login_process
+  instance = factories.SnapshotFactory(user=user)
+  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+  attachment = response.get('content-disposition')
+  stream = response.getvalue()
+
+  assert response.has_header('content-disposition')
+  assert output['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
+  assert expected in stream
+
 # ==========================
 # Periodic task for snapshot
 # ==========================

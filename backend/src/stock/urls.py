@@ -23,6 +23,7 @@ urlpatterns = [
   path('update/snapshot/<int:pk>', views.UpdateSnapshot.as_view(), name='update_snapshot'),
   path('delete/snapshot/<int:pk>', views.DeleteSnapshot.as_view(), name='delete_snapshot'),
   path('update/all-snapshots', views.AjaxUpdateAllSnapshots.as_view(), name='update_all_snapshots'),
+  path('download/snapshot/<int:pk>', views.DownloadSnapshot.as_view(), name='download_snapshot'),
   # Periodic task for snapshot
   path('list/periodic-snapshot-task', views.ListPeriodicTaskForSnapshot.as_view(), name='list_snapshot_task'),
   path('register/periodic-snapshot-task', views.RegisterPeriodicTaskForSnapshot.as_view(), name='register_snapshot_task'),
