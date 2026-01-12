@@ -11,17 +11,6 @@ from . import factories
 
 UserModel = get_user_model()
 
-class FakeUserTask:
-  def __init__(self):
-    self.logger = None
-    self.kwargs = {}
-
-  def my_task(self, **kwargs):
-    self.logger = kwargs.pop('logger')
-    self.kwargs = kwargs
-
-    return 0
-
 class FakeLogger:
   def __init__(self):
     self.msg = ''
