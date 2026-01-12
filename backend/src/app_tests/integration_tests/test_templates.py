@@ -1,5 +1,8 @@
 import pytest
+import csv
 import json
+import urllib.parse
+from io import StringIO
 from webtest.app import AppError
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -7,6 +10,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from app_tests import status
 from . import factories
+from stock import models
 
 UserModel = get_user_model()
 
@@ -1195,18 +1199,18 @@ def test_check_a_seires_of_processing(csrf_exempt_django_app):
   next_link = get_current_path(res)
   options = [
     # From 2021/1/1 to 2021/9/10
-    {'stock':stocks[0].pk,'price':Decimal('1001.1' ),'purchase_date':'2021-03-13','count':100}, # 100,110
-    {'stock':stocks[1].pk,'price':Decimal(  '99.9' ),'purchase_date': '2021-04-1','count':200}, #  19,980
-    {'stock':stocks[2].pk,'price':Decimal('1010.5' ),'purchase_date': '2021-4-28','count':100}, # 101,050
-    {'stock':stocks[1].pk,'price':Decimal( '121.0' ),'purchase_date': '2021-5-11','count':100}, #  12,100
-    {'stock':stocks[2].pk,'price':Decimal('1111.5' ),'purchase_date': '2021-6-09','count':200}, # 222,300
+    {'stock':stocks[0].pk,'price':Decimal('1001.10'),'purchase_date':'2021-03-13','count':100}, # 100,110
+    {'stock':stocks[1].pk,'price':Decimal(  '99.90'),'purchase_date': '2021-04-1','count':200}, #  19,980
+    {'stock':stocks[2].pk,'price':Decimal('1010.50'),'purchase_date': '2021-4-28','count':100}, # 101,050
+    {'stock':stocks[1].pk,'price':Decimal( '121.00'),'purchase_date': '2021-5-11','count':100}, #  12,100
+    {'stock':stocks[2].pk,'price':Decimal('1111.50'),'purchase_date': '2021-6-09','count':200}, # 222,300
     {'stock':stocks[3].pk,'price':Decimal( '296.71'),'purchase_date': '2021-8-11','count':200}, # 135.118
-    {'stock':stocks[2].pk,'price':Decimal('1123.3' ),'purchase_date':'2021-09-02','count':100}, # 112,330
+    {'stock':stocks[2].pk,'price':Decimal('1123.30'),'purchase_date':'2021-09-02','count':100}, # 112,330
     # Ignore the following record (2021/10/11) when snapshot is created
     {'stock':stocks[4].pk,'price':Decimal('3030.11'),'purchase_date':'2021-10-11','count':100}, # 303,011
     # From 2021/12/4 to 2022/2/2
-    {'stock':stocks[4].pk,'price':Decimal('4801'   ),'purchase_date':'2021-12-10','count':100}, # 480,100
-    {'stock':stocks[0].pk,'price':Decimal( '990.7' ),'purchase_date': '2022-01-5','count':200}, # 198,140
+    {'stock':stocks[4].pk,'price':Decimal('4801.00'),'purchase_date':'2021-12-10','count':100}, # 480,100
+    {'stock':stocks[0].pk,'price':Decimal( '990.70'),'purchase_date': '2022-01-5','count':200}, # 198,140
     {'stock':stocks[1].pk,'price':Decimal( '130.59'),'purchase_date':'2022-01-20','count':200}, #  26,118
     {'stock':stocks[3].pk,'price':Decimal( '360.13'),'purchase_date': '2022-1-25','count':300}, # 108,039
     {'stock':stocks[2].pk,'price':Decimal('1100.88'),'purchase_date': '2022-1-28','count':100}, # 110,088
@@ -1336,20 +1340,22 @@ def test_search_stock_by_using_form(mocker, init_webtest, condition, ordering, c
     factories.IndustryFactory(),
     factories.IndustryFactory(),
   ]
-  _  = factories.LocalizedIndustryFactory(name='alpha', language_code='en', industry=industries[0])
-  _  = factories.LocalizedIndustryFactory(name='beta', language_code='en', industry=industries[1])
+  _ = factories.LocalizedIndustryFactory(name='alpha', language_code='en', industry=industries[0])
+  _ = factories.LocalizedIndustryFactory(name='beta', language_code='en', industry=industries[1])
   stocks = [
-    factories.StockFactory(price=1199.0, industry=industries[0]),
-    factories.StockFactory(price=1001.0, industry=industries[0]),
-    factories.StockFactory(price=1100.0, industry=industries[0]),
-    factories.StockFactory(price=2000.0, industry=industries[0]),
-    factories.StockFactory(price=1024.0, industry=industries[0], skip_task=True),
+    factories.StockFactory(price=Decimal('1199.00'), industry=industries[0]),
+    factories.StockFactory(price=Decimal('1001.00'), industry=industries[0]),
+    factories.StockFactory(price=Decimal('1100.00'), industry=industries[0]),
+    factories.StockFactory(price=Decimal('2000.00'), industry=industries[0]),
+    factories.StockFactory(price=Decimal('1024.00'), industry=industries[0], skip_task=True),
   ]
   other_stocks  = factories.StockFactory.create_batch(151, price=1, industry=industries[1])
-
+  # Add stock names
   for stock, name in zip(stocks, ['hogehoge', 'hoge-foo', 'bar', 'sample', 'skipped']):
     _ = factories.LocalizedStockFactory(name=name, language_code='en', stock=stock)
   _ = [factories.LocalizedStockFactory(language_code='en', stock=stock) for stock in other_stocks]
+  all_queryset = models.Stock.objects.filter(pk__in=[obj.pk for obj in stocks+other_stocks])
+  mocker.patch('stock.models.Stock.objects.get_queryset', return_value=all_queryset)
 
   # Execution
   target_url = reverse('stock:list_stock')
@@ -1368,3 +1374,147 @@ def test_search_stock_by_using_form(mocker, init_webtest, condition, ordering, c
   assert get_current_path(response) == target_url
   assert len(records) == count
   assert all([elem.startswith(tuple(exacts)) for elem in elements])
+
+# ===============
+# Download stocks
+# ===============
+@pytest.mark.webtest
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'filename',
+  'condition',
+  'ordering',
+  'exact_fname',
+  'indices',
+], [
+  ('foo', 'price < 1200', 'roe,-price', 'stock-foo.csv', [0, 4, 1, 2]),
+  ('hogehoge.csv', 'price < 1200', 'roe,-price', 'stock-hogehoge.csv', [0, 4, 1, 2]),
+  ('.csv', 'price < 1200', 'roe,-price', 'stock-20010105-080107.csv', [0, 4, 1, 2]),
+  ('foo', '', '-code', 'stock-foo.csv', [4, 3, 2, 1, 0]),
+  ('foo', 'price < 1200', '', 'stock-foo.csv', [0, 1, 2, 4]),
+], ids=[
+  'normal-filename',
+  'filename-with-extension',
+  'only-extension',
+  'no-condition',
+  'no-ordering',
+])
+def test_send_post_request_for_download_stock_form(mocker, init_webtest, filename, condition, ordering, exact_fname, indices):
+  # Define all data
+  industries = [
+    factories.IndustryFactory(),
+    factories.IndustryFactory(),
+  ]
+  _ = factories.LocalizedIndustryFactory(name='alpha', language_code='en', industry=industries[0])
+  _ = factories.LocalizedIndustryFactory(name='beta', language_code='en', industry=industries[1])
+  stocks = [
+    factories.StockFactory(code='0B01', price=Decimal('1199.00'), roe=Decimal('1.03'), industry=industries[0]),
+    factories.StockFactory(code='0B02', price=Decimal('1100.00'), roe=Decimal('2.03'), industry=industries[0]),
+    factories.StockFactory(code='0B03', price=Decimal('1100.00'), roe=Decimal('3.03'), industry=industries[1]),
+    factories.StockFactory(code='0B04', price=Decimal('2000.00'), roe=Decimal('1.03'), industry=industries[0]),
+    factories.StockFactory(code='0B05', price=Decimal('1100.00'), roe=Decimal('1.03'), industry=industries[1]),
+  ]
+  for idx, instance in enumerate(stocks):
+    name = f'test-stock{idx}'
+    _ = factories.LocalizedStockFactory(name=name, language_code='en', stock=instance)
+  # Define mocks
+  all_queryset = models.Stock.objects.get_queryset().filter(pk__in=[obj.pk for obj in stocks])
+  mocker.patch('stock.models.get_language', return_value='en')
+  mocker.patch('stock.models.generate_default_filename', return_value='20010105-080107')
+  mocker.patch('stock.models.Stock.objects.get_queryset', return_value=all_queryset)
+  # Create expected values
+  rows = []
+  for idx in indices:
+    obj = stocks[idx]
+    div_yield = obj.dividend / obj.price * Decimal('100.0')
+    multi_pp = obj.per * obj.pbr
+
+    rows.append([
+      obj.code, obj.get_name(), str(obj.industry), str(obj.price), str(obj.dividend),
+      f'{div_yield:.2f}', str(obj.per), str(obj.pbr), f'{multi_pp:.2f}',
+      str(obj.eps), str(obj.bps), str(obj.roe), str(obj.er),
+    ])
+  header = ','.join([
+    'Stock code', 'Stock name', 'Stock industry', 'Stock price', 'Dividend', 'Dividend yield',
+    'Price Earnings Ratio (PER)', 'Price Book-value Ratio (PBR)', 'PER x PBR', 'Earnings Per Share (EPS)',
+    'Book value Per Share (BPS)', 'Return On Equity (ROE)', 'Equity Ratio (ER)',
+  ])
+  lines = '\n'.join([','.join(record) for record in rows]) + '\n'
+  expected = {
+    'data': bytes(f'{header}\n' + lines, 'utf-8'),
+    'filename': exact_fname,
+  }
+  #
+  # Execute process
+  #
+  app, users = init_webtest
+  forms = app.get(reverse('stock:list_stock'), user=users['owner']).forms
+  form = forms['download-stock-form']
+  form['filename'] = filename
+  form['condition'] = condition
+  form['ordering'] = ordering
+  # Send post request
+  response = form.submit()
+  cookie = response.client.cookies.get('stock_download_status')
+  attachment = response['content-disposition']
+  stream = response.content
+  #
+  # Check stream data
+  #
+  def check_stream_data(recieved_stream, exact_stream):
+     # Decode recieved stream as 'utf-8-sig' because of using BOM
+    estimated_reader = csv.DictReader(StringIO(recieved_stream.decode('utf-8-sig')), delimiter=',')
+    exact_reader = csv.DictReader(StringIO(exact_stream.decode('utf-8')), delimiter=',')
+    results = []
+
+    for recv, exact in zip(estimated_reader, exact_reader):
+      outs = []
+
+      for key in exact.keys():
+        if key in ['Stock code', 'Stock name', 'Stock industry']:
+          outs += [recv[key] == exact[key]]
+        else:
+          # Because the number of significant digits is up to two decimal places (LSB: 0.01),
+          # an error of two decimal places is allowed.
+          outs += [abs(float(recv[key]) - float(exact[key])) < 0.015]
+      results += [all(outs)]
+
+    return results
+
+  assert expected['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
+  assert cookie.value == 'completed'
+  assert check_stream_data(stream, expected['data'])
+
+@pytest.mark.webtest
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'params',
+  'expected_cond',
+  'expected_order',
+], [
+  ({'filename': '1'*129, 'condition': 'price > 100', 'ordering': 'code'}, 'price > 100', 'code'),
+  ({'filename': 'hoge', 'condition': '1'*1025, 'ordering': 'code'}, '', 'code'),
+  ({'filename': 'hoge', 'condition': 'price > 100', 'ordering': '1'*1025}, 'price > 100', ''),
+], ids=[
+  'too-long-filename',
+  'too-long-condition',
+  'too-long-ordering',
+])
+def test_send_invalid_request_for_download_stock_form(init_webtest, params, expected_cond, expected_order):
+  target_url = reverse('stock:list_stock')
+  query_string = urllib.parse.quote('condition={}&ordering={}'.format(expected_cond, expected_order))
+  location = '{}?{}'.format(target_url, query_string)
+  #
+  # Execute process
+  #
+  app, users = init_webtest
+  forms = app.get(target_url, user=users['owner']).forms
+  form = forms['download-stock-form']
+  # Set form parameters
+  for key, val in params.items():
+    form[key] = val
+  # Send post request
+  response = form.submit()
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == location

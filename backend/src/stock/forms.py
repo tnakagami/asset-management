@@ -614,3 +614,68 @@ class StockSearchForm(forms.Form):
     queryset = models.Stock.objects.select_targets(tree=tree).order_by(*ordering)
 
     return queryset
+
+class StockDownloadForm(forms.Form):
+  template_name = 'renderer/custom_form.html'
+
+  filename = forms.CharField(
+    label=gettext_lazy('CSV filename'),
+    max_length=128,
+    required=False,
+    widget=forms.TextInput(attrs={
+      'class': 'form-control',
+      'id': 'download-filename',
+      'autofocus': True,
+    }),
+    help_text=gettext_lazy('You don’t have to enter the extention.'),
+  )
+  condition = forms.CharField(
+    label=gettext_lazy('Condition'),
+    max_length=1024,
+    empty_value='',
+    required=False,
+    widget=forms.HiddenInput(attrs={
+      'id': 'download-condition',
+    }),
+  )
+  ordering = forms.CharField(
+    label=gettext_lazy('Ordering'),
+    max_length=1024,
+    empty_value='',
+    required=False,
+    widget=forms.HiddenInput(attrs={
+      'id': 'download-ordering',
+    }),
+  )
+
+  def get_query_string(self):
+    condition = self.cleaned_data.get('condition', '')
+    ordering = self.cleaned_data.get('ordering', '')
+    query_string = urllib.parse.quote(f'condition={condition}&ordering={ordering}')
+
+    return query_string
+
+  def create_response_kwargs(self):
+    filename = self.cleaned_data.get('filename', '').replace('.csv', '')
+    ordering = self.cleaned_data.get('ordering', '')
+    data = self.cleaned_data.get('condition', '')
+    qs_order = []
+
+    try:
+      # Check condition
+      validate_filtering_condition(data)
+      condition = ' '.join(data.splitlines())
+      tree = ast.parse(condition, mode='eval') if condition else None
+    except forms.ValidationError:
+      tree = None
+    # Check ordering
+    if ordering:
+      search_form = StockSearchForm()
+      valid_orders = [arr[0] for arr in search_form.fields['ordering'].choices]
+      qs_order = [order for order in ordering.split(',') if order in valid_orders]
+    if not qs_order:
+      qs_order = ['code']
+    # Get response kwargs
+    kwargs = models.Stock.get_response_kwargs(filename, tree, qs_order)
+
+    return kwargs

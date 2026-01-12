@@ -202,6 +202,10 @@ LOGOUT_REDIRECT_URL = 'account:index'
 # Define comma interval to use human readable expression
 NUMBER_GROUPING = 3
 
+# User definition variables
+CSV_DOWNLOAD_MAX_AGE = 5 * 60
+IS_SECURE_COOKIE = os.getenv('DJANGO_IS_SECURE_COOKIE', 'true').lower() == 'true'
+
 # Log setting
 LOGGING = {
     'version': 1,

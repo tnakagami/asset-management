@@ -10,5 +10,6 @@ Create `.env` file by following the table.
 | `DJANGO_SUPERUSER_NAME` | Username of superuser | superuser |
 | `DJANGO_SUPERUSER_EMAIL` | Email of superuser | superuser@local.access |
 | `DJANGO_SUPERUSER_PASSWORD` | Password of superuser | superuser-password |
+| `DJANGO_IS_SECURE_COOKIE` | Use secure cookie as downloading stocks | True, False |
 
 Please see [`env.sample`](./env.sample) for details.

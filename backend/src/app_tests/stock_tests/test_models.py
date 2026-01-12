@@ -2,6 +2,7 @@ import pytest
 import json
 import re
 import ast
+import urllib.parse
 from django.db.models import Q as dbQ
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
@@ -173,6 +174,19 @@ def test_check_convert_timezone(settings, this_timezone, target, is_string, strf
   output = models.convert_timezone(target, is_string=is_string, strformat=strformat)
 
   assert output == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_generate_default_filename(mocker, settings):
+  settings.TIME_ZONE = 'Asia/Tokyo'
+  mocker.patch(
+    'stock.models.timezone.now',
+    return_value=datetime(2021,7,3,11,7,48,microsecond=123456,tzinfo=timezone.utc),
+  )
+  expected = '20210703-200748'
+  filename = models.generate_default_filename()
+
+  assert filename == expected
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -643,10 +657,10 @@ def test_queryset_of_stock():
   'complex-expression-by-using-several-columns',
 ])
 def test_qs_of_stock_with_tree(pseudo_stock_data, expression, indices):
-  stock = pseudo_stock_data
+  stocks = pseudo_stock_data
   tree = ast.parse(expression, mode='eval')
   qs = models.Stock.objects.select_targets(tree=tree).order_by('pk')
-  expected = [stock[idx].pk for idx in indices]
+  expected = [stocks[idx].pk for idx in indices]
 
   assert qs.count() == len(expected)
   assert all([record.pk == pk for record, pk in zip(qs, expected)])
@@ -698,6 +712,66 @@ def test_check_stock_str_function_using_get_name_func(mocker, language_code, nam
   expected = f'{exact_name}({code})'
 
   assert out == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'filename',
+  'condition',
+  'ordering',
+  'total',
+  'start_idx',
+  'end_idx',
+], [
+  ('hoge', '', 'code', 5, 0, -1),
+  ('', 'price >= 1200', '-price', 3, 2, 0),
+  ('foo', '1.3 <= pbr <= 4.5', 'pbr,-per', 4, 3, 2),
+  ('日本語', 'bps < 0', 'er', 1, 3, 3),
+], ids=[
+  'no-condition',
+  'empty-filename',
+  'same-values-exist',
+  'use-multi-byte-string-in-filename',
+])
+def test_get_response_kwargs_for_stock(mocker, pseudo_stock_data, filename, condition, ordering, total, start_idx, end_idx):
+  stocks = pseudo_stock_data
+  default_fname = '20010917-213456'
+  mocker.patch('stock.models.generate_default_filename', return_value=default_fname)
+  tree = ast.parse(condition, mode='eval') if condition else None
+  # Call target function
+  kwargs = models.Stock.get_response_kwargs(filename, tree, ordering.split(','))
+  # Create expected values
+  first_obj = stocks[start_idx]
+  last_obj = stocks[end_idx]
+  _tmp_name = filename if filename else default_fname
+  expected_name = urllib.parse.quote(_tmp_name.encode('utf-8'))
+  expected_header = [
+    'Stock code', 'Stock name', 'Stock industry', 'Stock price', 'Dividend', 'Dividend yield',
+    'Price Earnings Ratio (PER)', 'Price Book-value Ratio (PBR)', 'PER x PBR',
+    'Earnings Per Share (EPS)', 'Book value Per Share (BPS)', 'Return On Equity (ROE)',
+    'Equity Ratio (ER)',
+  ]
+  # Get estimated values
+  rows = list(kwargs['rows'])
+  estimated_first = rows[0]
+  estimated_last = rows[-1]
+
+  assert len(rows) == total
+  assert estimated_first[0] == first_obj.code
+  assert estimated_first[1] == first_obj.get_name()
+  assert estimated_last[0] == last_obj.code
+  assert estimated_last[1] == last_obj.get_name()
+  assert all([str(est) == exact for est, exact in zip(kwargs['header'], expected_header)])
+  assert kwargs['filename'] == f'stock-{expected_name}.csv'
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_get_response_kwargs_with_no_data_for_stock():
+  kwargs = models.Stock.get_response_kwargs('', None, ['code'])
+
+  assert len(list(kwargs['rows'])) == 0
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -1062,6 +1136,219 @@ def test_ignore_sold_stocks_of_purchased_stock():
   assert queryset.count() == 1
   assert the1st_instance.pk == pstocks[1].pk
 
+# ==============
+# SnapshotRecord
+# ==============
+@pytest.fixture
+def get_default_ss_record():
+  params = {
+    'code': '7531', 'price': 123.0, 'dividend': 3.0, 'per': 2.0,
+    'pbr': 1.0, 'eps': 0.2, 'bps': 0.3, 'roe': 0.1, 'er': 3.0,
+  }
+  instance = models._SnapshotRecord(**params)
+
+  return instance
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_instanec_for_ss_record(get_default_ss_record):
+  instance = get_default_ss_record
+
+  assert isinstance(instance, models._SnapshotRecord)
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'is_defensive',
+  'expected_trend',
+], [
+  (True, 'Defensive'),
+  (False, 'Economically sensitive'),
+], ids=[
+  'is-defensive',
+  'is-not-defensive',
+])
+def test_check_trend_func_for_ss_record(get_default_ss_record, is_defensive, expected_trend):
+  instance = get_default_ss_record
+  trend = instance._get_trend(is_defensive)
+
+  assert trend == expected_trend
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'dict_item',
+  'lang',
+  'expected',
+], [
+  ({'name': 'hoge'}, 'en', 'hoge'),
+  ({'name':  'foo'}, 'ge', 'foo'),
+  ({'names': {'en': 'en-hoge', 'ge': 'ge-foo'}}, 'en', 'en-hoge'),
+  ({'names': {'en': 'en-hoge', 'ge': 'ge-foo'}}, 'ge', 'ge-foo'),
+], ids=[
+  'includes-name-in-English',
+  'includes-name-in-German',
+  'includes-names-in-English',
+  'includes-names-in-German',
+])
+def test_check_name_getter_func_for_ss_record(mocker, get_default_ss_record, dict_item, lang, expected):
+  mocker.patch('stock.models.get_language', return_value=lang)
+  instance = get_default_ss_record
+  name = instance._get_name(dict_item)
+
+  assert name == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_set_name_of_stock_for_ss_record(mocker, get_default_ss_record):
+  expected = 'hoge'
+  mocker.patch('stock.models._SnapshotRecord._get_name', return_value=expected)
+  instance = get_default_ss_record
+  instance.name = '-'
+  instance.set_name({})
+
+  assert instance.name == expected
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_set_name_of_industry_func_for_ss_record(mocker, get_default_ss_record):
+  expected_name = 'hoge'
+  expected_trend = 'Defensive'
+  mocker.patch('stock.models._SnapshotRecord._get_name', return_value=expected_name)
+  mocker.patch('stock.models._SnapshotRecord._get_trend', return_value=expected_trend)
+  instance = get_default_ss_record
+  instance.industry = '-'
+  instance.trend = '-'
+  instance.set_industry({'is_defensive': False})
+
+  assert instance.industry == expected_name
+  assert instance.trend == expected_trend
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_add_count_func_for_ss_record(get_default_ss_record):
+  instance = get_default_ss_record
+  instance.count = 3
+  instance.add_count(2)
+
+  assert instance.count == 5
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_add_value_func_for_ss_record(get_default_ss_record):
+  instance = get_default_ss_record
+  instance.purchased_value = 5
+  instance.add_value(100, 2)
+
+  assert instance.purchased_value == 205
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'purchased_value',
+  'expected',
+], [
+  (68000.0, 110 / 34.0),
+  (0.0, 0.0),
+], ids=[
+  'pval-is-more-than-zero',
+  'pval-is-zero',
+])
+def test_check_div_yield_value_for_ss_record(get_default_ss_record, purchased_value, expected):
+  instance = get_default_ss_record
+  instance.purchased_value = purchased_value
+  instance.dividend = 11.0
+  instance.count = 200
+
+  assert abs(instance.div_yield - expected) < 1e-6
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'count',
+  'expected_diff',
+], [
+  (200, -10000.0),
+  (0, 0.0),
+], ids=[
+  'exists-purchased-history',
+  'is-cash',
+])
+def test_check_diff_value_for_ss_record(get_default_ss_record, count, expected_diff):
+  instance = get_default_ss_record
+  instance.purchased_value = 190000.0
+  instance.price = 900.0
+  instance.count = count
+
+  assert abs(instance.diff - expected_diff) < 1e-6
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_get_record_func_for_ss_record():
+  instance = models._SnapshotRecord(
+    code='5384',
+    name='hoge2',
+    industry='foo3',
+    trend='Defensive',
+    dividend=2.0,
+    purchased_value=2000.0,
+    count=2,
+    price=1100.0,
+    per=0.164,
+    pbr=1.223,
+    eps=4.235,
+    bps=0.147,
+    roe=10.1,
+    er=11.22,
+  )
+  expected = [
+    '5384',      # Code
+    'hoge2',     # Name
+    'foo3',      # industry
+    'Defensive', # trend
+    '4.00',      # dividend * count
+    '0.20',      # div_yield
+    '2000.00',   # purchased_value
+    '2',         # count
+    '200.00',  # diff
+    '1100.00',   # price
+    '0.16',      # per
+    '1.22',      # pbr
+    '4.24',      # eps
+    '0.15',      # bps
+    '10.10',     # roe
+    '11.22',     # er
+  ]
+  record = instance.get_record()
+
+  assert all([est == exact for est, exact in zip(record, expected)])
+
+@pytest.mark.stock
+@pytest.mark.model
+def test_check_get_header_func_for_ss_record(get_default_ss_record):
+  instance = get_default_ss_record
+  expected = [
+    'Stock code',
+    'Name',
+    'Stock industry',
+    'Economic trend',
+    'Dividend',
+    'Dividend yield',
+    'Purchased value',
+    'Number of stocks',
+    'Diff',
+    'Stock price',
+    'Price Earnings Ratio (PER)',
+    'Price Book-value Ratio (PBR)',
+    'Earnings Per Share (EPS)',
+    'Book value Per Share (BPS)',
+    'Return On Equity (ROE)',
+    'Equity Ratio (ER)',
+  ]
+  header = instance.get_header()
+
+  assert all([est == exact for est, exact in zip(header, expected)])
+
 # ========
 # Snapshot
 # ========
@@ -1343,6 +1630,187 @@ def test_get_jsonfield_function_of_snapshot(mocker, json_data):
   assert all([len(extracted_json[key]) == len(val) for key, val in json_data.items()])
   assert all([extracted_json[cash_key][key] == exact_val] for key, exact_val in json_data[cash_key].items())
   assert all([estimated == exact_val for estimated, exact_val in zip(extracted_json[pstock_key], json_data[pstock_key])])
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+@pytest.mark.parametrize([
+  'title',
+  'replaced',
+], [ # \\|/|:|?|.|"|<|>|\|
+  ('backslash\\string', 'backslash-string'),
+  ('slash/string', 'slash-string'),
+  ('colon:string', 'colon-string'),
+  ('question?mark', 'question-mark'),
+  ('period.', 'period-'),
+  ('double"quotation', 'double-quotation'),
+  ('less<than', 'less-than'),
+  ('greater>than', 'greater-than'),
+  ('pipe|symbol', 'pipe-symbol'),
+  ('mu|ti"sym\\bols/', 'mu-ti-sym-bols-'),
+], ids=[
+  'backslash',
+  'slash',
+  'colon',
+  'question-mark',
+  'period',
+  'double-quotation',
+  'less-than',
+  'greater-than',
+  'pipe-symbol',
+  'multi-symbols',
+])
+def test_check_replace_title_for_ss(title, replaced):
+  instance = factories.SnapshotFactory(title=title)
+  result = instance._replace_title()
+
+  assert result == replaced
+
+@pytest.fixture(params=[
+  (None, 'none'),
+  (None, 'only'),
+  (1000, 'diff'),
+  (1100, 'same'),
+], ids=[
+  'no-cash-no-stocks',
+  'only-one-stock',
+  'cash-and-two-stocks',
+  'cash-and-two-stocks-with-same-code',
+])
+def get_config_for_ss(request):
+  cash, stock_types = request.param
+  all_purchased_stocks = [
+    # No.1
+    {
+      'stock': {
+        'code': 'A1B3',
+        'names': {'en': 'en-hoge', 'ge': 'ge-hoge'},
+        'industry': {
+          'names': {'en': 'en-XXX', 'ge': 'ge-XXX'},
+          'is_defensive': True,
+        },
+        'price': 1200.00,
+        'dividend': 2.00,
+        'per':      9.31,
+        'pbr':      1.21,
+        'eps':      2.34,
+        'bps':      2.34,
+        'roe':      0.34,
+        'er':      11.22,
+      },
+      'price': 1234.00,
+      'count': 100,
+    },
+    # No.2
+    {
+      'stock': {
+        'code': 'A1CC',
+        'names': {'en': 'en-bar', 'ge': 'ge-bar'},
+        'industry': {
+          'names': {'en': 'en-YYY', 'ge': 'ge-YYY'},
+          'is_defensive': False,
+        },
+        'price':  900.00,
+        'dividend': 1.00,
+        'per':      7.50,
+        'pbr':      2.22,
+        'eps':      7.54,
+        'bps':      8.12,
+        'roe':      1.81,
+        'er':      31.12,
+      },
+      'price': 1000.00,
+      'count': 300,
+    },
+    # No.3
+    {
+      'stock': {
+        'code': 'A1B3',
+        'names': {'en': 'en-hoge', 'ge': 'ge-hoge'},
+        'industry': {
+          'names': {'en': 'en-XXX', 'ge': 'ge-XXX'},
+          'is_defensive': True,
+        },
+        'price': 1200.00,
+        'dividend': 2.00,
+        'per':      9.31,
+        'pbr':      1.21,
+        'eps':      2.34,
+        'bps':      2.34,
+        'roe':      0.34,
+        'er':      11.22,
+      },
+      'price': 1300.0,
+      'count': 200,
+    },
+  ]
+  # Create purchased stocks
+  if stock_types == 'none':
+    pstocks = []
+  elif stock_types == 'only':
+    pstocks = [all_purchased_stocks[0]]
+  elif stock_types == 'diff':
+    pstocks = [all_purchased_stocks[0], all_purchased_stocks[1]]
+  else:
+    pstocks = all_purchased_stocks
+  # Define detail data
+  data = json.dumps({
+    'cash': {'balance': cash} if cash is not None else {},
+    'purchased_stocks': pstocks,
+  })
+  # Define expected rows
+  _cash_data = [
+    '-', 'Cash', '-', '-', '0.00', '0.00', f'{cash:.2f}' if cash is not None else '0.00', # From code to pval
+    '0', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00',                  # From count to er
+  ]
+  _only_data = [
+    'A1B3', 'ge-hoge', 'ge-XXX', 'Defensive', '200.00', '0.16', '123400.00',       # From code to pval
+    '100', '-3400.00', '1200.00', '9.31', '1.21', '2.34', '2.34', '0.34', '11.22', # From count to er
+  ]
+  _diff_data = [
+    'A1CC', 'ge-bar', 'ge-YYY', 'Economically sensitive', '300.00', '0.10', '300000.00', # From code to pval
+    '300', '-30000.00', '900.00', '7.50', '2.22', '7.54', '8.12', '1.81', '31.12',       # From count to er
+  ]
+  _same_data = [
+    'A1B3', 'ge-hoge', 'ge-XXX', 'Defensive', '600.00', '0.16', '383400.00',        # From code to pval
+    '300', '-23400.00', '1200.00', '9.31', '1.21', '2.34', '2.34', '0.34', '11.22', # From count to er
+  ]
+  if stock_types == 'none':
+    expected_rows = [_cash_data]
+  elif stock_types == 'only':
+    expected_rows = [_cash_data, _only_data]
+  elif stock_types == 'diff':
+    expected_rows = [_cash_data, _only_data, _diff_data]
+  else:
+    expected_rows = [_cash_data, _same_data, _diff_data]
+
+  return data, expected_rows
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_create_response_kwargs_for_ss(mocker, get_config_for_ss):
+  mocker.patch('stock.models.get_language', return_value='ge')
+  data, expected_rows = get_config_for_ss
+  instance = factories.SnapshotFactory(
+    user=factories.UserFactory(),
+    title='monthly report 20/12',
+  )
+  instance.detail = data
+  instance.save()
+  expected_fname = urllib.parse.quote('snapshot-monthly report 20-12.csv')
+  header = [
+    'Stock code', 'Name', 'Stock industry', 'Economic trend', 'Dividend', 'Dividend yield',
+    'Purchased value', 'Number of stocks', 'Diff', 'Stock price', 'Price Earnings Ratio (PER)',
+    'Price Book-value Ratio (PBR)', 'Earnings Per Share (EPS)', 'Book value Per Share (BPS)',
+    'Return On Equity (ROE)', 'Equity Ratio (ER)',
+  ]
+  kwargs = instance.create_response_kwargs()
+  rows = list(kwargs['rows'])
+
+  assert all([est == exact for est, exact in zip(rows, expected_rows)])
+  assert all([est == exact for est, exact in zip(kwargs['header'], header)])
+  assert kwargs['filename'] == expected_fname
 
 @pytest.mark.stock
 @pytest.mark.model

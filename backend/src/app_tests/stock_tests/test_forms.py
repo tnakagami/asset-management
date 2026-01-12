@@ -1,6 +1,7 @@
 import pytest
 import ast
 import json
+import urllib.parse
 from django.core.exceptions import ValidationError
 from django_celery_beat.models import PeriodicTask
 from datetime import datetime, timezone
@@ -978,3 +979,126 @@ def test_get_queryset_with_condition_method_of_stock_search_form(params, indices
   assert is_valid == exact_valid
   assert len(expected) == qs.count()
   assert all([record.pk == exact.pk for record, exact in zip(qs, expected)])
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.parametrize([
+  'params',
+], [
+  ({}, ),
+  ({'filename': '', 'condition': '', 'ordering': ''}, ),
+  ({'filename': 'hoge', 'condition': 'price > 0', 'ordering': 'code'}, ),
+  ({'filename': 'hoge', 'condition': 'price in 0', 'ordering': 'code'}, ),
+  ({'filename': 'hoge', 'condition': 'price > 0', 'ordering': 'xxx'}, ),
+  ({'filename': '日本語', 'condition': 'price > 0', 'ordering': 'code'}, ),
+], ids=[
+  'no-inputs',
+  'empty-data',
+  'valid-data',
+  'invalid-condition',
+  'invalid-ordering',
+  'use-multi-byte-filename',
+])
+def test_check_validation_for_stock_download_form(params):
+  form = forms.StockDownloadForm(data=params)
+
+  assert form.is_valid()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.parametrize([
+  'params',
+], [
+  ({'filename': '1'*129, 'condition': 'price > 0', 'ordering': 'code'}, ),
+  ({'filename': 'hoge', 'condition': '2'*1025, 'ordering': 'code'}, ),
+  ({'filename': 'hoge', 'condition': 'price > 0', 'ordering': '3'*1025}, ),
+], ids=[
+  'filename-is-too-long',
+  'condition-is-too-long',
+  'ordering-is-too-long',
+])
+def test_check_invalid_pattern_for_stock_download_form(params):
+  form = forms.StockDownloadForm(data=params)
+
+  assert not form.is_valid()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.parametrize([
+  'params',
+], [
+  ({'condition': 'price > 100', 'ordering': 'code'}, ),
+  ({'condition': 'price > 100', 'ordering': ''}, ),
+  ({'condition': '', 'ordering': 'code'}, ),
+], ids=[
+  'both-queries-exist',
+  'only-condition',
+  'only-ordering',
+])
+def test_check_query_string_for_stock_download_form(params):
+  params.update({'filename': 'hoge'})
+  form = forms.StockDownloadForm(data=params)
+  is_valid = form.is_valid()
+  query_string = form.get_query_string()
+  expected = urllib.parse.quote('condition={}&ordering={}'.format(params['condition'], params['ordering']))
+
+  assert is_valid
+  assert query_string == expected
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.parametrize([
+  'params',
+  'arg_fname',
+  'arg_tree',
+  'arg_order',
+], [
+  ({'filename': 'hoge.csv', 'condition': 'price > 1000', 'ordering': '-code'}, 'hoge', 'price > 1000', ['-code']),
+  ({'filename': '.csv', 'condition': 'price > 1000', 'ordering': '-code'}, '', 'price > 1000', ['-code']),
+  ({'filename': 'hoge', 'condition': 'name in "foo"', 'ordering': 'yyy,price,xxx'}, 'hoge', 'name in "foo"', ['price']),
+  ({'filename': 'hoge', 'condition': 'industry_name in "bar"', 'ordering': 'code,price'}, 'hoge', 'industry_name in "bar"', ['code,price']),
+  ({'filename': 'hoge', 'condition': 'price > 10', 'ordering': 'zzz,www'}, 'hoge', 'price > 10', ['code']),
+], ids=[
+  'valid-pattern',
+  'valid-only-extension-pattern',
+  'include-invalid-orderings',
+  'input-multiple-orderings',
+  'invalid-all-orderings',
+])
+def test_check_create_response_kwargs_for_stock_download_form(mocker, params, arg_fname, arg_tree, arg_order):
+  kwargs_mock = mocker.patch('stock.models.Stock.get_response_kwargs', return_value={})
+  form = forms.StockDownloadForm(data=params)
+  is_valid = form.is_valid()
+  _ = form.create_response_kwargs()
+  args, _ = kwargs_mock.call_args
+  fname, tree, order = args
+
+  assert is_valid
+  assert fname == arg_fname
+  assert ast.dump(tree) == ast.dump(ast.parse(arg_tree, mode='eval'))
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.parametrize([
+  'params',
+  'expected_fname',
+], [
+  ({'condition': '', 'ordering': '', 'filename': '.csv'}, ''),
+  ({'condition': 'price in "NG"', 'ordering': '', 'filename': '.csv'}, ''),
+  ({}, ''),
+], ids=[
+  'empty-condition',
+  'invalid-condition',
+  'empty-params',
+])
+def test_specific_patterns_in_create_response_kwargs_for_stock_download_form(mocker, params, expected_fname):
+  kwargs_mock = mocker.patch('stock.models.Stock.get_response_kwargs', return_value={})
+  form = forms.StockDownloadForm(data=params)
+  is_valid = form.is_valid()
+  _ = form.create_response_kwargs()
+  args, _ = kwargs_mock.call_args
+  fname, tree, order = args
+
+  assert fname == expected_fname
+  assert tree is None
+  assert order == ['code']
