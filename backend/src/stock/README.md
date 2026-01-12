@@ -18,16 +18,16 @@ In addition, you should be satisfied with the following constraints when you def
 1. This function is wrapped by `@bind_user_function` decorator which is defined in `stock/models.py`.
 1. The filename is `user_tasks.py`.
 1. The above python script should be in `stock` directory.
+1. You should define `stock_records_updater` variable to identify your defined function.
 
 #### Example
 The example of `user-task` function is shown below.
 
 ```python
-from celery.utils.log import get_task_logger
 from stock.models import Stock, bind_user_function
 
 @bind_user_function
-def your_original_function(pk, logger, **kwargs):
+def main_task(pk, logger, **kwargs):
   idx = kwargs.get('idx')
   total = kwargs.get('total')
   stock = Stock.objects.get(pk=pk)
@@ -42,4 +42,7 @@ def your_original_function(pk, logger, **kwargs):
   out = f'{idx} / {total}'
 
   return out
+
+# Define function name to call `update_stock_records`
+stock_records_updater = 'main_task'
 ```

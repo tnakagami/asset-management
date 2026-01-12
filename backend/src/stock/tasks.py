@@ -6,18 +6,16 @@ from django.utils.translation import gettext_lazy
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy
-from stock.models import Snapshot, convert_timezone
+from stock.models import Snapshot, convert_timezone, get_user_function
 from datetime import datetime, timedelta
 
 UserModel = get_user_model()
 
 try:
   import stock.user_tasks as user_tasks
-  _is_function = lambda target: isinstance(target, FunctionType) and (target.__name__ == 'as_udf')
-  g_attrs = [attr for attr in dir(user_tasks) if _is_function(getattr(user_tasks, attr))]
+  g_updater = get_user_function(user_tasks)
 except:
-  user_tasks = None
-  g_attrs = []
+  g_updater = get_user_function(None)
 
 # Get logger
 g_logger = get_task_logger(__name__)
@@ -68,10 +66,6 @@ def update_specific_snapshot(user_pk, snapshot_pk):
 
 @shared_task(bind=True)
 def update_stock_records(self, **kwargs):
-  if len(g_attrs) > 0:
-    callback = getattr(user_tasks, g_attrs[0])
-    ret = callback(logger=g_logger, **kwargs)
-  else:
-    ret = None
+  ret = g_updater(logger=g_logger, **kwargs)
 
   return ret

@@ -11,17 +11,6 @@ from . import factories
 
 UserModel = get_user_model()
 
-class FakeUserTask:
-  def __init__(self):
-    self.logger = None
-    self.kwargs = {}
-
-  def my_task(self, **kwargs):
-    self.logger = kwargs.pop('logger')
-    self.kwargs = kwargs
-
-    return 0
-
 class FakeLogger:
   def __init__(self):
     self.msg = ''
@@ -105,28 +94,22 @@ def test_check_delete_task_records(mocker, num_tasks, is_raise, expected, log_me
 @pytest.mark.task
 @pytest.mark.django_db
 @pytest.mark.parametrize([
-  'attrs',
+  'callback',
   'checker',
-  'expected_kwargs',
 ], [
-  ([], lambda ret: ret is None, {}),
-  (['my_task'], lambda ret: ret == 0, {'param': '1', 'data': 2}),
-  (['my_task', 'dummy'], lambda ret: ret == 0, {'param': '1', 'data': 2}),
+  ((lambda **kwargs: kwargs['hoge']), (lambda ret: ret == 1)),
+  ((lambda **kwargs:           None), (lambda ret: ret is None)),
 ], ids=[
+  'can-call-user-task',
   'user-task-is-empty',
-  'define-only-one-function',
-  'define-more-than-two-functions',
 ])
-def test_check_update_stock_records(mocker, attrs, checker, expected_kwargs):
+def test_check_update_stock_records(mocker, callback, checker):
   import stock.tasks
-  _user_task = FakeUserTask()
-  mocker.patch.object(stock.tasks, 'user_tasks', _user_task)
-  mocker.patch.object(stock.tasks, 'g_attrs', attrs)
+  mocker.patch.object(stock.tasks, 'g_updater', callback)
   # Call target function
-  ret = stock.tasks.update_stock_records(param='1', data=2)
+  ret = stock.tasks.update_stock_records(hoge=1, foo='2')
 
   assert checker(ret)
-  assert all([expected_kwargs[key] == val for key, val in _user_task.kwargs.items()])
 
 @pytest.mark.stock
 @pytest.mark.task
@@ -151,8 +134,8 @@ def test_raise_import_exception(mocker):
   # main routine
   import stock.tasks
 
-  assert stock.tasks.user_tasks is None
-  assert len(stock.tasks.g_attrs) == 0
+  assert callable(stock.tasks.g_updater)
+  assert stock.tasks.g_updater(hoge=5, foobar=10) is None
 
 # ====================
 # Check monthly report

@@ -473,7 +473,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 35
   fields:
@@ -599,7 +599,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 44
   fields:
@@ -669,7 +669,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 49
   fields:
@@ -5555,7 +5555,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 398
   fields:
@@ -8537,7 +8537,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 611
   fields:
@@ -8649,7 +8649,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 619
   fields:
@@ -8691,7 +8691,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 622
   fields:
@@ -8719,7 +8719,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 624
   fields:
@@ -8747,7 +8747,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 626
   fields:
@@ -8761,7 +8761,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 627
   fields:
@@ -12429,7 +12429,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 889
   fields:
@@ -12457,7 +12457,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 891
   fields:
@@ -12667,7 +12667,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 906
   fields:
@@ -18463,7 +18463,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1320
   fields:
@@ -19919,7 +19919,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1424
   fields:
@@ -24217,7 +24217,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1731
   fields:
@@ -24385,7 +24385,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1743
   fields:
@@ -24441,7 +24441,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1747
   fields:
@@ -24483,7 +24483,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1750
   fields:
@@ -24497,7 +24497,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1751
   fields:
@@ -24679,7 +24679,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1764
   fields:
@@ -24749,7 +24749,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1769
   fields:
@@ -25253,7 +25253,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1805
   fields:
@@ -25281,7 +25281,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1807
   fields:
@@ -26317,7 +26317,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1881
   fields:
@@ -26345,7 +26345,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1883
   fields:
@@ -26359,7 +26359,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1884
   fields:
@@ -26401,7 +26401,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1887
   fields:
@@ -26429,7 +26429,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1889
   fields:
@@ -26541,7 +26541,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1897
   fields:
@@ -26639,7 +26639,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1904
   fields:
@@ -26667,7 +26667,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1906
   fields:
@@ -26793,7 +26793,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1915
   fields:
@@ -26849,7 +26849,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1919
   fields:
@@ -26947,7 +26947,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1926
   fields:
@@ -26989,7 +26989,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1929
   fields:
@@ -27017,7 +27017,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1931
   fields:
@@ -27619,7 +27619,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1974
   fields:
@@ -27759,7 +27759,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1984
   fields:
@@ -27843,7 +27843,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1990
   fields:
@@ -27857,7 +27857,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1991
   fields:
@@ -27899,7 +27899,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1994
   fields:
@@ -27913,7 +27913,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1995
   fields:
@@ -27955,7 +27955,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1998
   fields:
@@ -27997,7 +27997,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2001
   fields:
@@ -30181,7 +30181,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2157
   fields:
@@ -30223,7 +30223,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2160
   fields:
@@ -33345,7 +33345,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2383
   fields:
@@ -33849,7 +33849,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2419
   fields:
@@ -34003,7 +34003,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2430
   fields:
@@ -34661,7 +34661,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2477
   fields:
@@ -37349,7 +37349,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2669
   fields:
@@ -37895,7 +37895,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2708
   fields:
@@ -38021,7 +38021,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2717
   fields:
@@ -38161,7 +38161,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2727
   fields:
@@ -38217,7 +38217,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2731
   fields:
@@ -38231,7 +38231,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2732
   fields:
@@ -38259,7 +38259,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2734
   fields:
@@ -38399,7 +38399,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2744
   fields:
@@ -38455,7 +38455,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2748
   fields:
@@ -39813,7 +39813,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2845
   fields:
@@ -39939,7 +39939,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2854
   fields:
@@ -42193,7 +42193,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3015
   fields:
@@ -42305,7 +42305,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3023
   fields:
@@ -42319,7 +42319,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3024
   fields:
@@ -42347,7 +42347,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3026
   fields:
@@ -48983,7 +48983,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3500
   fields:
@@ -50117,7 +50117,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3581
   fields:
@@ -50145,7 +50145,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3583
   fields:
@@ -50159,7 +50159,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3584
   fields:
@@ -50299,7 +50299,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3594
   fields:
@@ -50327,7 +50327,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3596
   fields:
@@ -50579,7 +50579,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3614
   fields:
@@ -50607,7 +50607,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3616
   fields:
@@ -50635,7 +50635,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3618
   fields:
@@ -50747,7 +50747,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3626
   fields:
@@ -50803,7 +50803,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3630
   fields:
@@ -51517,7 +51517,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3681
   fields:
@@ -51531,7 +51531,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3682
   fields:
@@ -52301,7 +52301,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3737
   fields:
@@ -52315,7 +52315,7 @@
     bps: 0
     roe: 0
     er: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3738
   fields:

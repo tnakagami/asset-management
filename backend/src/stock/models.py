@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
 from django_celery_beat.models import PeriodicTask
+from types import FunctionType
 from dataclasses import dataclass
 from collections import deque
 import urllib.parse
@@ -23,6 +24,18 @@ def bind_user_function(callback):
   wrapper.__name__ = 'as_udf' # user-defined function of asset-management
 
   return wrapper
+
+def get_user_function(module):
+  _is_function = lambda target: isinstance(target, FunctionType) and (target.__name__ == 'as_udf')
+  attrs = [attr for attr in dir(module) if _is_function(getattr(module, attr))]
+  name = getattr(module, 'stock_records_updater', None)
+
+  if name in attrs:
+    callback = getattr(module, name)
+  else:
+    callback = (lambda **kwargs: None)
+
+  return callback
 
 def convert_timezone(target, is_string=False, strformat='%Y-%m-%d'):
   tz = timezone.get_current_timezone()
