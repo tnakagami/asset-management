@@ -135,6 +135,15 @@ def test_purchased_stock():
 
   assert isinstance(purchased_stock, models.PurchasedStock)
 
+class DummyModule:
+  def __init__(self, name):
+    def updater(**kwargs):
+      return 1
+    # Define variable and function
+    self.stock_records_updater = name
+    self.no_decorator_updater = updater
+    self.record_updater = models.bind_user_function(updater)
+
 # ================
 # Global functions
 # ================
@@ -149,6 +158,28 @@ def test_check_bind_function():
 
   assert target_function.__name__ == 'as_udf'
   assert ret == 0
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'test_module',
+  'checker',
+], [
+  (DummyModule('record_updater'), (lambda ret: ret == 1)),
+  (DummyModule('hogehoge'), (lambda ret: ret is None)),
+  (DummyModule('no_decorator_updater'), (lambda ret: ret is None)),
+  (None, (lambda ret: ret is None)),
+], ids=[
+  'valid-module',
+  'no-target-updater-exists',
+  'without-decorator',
+  'invalid-module',
+])
+def test_check_get_user_function(mocker, test_module, checker):
+  callback = models.get_user_function(test_module)
+  ret = callback(hoge=1, bar=3)
+
+  assert checker(ret)
 
 @pytest.mark.stock
 @pytest.mark.model
