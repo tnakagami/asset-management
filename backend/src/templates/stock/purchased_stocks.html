@@ -30,7 +30,7 @@
                 <th scope="col" class="text-nowrap">{% trans "Average trade price" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
-                <th colspan="2">{% trans "Operate" %}</th>
+                <th colspan="2" class="text-center">{% trans "Operate" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -62,7 +62,7 @@
                 <td data-type="diff" {% if total|is_negative %}class="text-danger {{ table_css }}"{% else %}class="{{ table_css }}"{% endif %}>{{ total|floatformat:0|intcomma }}</td>
                 {% endwith %}
                 {% endwith %}
-                <td data-operate="edit">
+                <td data-operate="edit" class="text-center">
                   <a
                     href="{% url 'stock:update_purchased_stock' pk=instance.pk %}"
                     class="text-success link-underline link-underline-opacity-0"
@@ -70,7 +70,7 @@
                     <i class="fas fa-edit"></i>
                   </a>
                 </td>
-                <td data-operate="delete">
+                <td data-operate="delete" class="text-center">
                   <div
                     class="text-danger delete-target-record"
                     data-name="[{{ instance.purchase_date|date:'Y-m-d' }}] {{ instance.stock.get_name }}({{ instance.stock.code }})"

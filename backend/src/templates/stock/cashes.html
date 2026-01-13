@@ -24,7 +24,7 @@
                 <th scope="col">{% trans "No." %}</th>
                 <th scope="col">{% trans "Balance" %}</th>
                 <th scope="col">{% trans "Registered date" %}</th>
-                <th colspan="2">{% trans "Operate" %}</th>
+                <th colspan="2" class="text-center">{% trans "Operate" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -33,7 +33,7 @@
                 <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td data-type="balance">{{ instance.balance|intcomma }}</td>
                 <td data-type="registeredDate">{{ instance.registered_date|date:"Y-m-d" }}</td>
-                <td data-operate="edit">
+                <td data-operate="edit" class="text-center">
                   <a
                     href="{% url 'stock:update_cash' pk=instance.pk %}"
                     class="text-success link-underline link-underline-opacity-0"
@@ -41,7 +41,7 @@
                     <i class="fas fa-edit"></i>
                   </a>
                 </td>
-                <td data-operate="delete">
+                <td data-operate="delete" class="text-center">
                   <div
                     class="text-danger delete-target-record"
                     data-name="[{{ instance.registered_date|date:'Y-m-d' }}] {{ instance.balance|intcomma }}"

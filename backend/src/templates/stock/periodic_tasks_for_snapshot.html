@@ -39,7 +39,7 @@
                 <th scope="col" class="text-nowrap">{% trans "Schedule" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Total run count" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Enabled/Disabled" %}</th>
-                <th colspan="2">{% trans "Operate" %}</th>
+                <th colspan="2" class="text-center">{% trans "Operate" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -53,7 +53,7 @@
                 <td data-type="totalRunCount" class="{{ table_css }}">{{ instance.total_run_count|intcomma }}</td>
                 <td data-type="isEnabled" class="{{ table_css }}">{% if instance.enabled %}{% trans "Enabled" %}{% else %}{% trans "Disabled" %}{% endif %}</td>
                 {% endwith %}
-                <td data-operate="edit">
+                <td data-operate="edit" class="text-center">
                   <a
                     href="{% url 'stock:update_snapshot_task' pk=instance.pk %}"
                     class="text-success link-underline link-underline-opacity-0"
@@ -61,7 +61,7 @@
                     <i class="fas fa-edit"></i>
                   </a>
                 </td>
-                <td data-operate="delete">
+                <td data-operate="delete" class="text-center">
                   <div
                     class="text-danger delete-target-record"
                     data-name="{{ instance.name }} ({% if instance.enabled %}{% trans 'Enabled' %}{% else %}{% trans 'Disabled' %}{% endif %})"
