@@ -53,7 +53,7 @@
                 {% with table_css=instance.has_been_sold|yesno:'table-secondary,' %}
                 <td scope="row" class="{{ table_css }}">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td data-type="code" class="{{ table_css }}">{{ instance.stock.code }}</td>
-                <td data-type="name" class="text-decoration-underline text-primary js-click-link {{ table_css }}">{{ instance.stock.get_name }}</td>
+                <td data-type="name" class="text-decoration-underline text-primary js-click-link {{ table_css }}" tabindex="0">{{ instance.stock.get_name }}</td>
                 <td data-type="industry" class="{{ table_css }}">{{ instance.stock.industry }}</td>
                 <td data-type="purchaseDate" class="{{ table_css }}">{{ instance.purchase_date|date:"Y-m-d" }}</td>
                 <td data-type="price" class="{{ table_css }}">{{ instance.price|intcomma }}</td>
@@ -65,19 +65,19 @@
                 <td data-operate="edit" class="text-center">
                   <a
                     href="{% url 'stock:update_purchased_stock' pk=instance.pk %}"
-                    class="text-success link-underline link-underline-opacity-0"
+                    class="btn btn-link px-1 py-0 text-success link-underline link-underline-opacity-0"
                   >
-                    <i class="fas fa-edit"></i>
+                    <i class="fas fa-edit fa-lg"></i>
                   </a>
                 </td>
                 <td data-operate="delete" class="text-center">
-                  <div
-                    class="text-danger delete-target-record"
+                  <button
+                    class="btn btn-link px-1 py-0 text-danger delete-target-record"
                     data-name="[{{ instance.purchase_date|date:'Y-m-d' }}] {{ instance.stock.get_name }}({{ instance.stock.code }})"
                     data-url="{% url 'stock:delete_purchased_stock' pk=instance.pk %}"
                   >
-                    <i class="fas fa-trash"></i>
-                  </div>
+                    <i class="fas fa-trash fa-lg"></i>
+                  </button>
                 </td>
               </tr>
               {% endfor %}
@@ -213,6 +213,7 @@
   const isNegative = (val) => pattern.test(val);
 
   for (const link of canClickLinks) {
+    // Add click event
     link.addEventListener('click', (event) => {
       const parent = event.target.parentElement;
 
@@ -229,6 +230,12 @@
         }
       }
       stockModal.show();
+    });
+    // Add key press event
+    link.addEventListener('keyup', (event) => {
+      if (event.key === 'Enter') {
+        link.click();
+      }
     });
   }
 })();

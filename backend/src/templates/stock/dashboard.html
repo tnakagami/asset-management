@@ -296,7 +296,7 @@
 <tr>
   <td scope="row"><span class="asset-idx"></span></td>
   <td><span class="asset-code"></span></td>
-  <td><span class="asset-name"></span></td>
+  <td><span class="asset-name" tabindex="0"></span></td>
   <td><span class="asset-industry"></span></td>
   <td><span class="asset-trend"></span></td>
   <td><span class="asset-realDividend"></span></td>
@@ -603,6 +603,12 @@
           }
           const stockModal = new bootstrap.Modal('#stock-modal');
           stockModal.show();
+        });
+        // Add key press event
+        element.addEventListener('keyup', (event) => {
+          if (event.key === 'Enter') {
+            element.click();
+          }
         });
       }
     };

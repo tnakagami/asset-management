@@ -136,36 +136,40 @@
             <button
               type="button"
               id="and-operator"
+              accesskey="a"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans "AND" %}
+              {% trans "AND" %}(<u>a</u>)
             </button>
           </div>
           <div class="col">
             <button
               type="button"
               id="or-operator"
+              accesskey="o"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans "OR" %}
+              {% trans "OR" %}(<u>o</u>)
             </button>
           </div>
           <div class="col">
             <button
               type="button"
               id="left-bracket"
+              accesskey="l"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans "(" %}
+              {% trans "(" %}<span class="ps-1">(<u>l</u>)</span>
             </button>
           </div>
           <div class="col">
             <button
               type="button"
               id="right-bracket"
+              accesskey="r"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans ")" %}
+              {% trans ")" %}<span class="ps-1">(<u>r</u>)</span>
             </button>
           </div>
         </div>
@@ -191,7 +195,7 @@
                 </div>
                 <div class="col">
                   <div class="input-group">
-                  {% with field=form.ordering %}
+                    {% with field=form.ordering %}
                     <button
                       type="button"
                       class="btn btn-outline-secondary dropdown-toggle"
@@ -201,6 +205,7 @@
                       {{ field.label }}
                     </button>
                     {{ field }}
+                    {% endwith %}
                     <button
                       type="button"
                       id="delete-ordering-option"
@@ -209,7 +214,6 @@
                     >
                       <i class="fas fa-trash"></i>
                     </button>
-                  {% endwith %}
                   </div>
                 </div>
               </div>
@@ -264,7 +268,12 @@
             </button>
           </div>
           <div class="col">
-            <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+            <button
+              id="close-download-stock-modal"
+              type="button"
+              class="btn btn-secondary w-100 custom-boxshadow"
+              data-bs-dismiss="modal"
+            >
               {% trans "Close" %}
             </button>
           </div>
@@ -300,6 +309,13 @@
     const defaultOperator = compOperator.cloneNode(true);
     removeAllAttrs(defaultOperator, 'id', 'name');
 
+    // Add modal shown event
+    (() => {
+      const modal = document.querySelector('#stock-search-modal');
+      modal.addEventListener('shown.bs.modal', (event) => {
+        targetColumn.focus();
+      });
+    })();
     // Add change event
     targetColumn.addEventListener('change', (event) => {
       const target = event.target;
@@ -360,6 +376,7 @@
         const beforeWord = sentence.substr(0, position);
         const afterWord = sentence.substr(position, sentence.length);
         condition.value = beforeWord + word + afterWord;
+        targetColumn.focus();
       });
     }
     deleteBtn.addEventListener('click', (event) => {
@@ -401,8 +418,8 @@
         if (document.cookie.includes(target)) {
           window.clearInterval(timerId);
           execDownload.disabled = false;
-          const modal = new bootstrap.Modal('#download-stock-modal');
-          modal.hide();
+          const element = document.querySelector('#close-download-stock-modal');
+          element.click();
           // Execute post-process
           document.cookie = `${key}=; max-age=0; path=/; {{ is_secure }}`;
         }
