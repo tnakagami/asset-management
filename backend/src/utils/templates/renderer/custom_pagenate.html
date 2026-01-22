@@ -142,7 +142,7 @@
           case 'ArrowLeft':
             {
               event.preventDefault();
-              const element = document.querySelector('#prev-page');
+              const element = document.getElementById('prev-page');
 
               if (element) {
                 window.location.replace(element.href);
@@ -153,7 +153,7 @@
           case 'ArrowRight':
             {
               event.preventDefault();
-              const element = document.querySelector('#next-page');
+              const element = document.getElementById('next-page');
 
               if (element) {
                 window.location.replace(element.href);

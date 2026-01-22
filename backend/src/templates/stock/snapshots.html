@@ -128,7 +128,7 @@
   });
   {% comment %}
   const init = () => {
-    const updateSnapshots = document.querySelector('#update-all-snapshots');
+    const updateSnapshots = document.getElementById('update-all-snapshots');
     updateSnapshots.addEventListener('click', async (event) => {
       event.target.disabled = true;
       const url = "{% url 'stock:update_all_snapshots' %}";

@@ -196,8 +196,8 @@
   //
   // Setup dual listbox
   //
-  const setupDualListbox = (elementName, options) => {
-    const element = document.querySelector(elementName);
+  const setupDualListbox = (elementId, options) => {
+    const element = document.getElementById(elementId);
     const dualListbox = new DualListbox(element, {
       availableTitle: element.dataset.available,
       selectedTitle:  element.dataset.selected,
@@ -342,8 +342,8 @@
   // Update history table
   //
   const updateTable = (histories) => {
-    const tbody = document.querySelector('#all-snapshot-list');
-    const template = document.querySelector('#tbody-template');
+    const tbody = document.getElementById('all-snapshot-list');
+    const template = document.getElementById('tbody-template');
     const nodeList = {
       title: histories.ssName,
       count: histories.count,
@@ -378,7 +378,7 @@
   // Draw bar chart
   //
   const drawBarChart = (chart, target, history) => {
-    const context = document.querySelector(`#${target}`);
+    const context = document.getElementById(target);
 
     if (chart) {
       chart.destroy();
@@ -423,13 +423,13 @@
     const options = [{% for instance in snapshots %}
       {text: '{{ instance.title }}', value: '{{ instance.uuid }}', selected: false, endDate: new Date('{{ instance.end_date|date:"Y-m-d" }}'),},{% endfor %}
     ];
-    setupDualListbox('#snapshots', options);
+    setupDualListbox('snapshots', options);
     // Define chart's variables
     let purchasedChart = null;
     let portfolioChart = null;
     let dividendChart = null;
     // Add click event
-    const updateGraph = document.querySelector('#update-graph');
+    const updateGraph = document.getElementById('update-graph');
     updateGraph.addEventListener('click', (event) => {
       event.target.disabled = true;
 
