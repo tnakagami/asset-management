@@ -136,36 +136,40 @@
             <button
               type="button"
               id="and-operator"
+              accesskey="a"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans "AND" %}
+              {% trans "AND" %}(<u>a</u>)
             </button>
           </div>
           <div class="col">
             <button
               type="button"
               id="or-operator"
+              accesskey="o"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans "OR" %}
+              {% trans "OR" %}(<u>o</u>)
             </button>
           </div>
           <div class="col">
             <button
               type="button"
               id="left-bracket"
+              accesskey="l"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans "(" %}
+              {% trans "(" %}<span class="ps-1">(<u>l</u>)</span>
             </button>
           </div>
           <div class="col">
             <button
               type="button"
               id="right-bracket"
+              accesskey="r"
               class="btn btn-outline-success w-100 custom-boxshadow"
             >
-              {% trans ")" %}
+              {% trans ")" %}<span class="ps-1">(<u>r</u>)</span>
             </button>
           </div>
         </div>
@@ -191,7 +195,7 @@
                 </div>
                 <div class="col">
                   <div class="input-group">
-                  {% with field=form.ordering %}
+                    {% with field=form.ordering %}
                     <button
                       type="button"
                       class="btn btn-outline-secondary dropdown-toggle"
@@ -201,6 +205,7 @@
                       {{ field.label }}
                     </button>
                     {{ field }}
+                    {% endwith %}
                     <button
                       type="button"
                       id="delete-ordering-option"
@@ -209,7 +214,6 @@
                     >
                       <i class="fas fa-trash"></i>
                     </button>
-                  {% endwith %}
                   </div>
                 </div>
               </div>
@@ -264,7 +268,12 @@
             </button>
           </div>
           <div class="col">
-            <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+            <button
+              id="close-download-stock-modal"
+              type="button"
+              class="btn btn-secondary w-100 custom-boxshadow"
+              data-bs-dismiss="modal"
+            >
               {% trans "Close" %}
             </button>
           </div>
@@ -279,18 +288,18 @@
 <script>
 (function () {
   const callbackOrdering = (isDisabled) => {
-    const ordering = document.querySelector('#column-ordering');
+    const ordering = document.getElementById('column-ordering');
     ordering.disabled = isDisabled;
   };
 
   const setupSearchForm = () => {
     const removeAllAttrs = (element, ...attrs) => attrs.forEach((_attr) => element.removeAttribute(_attr));
-    const targetColumn = document.querySelector('#target-column-name');
-    const compOperator = document.querySelector('#comp-operator');
-    const inputData = document.querySelector('#input-data');
-    const condition = document.querySelector('#condition');
-    const addCmd = document.querySelector('#add-command');
-    const deleteBtn = document.querySelector('#delete-ordering-option');
+    const targetColumn = document.getElementById('target-column-name');
+    const compOperator = document.getElementById('comp-operator');
+    const inputData = document.getElementById('input-data');
+    const condition = document.getElementById('condition');
+    const addCmd = document.getElementById('add-command');
+    const deleteBtn = document.getElementById('delete-ordering-option');
     const operatorValuePair = Object.freeze({
       'and-operator': ' and ',
       'or-operator': ' or ',
@@ -300,6 +309,13 @@
     const defaultOperator = compOperator.cloneNode(true);
     removeAllAttrs(defaultOperator, 'id', 'name');
 
+    // Add modal shown event
+    (() => {
+      const modal = document.getElementById('stock-search-modal');
+      modal.addEventListener('shown.bs.modal', (event) => {
+        targetColumn.focus();
+      });
+    })();
     // Add change event
     targetColumn.addEventListener('change', (event) => {
       const target = event.target;
@@ -353,26 +369,27 @@
       }
     });
     for (const [key, word] of Object.entries(operatorValuePair)) {
-      const element = document.querySelector(`#${key}`);
+      const element = document.getElementById(key);
       element.addEventListener('click', () => {
         const sentence = condition.value;
         const position = condition.selectionStart;
         const beforeWord = sentence.substr(0, position);
         const afterWord = sentence.substr(position, sentence.length);
         condition.value = beforeWord + word + afterWord;
+        targetColumn.focus();
       });
     }
     deleteBtn.addEventListener('click', (event) => {
-      const fieldname = event.currentTarget.dataset.fieldname;
-      const element = document.querySelector(`#${fieldname}`);
+      const fieldName = event.currentTarget.dataset.fieldname;
+      const element = document.getElementById(fieldName);
       element.value = '';
     });
     targetColumn.dispatchEvent(new Event('change'));
   };
   // Setup download form
   const setupDownloadForm = () => {
-    const downloadForm = document.querySelector('#download-stock-form');
-    const filenameField = document.querySelector('#download-filename');
+    const downloadForm = document.getElementById('download-stock-form');
+    const filenameField = document.getElementById('download-filename');
     // Add keyup event
     filenameField.addEventListener('keyup', (event) => {
       if (!event.ctrlKey && (event.key === 'Enter')) {
@@ -382,9 +399,9 @@
     // Add submit event
     downloadForm.addEventListener('submit', (event) => {
       const form = event.target;
-      const execDownload = document.querySelector('#download-stock-btn');
-      const searchCondition = document.querySelector('#condition');
-      const searchOrdering = document.querySelector('#column-ordering');
+      const execDownload = document.getElementById('download-stock-btn');
+      const searchCondition = document.getElementById('condition');
+      const searchOrdering = document.getElementById('column-ordering');
       const downloadCondition = form.querySelector('#download-condition');
       const downloadOrdering = form.querySelector('#download-ordering');
       callbackOrdering(false);
@@ -401,8 +418,8 @@
         if (document.cookie.includes(target)) {
           window.clearInterval(timerId);
           execDownload.disabled = false;
-          const modal = new bootstrap.Modal('#download-stock-modal');
-          modal.hide();
+          const element = document.getElementById('close-download-stock-modal');
+          element.click();
           // Execute post-process
           document.cookie = `${key}=; max-age=0; path=/; {{ is_secure }}`;
         }
@@ -412,8 +429,8 @@
   // Define initialization function
   const init = () => {
     // Setup search form
-    const searchBtn = document.querySelector('#stock-search');
-    const searchForm = document.querySelector('#stock-search-form');
+    const searchBtn = document.getElementById('stock-search');
+    const searchForm = document.getElementById('stock-search-form');
     setupSearchForm();
 
     // Setup download form
@@ -429,7 +446,7 @@
         searchBtn.click();
       }
       else if (event.key === 'S') { /* S := Shift + s */
-        const downloadBtn = document.querySelector('#download-stock');
+        const downloadBtn = document.getElementById('download-stock');
         downloadBtn.click();
       }
       else if (event.ctrlKey && (event.key === 'Enter')) {

@@ -104,8 +104,8 @@
       const g_registerDeleteModalEvent = (args) => {
         const {targetCSS, formID, modalID} = args;
         const deleteBtns = document.querySelectorAll(`.${targetCSS}`);
-        const deleteForm = document.querySelector(`#${formID}`);
-        const targetField = document.querySelector('#target-name');
+        const deleteForm = document.getElementById(formID);
+        const targetField = document.getElementById('target-name');
 
         for (const btn of deleteBtns) {
           btn.addEventListener('click', (event) => {

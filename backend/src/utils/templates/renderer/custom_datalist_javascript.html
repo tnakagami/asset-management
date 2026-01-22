@@ -3,12 +3,12 @@
   const ids = [
     {% for target_id in datalist_ids %}"{{ target_id|stringformat:'s' }}",{% endfor %}
   ];
-  const form = document.querySelector('#{{ form_id }}');
+  const form = document.getElementById('{{ form_id }}');
 
   form.addEventListener('submit', (event) => {
     // Update dataset values for each relevant field
-    for (const target_id of ids) {
-      const element = document.querySelector(`#${target_id}`);
+    for (const targetID of ids) {
+      const element = document.getElementById(targetID);
       element.disabled = false;
       const datalist = element.getAttribute('list');
       const options = document.querySelectorAll(`#${datalist} option`);
@@ -21,8 +21,8 @@
   });
   // Add DOM event
   document.addEventListener('DOMContentLoaded', () => {
-    for (const target_id of ids) {
-      const element = document.querySelector(`#${target_id}`);
+    for (const targetID of ids) {
+      const element = document.getElementById(targetID);
 
       if (element.value) {
         const datalist = element.getAttribute('list');

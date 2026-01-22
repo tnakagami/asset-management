@@ -7,11 +7,16 @@
 
       for (const element of liElements) {
         element.addEventListener('click', (event) => {
-          const inputData = document.querySelector('#{{ widget.attrs.id }}');
+          const inputData = document.getElementById('{{ widget.attrs.id }}');
           const oldVal = inputData.value;
           const newArr = [event.target.dataset.value];
           const arr = (oldVal) ? oldVal.split(',').concat(newArr) : newArr;
           inputData.value = arr.join(',');
+        });
+        element.addEventListener('keyup', (event) => {
+          if (event.key === 'Enter') {
+            element.click();
+          }
         });
       }
     })();

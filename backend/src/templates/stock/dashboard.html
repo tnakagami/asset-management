@@ -296,7 +296,7 @@
 <tr>
   <td scope="row"><span class="asset-idx"></span></td>
   <td><span class="asset-code"></span></td>
-  <td><span class="asset-name"></span></td>
+  <td><span class="asset-name" tabindex="0"></span></td>
   <td><span class="asset-industry"></span></td>
   <td><span class="asset-trend"></span></td>
   <td><span class="asset-realDividend"></span></td>
@@ -604,11 +604,17 @@
           const stockModal = new bootstrap.Modal('#stock-modal');
           stockModal.show();
         });
+        // Add key press event
+        element.addEventListener('keyup', (event) => {
+          if (event.key === 'Enter') {
+            element.click();
+          }
+        });
       }
     };
-    const tbody = document.querySelector('#all-assets-list');
-    const tfoot = document.querySelector('#asset-totals');
-    const template = document.querySelector('#tbody-template');
+    const tbody = document.getElementById('all-assets-list');
+    const tfoot = document.getElementById('asset-totals');
+    const template = document.getElementById('tbody-template');
     const nodeList = {
       'idx': (_, idx) => idx,
       'code': (val, _) => val,
@@ -673,7 +679,7 @@
     })();
   };
   const drawPieChart = (chart, target, asset) => {
-    const context = document.querySelector(`#${target}`);
+    const context = document.getElementById(target);
 
     if (chart) {
       chart.destroy();
@@ -718,7 +724,7 @@
     return chart;
   };
   const drawBarChart = (chart, target, asset) => {
-    const context = document.querySelector(`#${target}`);
+    const context = document.getElementById(target);
 
     if (chart) {
       chart.destroy();
@@ -802,8 +808,8 @@
       assetDiffChart = drawBarChart(assetDiffChart, 'asset-diff-chart', output.assetDiffData);
     };
     // Get element
-    const snapshot = document.querySelector('#all-snapshots');
-    const sortType = document.querySelector('#sort-type');
+    const snapshot = document.getElementById('all-snapshots');
+    const sortType = document.getElementById('sort-type');
     snapshot.addEventListener('change', () => _callback(snapshot, sortType));
     sortType.addEventListener('change', () => _callback(snapshot, sortType));
     snapshot.dispatchEvent(new Event('change'));

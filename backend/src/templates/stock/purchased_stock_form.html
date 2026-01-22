@@ -110,7 +110,7 @@
     };
     const createDOMOptionElement = (options) => {
       const datalist = stockInputElement.getAttribute('list');
-      const parent = document.querySelector(`#${datalist}`);
+      const parent = document.getElementById(datalist);
       // Remove all children
       while (parent.firstChild) {
         parent.removeChild(parent.firstChild);
@@ -129,7 +129,7 @@
       getStocks().then((queryset) => {
         const freezedOptions = Object.freeze(createOptions(queryset));
         createDOMOptionElement(freezedOptions);
-        const stockModalElement = document.querySelector('#stock-list-of-modal');
+        const stockModalElement = document.getElementById('stock-list-of-modal');
         // Create controller instance
         const controller = new TomSelect(stockModalElement, {
           allowEmptyOption: true,
@@ -163,7 +163,7 @@
         console.error(err);
       });
       // Update DOM element status
-      const element = document.querySelector('#stock-helper');
+      const element = document.getElementById('stock-helper');
       element.disabled = false;
       // Add key event
       document.addEventListener('keyup', (event) => {
@@ -175,8 +175,8 @@
   };
   // Define initialization function
   const init = () => {
-    g_setupPicker(document.querySelector('#purchase-date-id'));
-    setupStockField(document.querySelector('#stock-id'));
+    g_setupPicker(document.getElementById('purchase-date-id'));
+    setupStockField(document.getElementById('stock-id'));
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);

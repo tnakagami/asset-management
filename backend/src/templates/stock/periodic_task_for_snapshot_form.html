@@ -109,7 +109,7 @@
     scheduleTypeElement.addEventListener('change', (event) => {
       const target = event.target;
       const currentType = target.value;
-      const template = document.querySelector('#schedule-template');
+      const template = document.getElementById('schedule-template');
       const clone = template.content.cloneNode(true);
       const baseNode = clone.querySelector(`div[name="${rootNodeName}"]`);
       baseNode.id = g_scheduleNodeName;
@@ -147,9 +147,9 @@
     scheduleTypeElement.dispatchEvent(new Event('change'));
     {% if object %}
     (() => {
-      const node = document.querySelector(`#${g_scheduleNodeName}`);
+      const node = document.getElementById(g_scheduleNodeName);
       const config = (() => {
-        const element = document.querySelector('#config');
+        const element = document.getElementById('config');
         const rawValue = element.value.replace('&quot;', '"');
         const data = JSON.parse(JSON.parse(rawValue));
 
@@ -174,9 +174,9 @@
 
   const setupSubmitEvent = (form) => {
     form.addEventListener('submit', (event) => {
-      const scheduleTypeElement = document.querySelector('#schedule-type');
-      const detailedSchedule = document.querySelector(`#${g_scheduleNodeName}`);
-      const config = document.querySelector('#config');
+      const scheduleTypeElement = document.getElementById('schedule-type');
+      const detailedSchedule = document.getElementById(g_scheduleNodeName);
+      const config = document.getElementById('config');
       const data = (() => {
         const currentType = scheduleTypeElement.value;
         const hourElem = detailedSchedule.querySelector('#target-hour');
@@ -215,8 +215,8 @@
 
   // Define initialization function
   const init = () => {
-    setupScheduleType(document.querySelector('#schedule-type'));
-    setupSubmitEvent(document.querySelector('#task-form'));
+    setupScheduleType(document.getElementById('schedule-type'));
+    setupSubmitEvent(document.getElementById('task-form'));
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);
