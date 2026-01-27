@@ -666,7 +666,7 @@ class _SnapshotRecord:
     return record
 
   @classmethod
-  def get_header(self):
+  def get_header(cls):
     header = [
       gettext_lazy('Stock code'),
       gettext_lazy('Name'),
@@ -772,9 +772,7 @@ class Snapshot(models.Model):
   def _replace_title(self):
     return re.sub(r'[\\|/|:|?|.|"|<|>|\|]', '-', self.title)
 
-  def create_response_kwargs(self):
-    filename = self._replace_title()
-    name = urllib.parse.quote(filename.encode('utf-8'))
+  def create_records(self):
     data = json.loads(self.detail)
     records = {}
     #
@@ -821,9 +819,15 @@ class Snapshot(models.Model):
       instance.add_count(record['count'])
       instance.add_value(record['price'], record['count'])
       records[code] = instance
-    #
+
+    return records
+
+  def create_response_kwargs(self):
+    filename = self._replace_title()
+    name = urllib.parse.quote(filename.encode('utf-8'))
+    # Create records
+    records = self.create_records()
     # Create output
-    #
     rows = (instance.get_record() for instance in records.values())
     kwargs = {
       'rows': rows,
@@ -832,6 +836,12 @@ class Snapshot(models.Model):
     }
 
     return kwargs
+
+  def get_each_snapshot(self):
+    records = self.create_records()
+
+    for snapshot in records.values():
+      yield snapshot
 
   def update_periodic_task(self, periodic_task, crontab):
     periodic_task.crontab = crontab
