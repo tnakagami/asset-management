@@ -219,6 +219,12 @@ class IsSnapshotOwner(UserPassesTestMixin):
 
     return is_valid
 
+class DetailSnapshot(LoginRequiredMixin, IsSnapshotOwner, DetailView):
+  raise_exception = True
+  model = models.Snapshot
+  context_object_name = 'snapshot'
+  template_name = 'stock/specific_snapshot.html'
+
 class DownloadSnapshot(LoginRequiredMixin, IsSnapshotOwner, View):
   raise_exception = True
   http_method_names = ['get']

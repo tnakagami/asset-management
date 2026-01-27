@@ -622,15 +622,26 @@ class _SnapshotRecord:
     self.purchased_value += value * float(count)
 
   @property
-  def div_yield(self):
-    total_dividend = self.dividend * self.count
+  def real_div(self):
+    return self.dividend * self.count
 
+  @property
+  def div_yield(self):
     try:
-      div_yield = total_dividend / self.purchased_value * 100.0
+      div_yield = self.real_div / self.purchased_value * 100.0
     except:
       div_yield = 0.0
 
     return div_yield
+
+  @property
+  def stock_yield(self):
+    try:
+      _yield = self.dividend / self.price * 100.0
+    except:
+      _yield = 0.0
+
+    return _yield
 
   @property
   def diff(self):
@@ -649,7 +660,7 @@ class _SnapshotRecord:
       self.name,
       self.industry,
       self.trend,
-      formatter(self.dividend * self.count),
+      formatter(self.real_div),
       formatter(self.div_yield),
       formatter(self.purchased_value),
       str(self.count),
@@ -837,7 +848,7 @@ class Snapshot(models.Model):
 
     return kwargs
 
-  def get_each_snapshot(self):
+  def get_each_record(self):
     records = self.create_records()
 
     for snapshot in records.values():

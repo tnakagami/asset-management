@@ -420,6 +420,71 @@ def test_post_access_with_invalid_response_to_ajaxview(client, mocker):
   assert not data['status']
   assert _mock.call_count == 1
 
+# ==================
+# DetailSnapshotPage
+# ==================
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_detail_snapshot_without_authentication(client):
+  instance = factories.SnapshotFactory()
+  url = reverse('stock:detail_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_invalid_request_to_detail_snapshot(login_process):
+  client, _ = login_process
+  instance = factories.SnapshotFactory()
+  url = reverse('stock:detail_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_request_to_detail_snapshot(mocker, login_process):
+  pstock = {
+    'stock': {
+      'code': 'A1CC',
+      'names': {'en': 'en-bar', 'ge': 'ge-bar'},
+      'industry': {
+        'names': {'en': 'en-YYY', 'ge': 'ge-YYY'},
+        'is_defensive': False,
+      },
+      'price':  900.00, 'dividend': 0, 'per': 0, 'pbr': 0,
+      'eps': 0, 'bps': 0, 'roe': 0, 'er':  0,
+    },
+    'price': 1000.00,
+    'count': 300,
+  }
+  data = json.dumps({
+    'cash': {'balance': 1000},
+    'purchased_stocks': [pstock],
+  })
+  # Setup
+  client, user = login_process
+  instance = factories.SnapshotFactory(user=user)
+  instance.detail = data
+  instance.save()
+  url = reverse('stock:detail_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+  snapshot = response.context['snapshot']
+  records = snapshot.create_records()
+
+  assert response.status_code == status.HTTP_200_OK
+  assert snapshot.pk == instance.pk
+  assert len(records) == 2
+  assert all([key in ['cash', 'A1CC'] for key in records.keys()])
+  assert records['cash'].purchased_value == 1000
+  assert abs(records['A1CC'].price - 900.00) < 1e-6
+  assert abs(records['A1CC'].purchased_value - 1000.00*300) < 1e-6
+  assert records['A1CC'].count == 300
+
 # ================
 # DownloadSnapshot
 # ================
@@ -466,7 +531,7 @@ def test_get_request_to_download_snapshot(mocker, login_process):
   }
   expected = bytes('Col1,Col2\nhoge,foo\nbar,123\n', 'utf-8')
   mocker.patch('stock.models.Snapshot.create_response_kwargs', return_value=output)
-  # Post access
+  # Get access
   client, user = login_process
   instance = factories.SnapshotFactory(user=user)
   url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
