@@ -850,8 +850,11 @@ class Snapshot(models.Model):
 
   def get_each_record(self):
     records = self.create_records()
+    cash = records.pop('cash')
+    all_snapshots = (records[key] for key in sorted(records.keys(), key=lambda val: val.zfill(6)))
 
-    for snapshot in records.values():
+    yield cash
+    for snapshot in all_snapshots:
       yield snapshot
 
   def update_periodic_task(self, periodic_task, crontab):

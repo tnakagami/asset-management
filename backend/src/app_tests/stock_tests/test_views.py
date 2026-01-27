@@ -480,7 +480,7 @@ def test_get_request_to_detail_snapshot(mocker, login_process):
   assert snapshot.pk == instance.pk
   assert len(records) == 2
   assert all([key in ['cash', 'A1CC'] for key in records.keys()])
-  assert records['cash'].purchased_value == 1000
+  assert abs(records['cash'].purchased_value - 1000.00) < 1e-6
   assert abs(records['A1CC'].price - 900.00) < 1e-6
   assert abs(records['A1CC'].purchased_value - 1000.00*300) < 1e-6
   assert records['A1CC'].count == 300

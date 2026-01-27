@@ -528,7 +528,7 @@ def test_registration_form_in_stock(mocker, init_webtest, target_page, form_id, 
   # Collect response data
   records = response.context[instances[param_name]]
   elements = {
-    element.attrs['data-type']: element.contents[0]
+    element.attrs['data-type']: element.get_text().strip()
     for element in response.html.find_all('td', attrs={'data-type': True})
   }
   exact_vals = exacts[param_name]
@@ -696,7 +696,7 @@ def test_update_form_in_stock(mocker, init_webtest, param_name):
   # Collect response data
   records = response.context[options['object_name']]
   elements = {
-    element.attrs['data-type']: element.contents[0]
+    element.attrs['data-type']: element.get_text().strip()
     for element in response.html.find_all('td', attrs={'data-type': True})
   }
   exact_vals = exacts[param_name]
@@ -1129,12 +1129,74 @@ def test_invalid_request_for_in_ss_periodic_task_delete_method(init_webtest):
 
   assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
+# ===============
+# Detail snapshot
+# ===============
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_access_to_detail_snapshot_page(init_webtest):
+  pstock = {
+    'stock': {
+      'code': 'B3A4',
+      'names': {'en': 'en-bar', 'ge': 'ge-bar'},
+      'industry': {
+        'names': {'en': 'en-YYY', 'ge': 'ge-YYY'},
+        'is_defensive': False,
+      },
+      'price':  800.00, 'dividend': 0, 'per': 0, 'pbr': 0,
+      'eps': 0, 'bps': 0, 'roe': 0, 'er':  0,
+    },
+    'price': 500.00,
+    'count': 200,
+  }
+  data = json.dumps({
+    'cash': {'balance': 1700},
+    'purchased_stocks': [pstock],
+  })
+  # Setup
+  app, users = init_webtest
+  owner = users['owner']
+  instance = factories.SnapshotFactory(
+    title='example-owner-snapshot',
+    user=owner,
+  )
+  instance.detail = data
+  instance.save()
+  # Access to detail snapshot page
+  page = app.get(reverse('stock:list_snapshot'), user=owner)
+  response = page.click(instance.title)
+  snapshot = response.context['snapshot']
+  records = snapshot.create_records()
+
+  assert response.status_code == status.HTTP_200_OK
+  assert snapshot.pk == instance.pk
+  assert len(records) == 2
+  assert all([key in ['cash', 'B3A4'] for key in records.keys()])
+  assert abs(records['cash'].purchased_value - 1700.00) < 1e-6
+  assert abs(records['B3A4'].price - 800.00) < 1e-6
+  assert abs(records['B3A4'].purchased_value - 500.00*200) < 1e-6
+  assert records['B3A4'].count == 200
+
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_invalid_access_for_detail_snapshot_page(init_webtest):
+  # Setup
+  app, users = init_webtest
+  other = users['other']
+  instance = factories.SnapshotFactory(user=users['owner'])
+  instance.save()
+  # Invalid access for detail snapshot page
+  with pytest.raises(AppError) as ex:
+    app.get(reverse('stock:detail_snapshot', kwargs={'pk': instance.pk}), user=other)
+
+  assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
+
 # ============================
 # Check a series of processing
 # ============================
 @pytest.mark.webtest
 @pytest.mark.django_db
-def test_check_a_seires_of_processing(csrf_exempt_django_app):
+def test_check_seires_of_processing(csrf_exempt_django_app):
   app = csrf_exempt_django_app
   user_params = {
     'username': 'test',

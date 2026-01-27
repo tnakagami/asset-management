@@ -43,14 +43,14 @@
               >
                 <td scope="row">{{ forloop.counter0 }}</td>
                 <td>{{ record.code }}</td>
-                <td tabindex="0" class="text-decoration-underline text-primary js-click-link">{{ record.name }}</td>
+                <td {% if not forloop.first %}tabindex="0" class="text-decoration-underline text-primary js-click-link"{% endif %}>{{ record.name }}</td>
                 <td>{{ record.industry }}</td>
                 <td>{{ record.trend }}</td>
-                <td data-type="dividend">{{ record.real_div|floatformat:0|intcomma }}</td>
+                <td {% if not forloop.first %}data-type="dividend"{% endif %}>{{ record.real_div|floatformat:0|intcomma }}</td>
                 <td>{{ record.div_yield|floatformat:2 }}&#37;</td>
-                <td data-type="value">{{ record.purchased_value|floatformat:-1|intcomma }}</td>
-                <td data-type="count">{{ record.count|intcomma }}</td>
-                <td data-type="diff"{% if record.diff|is_negative %} class="text-danger"{% endif %}>{{ record.diff|floatformat:-1|intcomma }}</td>
+                <td {% if not forloop.first %}data-type="value"{% endif %}>{{ record.purchased_value|floatformat:-1|intcomma }}</td>
+                <td {% if not forloop.first %}data-type="count"{% endif %}>{{ record.count|intcomma }}</td>
+                <td {% if not forloop.first %}data-type="diff"{% endif %}{% if record.diff|is_negative %} class="text-danger"{% endif %}>{{ record.diff|floatformat:-1|intcomma }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -195,26 +195,54 @@
     }
   };
   const calcTotals = () => {
-    const convertor = (val) => Number(val.replace(',', ''));
+    class Updater {
+      constructor(elemID, fixedPos=0, postProcess=null) {
+        const integerCallback = (val) => val.toLocaleString();
+        const floatCallback = (val) => val.toFixed(fixedPos);
+        // Define class members
+        this.elemID = elemID;
+        this.callback = ((fixedPos > 0) ? floatCallback : integerCallback);
+        this.postProcess = ((postProcess) ? postProcess : ((val, elem) => null));
+        this.exec = this.exec.bind(this);
+      }
+      exec(val) {
+        const element = document.getElementById(this.elemID);
+        element.textContent = this.callback(val);
+        this.postProcess(val, element);
+      }
+    }
+    // Define local functions
+    const convertor = (text) => Number(text.replace(',', ''));
     const summation = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
-    const targetKeys = ['dividend', 'value', 'count', 'diff'];
-    const totals = {};
-
-    for (const key of targetKeys) {
-      const elements = document.querySelectorAll(`[data-type="${key}"]`);
-      const arr = Array.from(elements).map((item) => convertor(item.textContent));
-      const result = summation(arr);
-      const target = document.getElementById(`total-${key}`);
-      target.textContent = result.toLocaleString();
-      // Add css if result of diff is negative
-      if ((key === 'diff') && (result < 0)) {
+    const diffCallback = (diff, target) => {
+      if (diff < 0) {
         target.classList.add('text-danger');
       }
-      totals[key] = result;
+    };
+    const keyPairs = {
+      dividend: new Updater('total-dividend', 0, null),
+      yield:    new Updater('average-yield',  2, null),
+      value:    new Updater('total-value',    0, null),
+      count:    new Updater('total-count',    0, null),
+      diff:     new Updater('total-diff',     0, diffCallback),
+    };
+    const totals = {
+      dividend: 0.0,
+      value: 0.0,
+      count: 0.0,
+      diff: 0.0,
+    };
+    // Calculate total values
+    for (const key of Object.keys(totals)) {
+      const elements = document.querySelectorAll(`[data-type="${key}"]`);
+      const arr = Array.from(elements).map((item) => convertor(item.textContent));
+      totals[key] = summation(arr);
     }
-    const averageYield = totals.dividend / totals.value * 100.0;
-    const target = document.getElementById('average-yield');
-    target.textContent = averageYield.toFixed(2);
+    totals.yield = totals.dividend / totals.value * 100.0;
+    // Store totals
+    for (const [key, instance] of Object.entries(keyPairs)) {
+      instance.exec(totals[key]);
+    }
   };
   const init = () => {
     setupLinkEvent();
