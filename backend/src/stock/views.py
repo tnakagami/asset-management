@@ -219,6 +219,25 @@ class IsSnapshotOwner(UserPassesTestMixin):
 
     return is_valid
 
+class DetailSnapshot(LoginRequiredMixin, IsSnapshotOwner, DetailView, DjangoBreadcrumbsMixin):
+  raise_exception = True
+  model = models.Snapshot
+  context_object_name = 'snapshot'
+  template_name = 'stock/specific_snapshot.html'
+
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    instance = context[self.context_object_name]
+    # Set breadcrumbs
+    self.crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+      url_name='stock:detail_snapshot',
+      title=instance.title,
+      parent_view_class=ListSnapshot,
+      url_keys=['pk'],
+    )
+
+    return context
+
 class DownloadSnapshot(LoginRequiredMixin, IsSnapshotOwner, View):
   raise_exception = True
   http_method_names = ['get']

@@ -622,15 +622,26 @@ class _SnapshotRecord:
     self.purchased_value += value * float(count)
 
   @property
+  def real_div(self):
+    return self.dividend * self.count
+
+  @property
   def div_yield(self):
-    total_dividend = self.dividend * self.count
-
     try:
-      div_yield = total_dividend / self.purchased_value * 100.0
+      _yield = self.real_div / self.purchased_value * 100.0
     except:
-      div_yield = 0.0
+      _yield = 0.0
 
-    return div_yield
+    return _yield
+
+  @property
+  def stock_yield(self):
+    try:
+      _yield = self.dividend / self.price * 100.0
+    except:
+      _yield = 0.0
+
+    return _yield
 
   @property
   def diff(self):
@@ -649,7 +660,7 @@ class _SnapshotRecord:
       self.name,
       self.industry,
       self.trend,
-      formatter(self.dividend * self.count),
+      formatter(self.real_div),
       formatter(self.div_yield),
       formatter(self.purchased_value),
       str(self.count),
@@ -666,7 +677,7 @@ class _SnapshotRecord:
     return record
 
   @classmethod
-  def get_header(self):
+  def get_header(cls):
     header = [
       gettext_lazy('Stock code'),
       gettext_lazy('Name'),
@@ -772,9 +783,7 @@ class Snapshot(models.Model):
   def _replace_title(self):
     return re.sub(r'[\\|/|:|?|.|"|<|>|\|]', '-', self.title)
 
-  def create_response_kwargs(self):
-    filename = self._replace_title()
-    name = urllib.parse.quote(filename.encode('utf-8'))
+  def create_records(self):
     data = json.loads(self.detail)
     records = {}
     #
@@ -821,9 +830,15 @@ class Snapshot(models.Model):
       instance.add_count(record['count'])
       instance.add_value(record['price'], record['count'])
       records[code] = instance
-    #
+
+    return records
+
+  def create_response_kwargs(self):
+    filename = self._replace_title()
+    name = urllib.parse.quote(filename.encode('utf-8'))
+    # Create records
+    records = self.create_records()
     # Create output
-    #
     rows = (instance.get_record() for instance in records.values())
     kwargs = {
       'rows': rows,
@@ -832,6 +847,15 @@ class Snapshot(models.Model):
     }
 
     return kwargs
+
+  def get_each_record(self):
+    records = self.create_records()
+    cash = records.pop('cash')
+    all_snapshots = (records[key] for key in sorted(records.keys(), key=lambda val: val.zfill(6)))
+
+    yield cash
+    for snapshot in all_snapshots:
+      yield snapshot
 
   def update_periodic_task(self, periodic_task, crontab):
     periodic_task.crontab = crontab

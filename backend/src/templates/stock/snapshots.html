@@ -43,7 +43,14 @@
               {% for instance in snapshots %}
               <tr>
                 <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                <td data-type="title">{{ instance.title }}</td>
+                <td data-type="title">
+                  <a
+                    href="{% url 'stock:detail_snapshot' pk=instance.pk %}"
+                    class="text-primary link-underline link-underline-opacity-0"
+                  >
+                    {{ instance.title }}
+                  </a>
+                </td>
                 <td data-type="startDate">{{ instance.start_date|date:"Y-m-d" }}</td>
                 <td data-type="endDate">{{ instance.end_date|date:"Y-m-d" }}</td>
                 <td data-operate="download" class="text-center">

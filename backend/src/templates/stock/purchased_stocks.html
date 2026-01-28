@@ -40,7 +40,7 @@
                 data-name="{{ instance.stock.get_name }}"
                 data-industry="{{ instance.stock.industry }}"
                 data-price="{{ instance.stock.price|intcomma }}"
-                data-dividend="{{ instance.stock.dividend|intcomma }}"
+                data-dividend="{{ instance.stock.dividend|floatformat:1 }}"
                 data-yield="{{ instance|get_yield|floatformat:2 }}"
                 data-per="{{ instance.stock.per }}"
                 data-pbr="{{ instance.stock.pbr }}"

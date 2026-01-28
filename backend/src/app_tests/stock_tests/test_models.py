@@ -1276,6 +1276,25 @@ def test_check_add_value_func_for_ss_record(get_default_ss_record):
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.parametrize([
+  'count',
+  'expected_real_dividend',
+], [
+  (200, 4800.0),
+  (0, 0.0),
+], ids=[
+  'stock-exists',
+  'stock-does-not-exist',
+])
+def test_check_real_div_value_for_ss_record(get_default_ss_record, count, expected_real_dividend):
+  instance = get_default_ss_record
+  instance.dividend = 24.0
+  instance.count = count
+
+  assert abs(instance.real_div - expected_real_dividend) < 1e-6
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
   'purchased_value',
   'expected',
 ], [
@@ -1312,6 +1331,25 @@ def test_check_diff_value_for_ss_record(get_default_ss_record, count, expected_d
   instance.count = count
 
   assert abs(instance.diff - expected_diff) < 1e-6
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.parametrize([
+  'price',
+  'expected_stock_yield',
+], [
+  (1000, 4.12),
+  (0, 0.0),
+], ids=[
+  'valid-stock-price',
+  'invalid-stock-price',
+])
+def test_check_stock_yield_value_for_ss_record(get_default_ss_record, price, expected_stock_yield):
+  instance = get_default_ss_record
+  instance.dividend = 41.2
+  instance.price = price
+
+  assert abs(instance.stock_yield - expected_stock_yield) < 1e-6
 
 @pytest.mark.stock
 @pytest.mark.model
@@ -1808,21 +1846,59 @@ def get_config_for_ss(request):
   ]
   if stock_types == 'none':
     expected_rows = [_cash_data]
+    record_keys = ['cash']
   elif stock_types == 'only':
     expected_rows = [_cash_data, _only_data]
+    record_keys = ['cash', 'A1B3']
   elif stock_types == 'diff':
     expected_rows = [_cash_data, _only_data, _diff_data]
+    record_keys = ['cash', 'A1B3', 'A1CC']
   else:
     expected_rows = [_cash_data, _same_data, _diff_data]
+    record_keys = ['cash', 'A1B3', 'A1CC']
 
-  return data, expected_rows
+  return data, expected_rows, record_keys
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_create_records_for_ss(mocker, get_config_for_ss):
+  mocker.patch('stock.models.get_language', return_value='ge')
+  data, expected_rows, keys = get_config_for_ss
+  instance = factories.SnapshotFactory(
+    user=factories.UserFactory(),
+    title='monthly report 19/3',
+  )
+  instance.detail = data
+  instance.save()
+  records = instance.create_records()
+  formatter = lambda val: f'{val:.2f}'
+  pairs = list(zip(keys, expected_rows))
+
+  assert all([key in keys for key in records.keys()])
+  assert all([          records[key].code             == arr[ 0] for key, arr in pairs])
+  assert all([          records[key].name             == arr[ 1] for key, arr in pairs])
+  assert all([          records[key].industry         == arr[ 2] for key, arr in pairs])
+  assert all([          records[key].trend            == arr[ 3] for key, arr in pairs])
+  assert all([formatter(records[key].real_div)        == arr[ 4] for key, arr in pairs])
+  assert all([formatter(records[key].div_yield)       == arr[ 5] for key, arr in pairs])
+  assert all([formatter(records[key].purchased_value) == arr[ 6] for key, arr in pairs])
+  assert all([      str(records[key].count)           == arr[ 7] for key, arr in pairs])
+  assert all([formatter(records[key].diff)            == arr[ 8] for key, arr in pairs])
+  assert all([formatter(records[key].price)           == arr[ 9] for key, arr in pairs])
+  assert all([formatter(records[key].per)             == arr[10] for key, arr in pairs])
+  assert all([formatter(records[key].pbr)             == arr[11] for key, arr in pairs])
+  assert all([formatter(records[key].eps)             == arr[12] for key, arr in pairs])
+  assert all([formatter(records[key].bps)             == arr[13] for key, arr in pairs])
+  assert all([formatter(records[key].roe)             == arr[14] for key, arr in pairs])
+  assert all([formatter(records[key].er)              == arr[15] for key, arr in pairs])
 
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
 def test_create_response_kwargs_for_ss(mocker, get_config_for_ss):
   mocker.patch('stock.models.get_language', return_value='ge')
-  data, expected_rows = get_config_for_ss
+  data, expected_rows, _ = get_config_for_ss
   instance = factories.SnapshotFactory(
     user=factories.UserFactory(),
     title='monthly report 20/12',
@@ -1842,6 +1918,22 @@ def test_create_response_kwargs_for_ss(mocker, get_config_for_ss):
   assert all([est == exact for est, exact in zip(rows, expected_rows)])
   assert all([est == exact for est, exact in zip(kwargs['header'], header)])
   assert kwargs['filename'] == expected_fname
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_get_each_record_for_ss(mocker, get_config_for_ss):
+  mocker.patch('stock.models.get_language', return_value='ge')
+  data, expected_rows, _ = get_config_for_ss
+  instance = factories.SnapshotFactory(
+    user=factories.UserFactory(),
+    title='hogehoge',
+  )
+  instance.detail = data
+  instance.save()
+  rows = [record for record in instance.get_each_record()]
+
+  assert all([obj.get_record() == exact for obj, exact in zip(rows, expected_rows)])
 
 @pytest.mark.stock
 @pytest.mark.model
