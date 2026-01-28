@@ -628,11 +628,11 @@ class _SnapshotRecord:
   @property
   def div_yield(self):
     try:
-      div_yield = self.real_div / self.purchased_value * 100.0
+      _yield = self.real_div / self.purchased_value * 100.0
     except:
-      div_yield = 0.0
+      _yield = 0.0
 
-    return div_yield
+    return _yield
 
   @property
   def stock_yield(self):

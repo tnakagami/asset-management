@@ -25,6 +25,13 @@
       </select>
     </div>
     <div class="col">
+      <p class="fs-5">{% trans "Collection type" %}</p>
+      <select name="collectionType" id="collection-type" class="form-control">
+        <option value="pValue" selected>{% trans "Using purchased value" %}</option>
+        <option value="cStock">{% trans "Using current stock price" %}</option>
+      </select>
+    </div>
+    <div class="col">
       <nav>
         <div class="nav nav-pills flex-column flex-md-row" id="management-tab" role="tablist">
           <button
@@ -316,9 +323,17 @@
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 (function () {
-  const createChartData = (data, sortCallback) => {
+  const createChartData = (data, sortCallback, collectType) => {
     const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
-    const _getValArr = (arr) => arr.map((item) => item.value);
+    const _getValArr = (arr) => arr.map((item) => {
+      const patterns = {
+        pValue: item.value,
+        cStock: item.options.price * item.count,
+      };
+      const value = patterns[collectType];
+
+      return value;
+    });
     const _getDiffArr = (arr) => arr.map((item) => item.diff);
     const _getDividendArr = (arr) => arr.map((item) => item.realDividend);
     const _stockValSum = (arr, initVal=0.0) => _getValArr(arr).reduce((acc, val) => acc + val, initVal);
@@ -342,9 +357,7 @@
         return ret;
       };
       const _stock = record.stock;
-      const stockPrice = _stock.price;
-      const pStockPrice = record.price;
-      const diff = Math.floor((stockPrice - pStockPrice) * record.count);
+      const diff = Math.floor((_stock.price - record.price) * record.count);
       const isDefensive = _stock.industry.is_defensive;
       const trendIdx = (isDefensive) ? 0 : 1;
 
@@ -356,7 +369,7 @@
         realDividend: _stock.dividend * record.count,
         isDefensive: isDefensive,
         trend: trendNameList[trendIdx],
-        price: pStockPrice,
+        price: record.price,
         count: record.count,
         diff: diff,
         options: {
@@ -790,12 +803,12 @@
     let trendDividendChart = null;
     let assetDiffChart = null;
     // Define callback
-    const _callback = (snapshot, sortType) => {
+    const _callback = (snapshot, sortType, collectionType) => {
       const uuid = snapshot.value;
       const data = JSON.parse(document.getElementById(uuid).textContent);
       const sortFunction = _sortAlgorithm(sortType.value);
       // Create relevant data
-      const output = createChartData(data, sortFunction);
+      const output = createChartData(data, sortFunction, collectionType.value);
       // Update table
       updateTable(output.records);
       // Draw charts
@@ -810,8 +823,10 @@
     // Get element
     const snapshot = document.getElementById('all-snapshots');
     const sortType = document.getElementById('sort-type');
-    snapshot.addEventListener('change', () => _callback(snapshot, sortType));
-    sortType.addEventListener('change', () => _callback(snapshot, sortType));
+    const collectionType = document.getElementById('collection-type');
+    snapshot.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
+    sortType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
+    collectionType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     snapshot.dispatchEvent(new Event('change'));
   };
   // Add DOM event

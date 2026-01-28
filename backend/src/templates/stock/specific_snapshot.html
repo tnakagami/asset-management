@@ -90,51 +90,51 @@
             <tbody class="table-group-divider">
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Code" %}</td>
-                <td class="text-nowrap"><span data-target="code"></span></td>
+                <td class="text-nowrap"><span id="stock-code"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Stock name" %}</td>
-                <td class="text-break"><span data-target="name"></span></td>
+                <td class="text-break"><span id="stock-name"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Industry" %}</td>
-                <td class="text-nowrap"><span data-target="industry"></span></td>
+                <td class="text-nowrap"><span id="stock-industry"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Stock price" %}</td>
-                <td class="text-nowrap"><span data-target="price"></span></td>
+                <td class="text-nowrap"><span id="stock-price"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend" %}</td>
-                <td class="text-nowrap"><span data-target="dividend"></span></td>
+                <td class="text-nowrap"><span id="stock-dividend"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend yield" %}</td>
-                <td class="text-nowrap"><span data-target="yield"></span>&#37;</td>
+                <td class="text-nowrap"><span id="stock-yield"></span>&#37;</td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
-                <td class="text-nowrap"><span data-target="per"></span></td>
+                <td class="text-nowrap"><span id="stock-per"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Book-value Ratio" %}</td>
-                <td class="text-nowrap"><span data-target="pbr"></span></td>
+                <td class="text-nowrap"><span id="stock-pbr"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Earnings Per Share" %}</td>
-                <td class="text-nowrap"><span data-target="eps"></span></td>
+                <td class="text-nowrap"><span id="stock-eps"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Book value Per Share" %}</td>
-                <td class="text-nowrap"><span data-target="bps"></span></td>
+                <td class="text-nowrap"><span id="stock-bps"></span></td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Return On Equity" %}</td>
-                <td class="text-nowrap"><span data-target="roe"></span>&#37;</td>
+                <td class="text-nowrap"><span id="stock-roe"></span>&#37;</td>
               </tr>
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Equity Ratio" %}</td>
-                <td class="text-nowrap"><span data-target="er"></span>&#37;</td>
+                <td class="text-nowrap"><span id="stock-er"></span>&#37;</td>
               </tr>
             </tbody>
           </table>
@@ -173,7 +173,7 @@
         const parent = event.target.parentElement;
 
         for (const key of validKeys) {
-          const node = document.querySelector(`[data-target="${key}"]`);
+          const node = document.getElementById(`stock-${key}`);
           const value = parent.dataset[key];
           node.textContent = value;
 
@@ -195,36 +195,33 @@
     }
   };
   const calcTotals = () => {
-    class Updater {
-      constructor(elemID, fixedPos=0, postProcess=null) {
-        const integerCallback = (val) => val.toLocaleString();
-        const floatCallback = (val) => val.toFixed(fixedPos);
-        // Define class members
-        this.elemID = elemID;
-        this.callback = ((fixedPos > 0) ? floatCallback : integerCallback);
-        this.postProcess = ((postProcess) ? postProcess : ((val, elem) => null));
-        this.exec = this.exec.bind(this);
-      }
-      exec(val) {
-        const element = document.getElementById(this.elemID);
-        element.textContent = this.callback(val);
-        this.postProcess(val, element);
-      }
-    }
+    const GenerateExecutor = (elemID, fixedPos=0, postProcess=null) => {
+      const integerCallback = (val) => val.toLocaleString();
+      const floatCallback = (val) => val.toFixed(fixedPos);
+      const formatter = ((fixedPos > 0) ? floatCallback : integerCallback);
+      const callback = ((postProcess) ? postProcess : ((val, elem) => null));
+      const executor = (val) => {
+        const element = document.getElementById(elemID);
+        element.textContent = formatter(val);
+        callback(val, element);
+      };
+
+      return executor;
+    };
     // Define local functions
     const convertor = (text) => Number(text.replace(',', ''));
-    const summation = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
+    const summation = (arr) => arr.reduce((acc, val) => acc + val, 0.0);
     const diffCallback = (diff, target) => {
       if (diff < 0) {
         target.classList.add('text-danger');
       }
     };
-    const keyPairs = {
-      dividend: new Updater('total-dividend', 0, null),
-      yield:    new Updater('average-yield',  2, null),
-      value:    new Updater('total-value',    0, null),
-      count:    new Updater('total-count',    0, null),
-      diff:     new Updater('total-diff',     0, diffCallback),
+    const execPairs = {
+      dividend: GenerateExecutor('total-dividend', 0, null),
+      yield:    GenerateExecutor('average-yield',  2, null),
+      value:    GenerateExecutor('total-value',    0, null),
+      count:    GenerateExecutor('total-count',    0, null),
+      diff:     GenerateExecutor('total-diff',     0, diffCallback),
     };
     const totals = {
       dividend: 0.0,
@@ -235,13 +232,16 @@
     // Calculate total values
     for (const key of Object.keys(totals)) {
       const elements = document.querySelectorAll(`[data-type="${key}"]`);
-      const arr = Array.from(elements).map((item) => convertor(item.textContent));
-      totals[key] = summation(arr);
+
+      if (elements) {
+        const arr = Array.from(elements).map((item) => convertor(item.textContent));
+        totals[key] = summation(arr);
+      }
     }
-    totals.yield = totals.dividend / totals.value * 100.0;
+    totals.yield = (totals.value > 0) ? (totals.dividend / totals.value * 100.0) : 0.0;
     // Store totals
-    for (const [key, instance] of Object.entries(keyPairs)) {
-      instance.exec(totals[key]);
+    for (const [key, executor] of Object.entries(execPairs)) {
+      executor(totals[key]);
     }
   };
   const init = () => {

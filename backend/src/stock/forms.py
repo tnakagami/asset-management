@@ -343,6 +343,13 @@ class _ValidateCondition(ast.NodeVisitor):
       'roe': _for_number,
       'er': _for_number,
     }
+    self._enable_classes = [
+      'Expression',
+      'BoolOp', 'And', 'Or',
+      'Compare', 'Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE', 'In', 'NotIn',
+      'Name',
+      'Constant',
+    ]
     self._variables = {}
     self._operators = {}
     self._fields = fields or _stock_fields
@@ -379,16 +386,9 @@ class _ValidateCondition(ast.NodeVisitor):
           )
 
   def visit(self, node):
-    enable_classes = [
-      'Expression',
-      'BoolOp', 'And', 'Or',
-      'Compare', 'Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE', 'In', 'NotIn',
-      'Name',
-      'Constant',
-    ]
     classname = node.__class__.__name__
 
-    if classname not in enable_classes:
+    if classname not in self._enable_classes:
       raise SyntaxError(gettext_lazy('cannot use %(name)s in this application') % {'name': classname})
 
     return super().visit(node)
