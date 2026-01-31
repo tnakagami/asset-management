@@ -356,8 +356,9 @@
 
         return ret;
       };
+      const _scaler = (val) => val * record.count;
       const _stock = record.stock;
-      const diff = Math.floor((_stock.price - record.price) * record.count);
+      const diff = _scaler(_stock.price) - _scaler(record.price);
       const isDefensive = _stock.industry.is_defensive;
       const trendIdx = (isDefensive) ? 0 : 1;
 
@@ -366,7 +367,7 @@
         code: _stock.code,
         industry: _getName(_stock.industry),
         dividend: _stock.dividend,
-        realDividend: _stock.dividend * record.count,
+        realDividend: _scaler(_stock.dividend),
         isDefensive: isDefensive,
         trend: trendNameList[trendIdx],
         price: record.price,
@@ -385,7 +386,7 @@
     });
     const stocks = (() => {
       const _dict = {};
-      const _calcValue = (item) => Math.floor(item.price * item.count);
+      const _calcValue = (item) => item.price * item.count;
       const _calcYield = (target) => target.realDividend / target.value * 100.0;
 
       for (const item of originalStocks) {

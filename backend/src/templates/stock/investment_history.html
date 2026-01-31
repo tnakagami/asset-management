@@ -242,7 +242,7 @@
         const targetStock = record.stock;
         const stockPrice = targetStock.price;
         const pStockPrice = record.price;
-        const diff = Math.floor(_scaler(stockPrice - pStockPrice));
+        const diff = _scaler(stockPrice) - _scaler(pStockPrice);
 
         return {
           code: targetStock.code,
