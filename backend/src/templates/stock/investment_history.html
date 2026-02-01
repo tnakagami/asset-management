@@ -111,6 +111,18 @@
       ></select>
     </div>
     <div class="col">
+      <p class="fs-5">{% trans "Sort type" %}</p>
+      <select name="sortType" id="sort-type" class="form-control">
+        <option value="none" data-type="none">{% trans "Without sorting" %}</option>
+        <option value="priority" data-type="asc">{% trans "Priority (ASC)" %}</option>
+        <option value="priority" data-type="desc">{% trans "Priority (DESC)" %}</option>
+        <option value="startDate" data-type="asc">{% trans "Start date (ASC)" %}</option>
+        <option value="startDate" data-type="desc">{% trans "Start date (DESC)" %}</option>
+        <option value="endDate" data-type="asc" selected>{% trans "End date (ASC)" %}</option>
+        <option value="endDate" data-type="desc">{% trans "End date (DESC)" %}</option>
+      </select>
+    </div>
+    <div class="col">
       <button
         type="button"
         id="update-graph"
@@ -123,9 +135,6 @@
   <div class="row row-cols-1 g-2">
     <div class="col">
       <p class="fs-4 mt-3">{% trans "Histories" %}</p>
-    </div>
-    <div class="col">
-      <canvas id="purchased-chart" class="w-100"></canvas>
     </div>
     <div class="col">
       <canvas id="portfolio-chart" class="w-100"></canvas>
@@ -242,7 +251,7 @@
         const targetStock = record.stock;
         const stockPrice = targetStock.price;
         const pStockPrice = record.price;
-        const diff = Math.floor(_scaler(stockPrice - pStockPrice));
+        const diff = _scaler(stockPrice) - _scaler(pStockPrice);
 
         return {
           code: targetStock.code,
@@ -291,7 +300,7 @@
       count:     records.map((arr) => arr.slice(1).length),
       total:     records.map((arr) => getTotal(arr.slice(1), (item) => item.count)),
       purchased: records.map((arr) => getTotal(arr.slice(1), (item) => item.price)),
-      portfolio: records.map((arr) => getTotal(arr.slice(1), (item) => item.price + item.diff)),
+      current:   records.map((arr) => getTotal(arr.slice(1), (item) => item.price + item.diff)),
       diff:      records.map((arr) => getTotal(arr.slice(1), (item) => item.diff)),
       dividend:  records.map((arr) => getTotal(arr.slice(1), (item) => item.dividend)),
       yield:     [],
@@ -305,21 +314,16 @@
     });
     // Create output
     const output = {
-      purchasedHistory: {
-        title: '{% trans "Purchased history" %}',
+      portfolioHistory: {
+        title: '{% trans "Portfolio history" %}',
         labels: snapshotNameList,
         datasets: [{
           label: '{% trans "Purchased price" %}',
           data: histories.purchased,
           backgroundColor: '#36A2EB',
-        }],
-      },
-      portfolioHistory: {
-        title: '{% trans "Portfolio history" %}',
-        labels: snapshotNameList,
-        datasets: [{
+        }, {
           label: '{% trans "Evaluated price" %}',
-          data: histories.portfolio,
+          data: histories.current,
           backgroundColor: '#FF6384',
         }],
       },
@@ -349,14 +353,14 @@
       count: histories.count,
       total: histories.total,
       purchasedPrice: histories.purchased,
-      stockPrice: histories.portfolio,
+      stockPrice: histories.current,
       diff: histories.diff,
       dividend: histories.dividend,
       yield: histories.yield,
       cash: histories.cash,
     };
-    tbody.innerHTML = '';
     const len = histories.ssName.length;
+    tbody.innerHTML = '';
 
     for (let idx = 0; idx < len; idx++) {
       const clone = template.content.cloneNode(true);
@@ -421,44 +425,64 @@
   const init = () => {
     // Initialize select DOM element
     const options = [{% for instance in snapshots %}
-      {text: '{{ instance.title }}', value: '{{ instance.uuid }}', selected: false, endDate: new Date('{{ instance.end_date|date:"Y-m-d" }}'),},{% endfor %}
+      {
+        text: '{{ instance.title }}',
+        value: '{{ instance.uuid }}',
+        selected: false,
+        priority: {{ instance.priority }},
+        startDate: new Date('{{ instance.start_date|date:"Y-m-d" }}'),
+        endDate: new Date('{{ instance.end_date|date:"Y-m-d" }}'),
+      },{% endfor %}
     ];
     setupDualListbox('snapshots', options);
     // Define chart's variables
-    let purchasedChart = null;
     let portfolioChart = null;
     let dividendChart = null;
+    //
     // Add click event
+    //
     const updateGraph = document.getElementById('update-graph');
     updateGraph.addEventListener('click', (event) => {
       event.target.disabled = true;
 
-      // Sort function
-      const compare = (le, re) => {
+      // Define sort function
+      const sortAlgorithm = (() => {
+        // Get sort type
+        const sortType = document.getElementById('sort-type');
+        const key = sortType.value;
+        const orderingType = sortType.selectedOptions[0].dataset.type.toLowerCase();
+        const sign = (orderingType === 'asc') ? 1 : (-1);
+        const compare = (lv, rv) => ((lv > rv) ? sign : ((lv < rv) ? (-sign) : 0));
+        //
         // le: left element, re: right element
         // lv: left value,   rv: right value
-        const sign = 1; // ASC=1, DESC=-1
-        const lv = le.endDate.getTime();
-        const rv = re.endDate.getTime();
-        const ret = (lv > rv) ? sign : ((lv < rv) ? (-sign) : 0);
-
-        return ret;
-      };
-      const selectedOptions = (() => {
+        //
+        if (key === 'none') {
+          return (le, re) => 0;
+        }
+        else if (key === 'priority') {
+          return (le, re) => compare(le.priority, re.priority);
+        }
+        // In the case of startDate or endDate
+        else {
+          return (le, re) => compare(le[key].getTime(), re[key].getTime());
+        }
+      })();
+      // Get selected options and sorted ones
+      const selectedOpts = (() => {
         const ssElem = document.querySelector('ul.dual-listbox__selected');
         const requestedUUIDs = Array.from(ssElem.querySelectorAll('li')).map((item) => item.dataset.id);
         const targets = options.filter((elem) => requestedUUIDs.includes(elem.value));
 
         return targets;
       })();
-      const sortedIndices = selectedOptions.map((_, idx) => idx)
-                                           .sort((li, ri) => compare(selectedOptions[li], selectedOptions[ri]));
+      const sortedIndices = selectedOpts.map((_, idx) => idx)
+                                        .sort((li, ri) => sortAlgorithm(selectedOpts[li], selectedOpts[ri]));
       // Create chart data
-      const output = createChartData(sortedIndices, selectedOptions);
+      const output = createChartData(sortedIndices, selectedOpts);
       // Update table
       updateTable(output.histories);
       // Draw charts
-      purchasedChart = drawBarChart(purchasedChart, 'purchased-chart', output.purchasedHistory);
       portfolioChart = drawBarChart(portfolioChart, 'portfolio-chart', output.portfolioHistory);
       dividendChart  = drawBarChart(dividendChart,  'dividend-chart',  output.dividendHistory);
 
