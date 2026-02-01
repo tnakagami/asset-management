@@ -15,6 +15,14 @@
           {% trans "Register snapshot" %}
         </a>
       </div>
+      <div class="col">
+        <a
+          href="{% url 'stock:upload_jsonformat_snapshot' %}"
+          class="btn btn-success w-100 custom-boxshadow"
+        >
+          {% trans "Upload snapshot (JSON format)" %}
+        </a>
+      </div>
       {% comment %}
       <div class="col">
         <button
@@ -36,7 +44,7 @@
                 <th scope="col" class="text-nowrap">{% trans "Title" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Start date" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "End date" %}</th>
-                <th colspan="3" class="text-center">{% trans "Operate" %}</th>
+                <th colspan="4" class="text-center">{% trans "Operate" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -55,10 +63,20 @@
                 <td data-type="endDate">{{ instance.end_date|date:"Y-m-d" }}</td>
                 <td data-operate="download" class="text-center">
                   <a
-                    href="{% url 'stock:download_snapshot' pk=instance.pk %}"
+                    href="{% url 'stock:download_csv_snapshot' pk=instance.pk %}"
                     class="btn btn-link px-1 py-0 text-primary link-underline link-underline-opacity-0"
+                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Download as CSV"
                   >
-                    <i class="fas fa-download fa-lg"></i>
+                    <i class="fas fa-file-csv fa-lg"></i>
+                  </a>
+                </td>
+                <td data-operate="download" class="text-center">
+                  <a
+                    href="{% url 'stock:download_json_snapshot' pk=instance.pk %}"
+                    class="btn btn-link px-1 py-0 text-warning link-underline link-underline-opacity-0"
+                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Download as JSON"
+                  >
+                    <i class="fas fa-file-code fa-lg"></i>
                   </a>
                 </td>
                 <td data-operate="edit" class="text-center">
@@ -72,7 +90,7 @@
                 <td data-operate="delete" class="text-center">
                   <button
                     class="btn btn-link px-1 py-0 text-danger delete-target-record"
-                    data-name="[{{ instance.created_at|date:'Y-m-d' }}] {{ instance.title }}"
+                    data-name="{{ instance.title }}"
                     data-url="{% url 'stock:delete_snapshot' pk=instance.pk %}"
                   >
                     <i class="fas fa-trash fa-lg"></i>
@@ -133,8 +151,8 @@
     formID: 'delete-form',
     modalID: 'delete-modal',
   });
-  {% comment %}
   const init = () => {
+    {% comment %}
     const updateSnapshots = document.getElementById('update-all-snapshots');
     updateSnapshots.addEventListener('click', async (event) => {
       event.target.disabled = true;
@@ -155,10 +173,13 @@
       }
       event.target.disabled = false;
     });
+    {% endcomment %}
+    // Define popper event
+    const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    [...tooltipElements].map((elem) => new bootstrap.Tooltip(elem));
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);
-  {% endcomment %}
 })();
 </script>
 {% endblock %}

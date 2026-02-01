@@ -1330,7 +1330,7 @@ def test_check_seires_of_processing(csrf_exempt_django_app):
   status_codes.append(res.status_code)
   next_link = get_current_path(res)
   details = []
-  # Collect detail of snapshots (ordering: '-created_at')
+  # Collect detail of snapshots (ordering: '-end_date')
   for ss in snapshots:
     uuid = str(ss.uuid)
     element = res.html.find('script', id=uuid)
@@ -1344,7 +1344,7 @@ def test_check_seires_of_processing(csrf_exempt_django_app):
   res = app.get(next_link).click('Investment history')
   status_codes.append(res.status_code)
   histories = []
-  # Collect histories of snapshots (ordering: '-created_at')
+  # Collect histories of snapshots (ordering: '-end_date')
   for ss in snapshots:
     uuid = str(ss.uuid)
     element = res.html.find('script', id=uuid)

@@ -37,12 +37,15 @@ def get_user_function(module):
 
   return callback
 
-def convert_timezone(target, is_string=False, strformat='%Y-%m-%d'):
+def convert_timezone(target, is_string=False, strformat=None):
   tz = timezone.get_current_timezone()
   output = target.astimezone(tz)
 
   if is_string:
-    output = output.strftime(strformat)
+    if strformat is None:
+      output = output.isoformat(timespec='seconds')
+    else:
+      output = output.strftime(strformat)
 
   return output
 
@@ -701,7 +704,7 @@ class _SnapshotRecord:
 
 class Snapshot(models.Model):
   class Meta:
-    ordering = ('priority', '-created_at', )
+    ordering = ('priority', '-end_date', )
 
   uuid = models.UUIDField(
     primary_key=False,
@@ -848,6 +851,23 @@ class Snapshot(models.Model):
 
     return kwargs
 
+  def create_json_from_model(self):
+    filename = self._replace_title()
+    name = urllib.parse.quote(filename.encode('utf-8'))
+    data = {
+      'title': self.title,
+      'detail': json.loads(self.detail),
+      'priority': self.priority,
+      'start_date': convert_timezone(self.start_date, is_string=True),
+      'end_date': convert_timezone(self.end_date, is_string=True),
+    }
+    out = {
+      'data': data,
+      'filename': f'snapshot-{name}.json',
+    }
+
+    return out
+
   def get_each_record(self):
     records = self.create_records()
     cash = records.pop('cash')
@@ -864,6 +884,19 @@ class Snapshot(models.Model):
     periodic_task.description = self.title
 
     return periodic_task
+
+  @classmethod
+  def create_instance_from_dict(cls, user, params):
+    update_keyname = 'detail'
+    # Create instance
+    instance = cls(user=user, **params)
+    instance.save()
+    # Update detail field
+    if update_keyname in params.keys():
+      instance.detail = json.dumps(params[update_keyname])
+      instance.save(update_fields=[update_keyname])
+
+    return instance
 
   @classmethod
   def get_instance_from_periodic_task_kwargs(cls, periodic_task):

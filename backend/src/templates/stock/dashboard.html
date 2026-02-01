@@ -12,7 +12,7 @@
       <p class="fs-5">{% trans "Target snapshot" %}</p>
       <select name="snapshot" id="all-snapshots" class="form-control">
         {% for instance in snapshots %}
-        <option value="{{ instance.uuid }}" {% if forloop.first %}selected{% endif %}>{{ instance.title }}({{ instance.created_at|date:'Y-m-d' }})</option>
+        <option value="{{ instance.uuid }}" {% if forloop.first %}selected{% endif %}>{{ instance.title }}</option>
         {% endfor %}
       </select>
     </div>

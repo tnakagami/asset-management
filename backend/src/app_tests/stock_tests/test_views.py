@@ -485,15 +485,15 @@ def test_get_request_to_detail_snapshot(mocker, login_process):
   assert abs(records['A1CC'].purchased_value - 1000.00*300) < 1e-6
   assert records['A1CC'].count == 300
 
-# ================
-# DownloadSnapshot
-# ================
+# ===================
+# DownloadCsvSnapshot
+# ===================
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_get_access_to_download_snapshot_without_authentication(client):
+def test_get_access_to_download_csv_snapshot_without_authentication(client):
   instance = factories.SnapshotFactory()
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
   response = client.get(url)
 
   assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -501,10 +501,10 @@ def test_get_access_to_download_snapshot_without_authentication(client):
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_post_access_in_download_snapshot(login_process):
+def test_post_access_in_download_csv_snapshot(login_process):
   client, user = login_process
   instance = factories.SnapshotFactory(user=user)
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
   response = client.post(url)
 
   assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
@@ -512,10 +512,10 @@ def test_post_access_in_download_snapshot(login_process):
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_invalid_request_to_download_snapshot(login_process):
+def test_invalid_request_to_download_csv_snapshot(login_process):
   client, _ = login_process
   instance = factories.SnapshotFactory()
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
   response = client.get(url)
 
   assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -523,7 +523,7 @@ def test_invalid_request_to_download_snapshot(login_process):
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_get_request_to_download_snapshot(mocker, login_process):
+def test_get_request_to_download_csv_snapshot(mocker, login_process):
   output = {
     'rows': [['hoge','foo'], ['bar', '123']],
     'header': ['Col1', 'Col2'],
@@ -534,7 +534,7 @@ def test_get_request_to_download_snapshot(mocker, login_process):
   # Get access
   client, user = login_process
   instance = factories.SnapshotFactory(user=user)
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
   response = client.get(url)
   attachment = response.get('content-disposition')
   stream = response.getvalue()

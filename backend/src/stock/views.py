@@ -238,7 +238,30 @@ class DetailSnapshot(LoginRequiredMixin, IsSnapshotOwner, DetailView, DjangoBrea
 
     return context
 
-class DownloadSnapshot(LoginRequiredMixin, IsSnapshotOwner, View):
+class UploadJsonFormatSnapshot(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
+  raise_exception = True
+  form_class = forms.UploadJsonFormatSnapshotForm
+  template_name = 'stock/upload_jsonformat_snapshot.html'
+  success_url = reverse_lazy('stock:list_snapshot')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:upload_jsonformat_snapshot',
+    title=gettext_lazy('Upload snapshot (JSON format)'),
+    parent_view_class=ListSnapshot,
+  )
+
+  def get_form_kwargs(self, *args, **kwargs):
+    kwargs = super().get_form_kwargs(*args, **kwargs)
+    kwargs['user'] = self.request.user
+
+    return kwargs
+
+  def form_valid(self, form):
+    form.register()
+    response = super().form_valid(form)
+
+    return response
+
+class DownloadCsvSnapshot(LoginRequiredMixin, IsSnapshotOwner, View):
   raise_exception = True
   http_method_names = ['get']
 
@@ -251,6 +274,24 @@ class DownloadSnapshot(LoginRequiredMixin, IsSnapshotOwner, View):
       streaming_csv_file(params['rows'], header=params['header']),
       content_type='text/csv;charset=UTF-8',
       headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+    return response
+
+class DownloadJsonSnapshot(LoginRequiredMixin, IsSnapshotOwner, View):
+  raise_exception = True
+  http_method_names = ['get']
+
+  def get(self, request, *args, **kwargs):
+    instance = models.Snapshot.objects.get(pk=kwargs['pk'])
+    params = instance.create_json_from_model()
+    # Create response
+    filename = params['filename']
+    response = JsonResponse(
+      params['data'],
+      content_type='application/force-download;charset=UTF-8',
+      headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+      json_dumps_params={'ensure_ascii': False, 'indent': 2},
     )
 
     return response

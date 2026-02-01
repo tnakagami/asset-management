@@ -190,14 +190,18 @@ def test_check_get_user_function(mocker, test_module, checker):
   'strformat',
   'expected',
 ], [
-  ('UTC', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), False, '', datetime(2000,1,2,10,0,0, tzinfo=ZoneInfo('UTC'))),
+  ('UTC', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), False, None, datetime(2000,1,2,10,0,0, tzinfo=ZoneInfo('UTC'))),
+  ('UTC', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), True, None, '2000-01-02T10:00:00+00:00'),
   ('UTC', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), True, '%Y-%m-%d %H:%M', '2000-01-02 10:00'),
-  ('Asia/Tokyo', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), False, '', datetime(2000,1,2,19,0,0, tzinfo=ZoneInfo('Asia/Tokyo'))),
+  ('Asia/Tokyo', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), False, None, datetime(2000,1,2,19,0,0, tzinfo=ZoneInfo('Asia/Tokyo'))),
+  ('Asia/Tokyo', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), True, None, '2000-01-02T19:00:00+09:00'),
   ('Asia/Tokyo', datetime(2000,1,2,10,0,0, tzinfo=timezone.utc), True, '%Y-%m-%d %H:%M', '2000-01-02 19:00'),
 ], ids=[
   'to-utc-datetime',
+  'to-utc-isoformat',
   'to-utc-string',
   'to-asia-tokyo-datetime',
+  'to-asia-tokyo-isoformat',
   'to-asia-tokyo-string',
 ])
 def test_check_convert_timezone(settings, this_timezone, target, is_string, strformat, expected):

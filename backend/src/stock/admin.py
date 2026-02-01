@@ -81,4 +81,4 @@ class SnapshotAdmin(admin.ModelAdmin):
   list_display = ('user', 'title', 'priority', 'start_date', 'end_date')
   list_filter = ('user',)
   search_fields = ('user__username', 'user__screen_name', 'priority', 'start_date', 'end_date')
-  ordering = ('priority', '-created_at',)
+  ordering = ('priority', '-end_date',)

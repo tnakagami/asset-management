@@ -1,4 +1,5 @@
 from django import forms
+from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy
 from django.utils.html import format_html
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
@@ -13,6 +14,7 @@ from utils.widgets import (
 )
 from . import models
 from collections import deque
+from io import TextIOWrapper
 import ast
 import urllib.parse
 import json
@@ -159,6 +161,67 @@ class SnapshotForm(_BaseModelFormWithCSS):
       instance.update_record()
     if commit:
       instance.save()
+
+    return instance
+
+class UploadJsonFormatSnapshotForm(forms.Form):
+  template_name = 'renderer/custom_form.html'
+
+  encoding = forms.ChoiceField(
+    label=gettext_lazy('Encoding'),
+    choices=(
+      ('utf-8', 'UTF-8'),
+      ('shift_jis', 'Shift-JIS'),
+      ('cp932', 'CP932 (Windows)'),
+    ),
+    initial='utf-8',
+    required=True,
+    widget=forms.Select(attrs={
+      'class': 'form-select',
+      'autofocus': True,
+    }),
+    help_text=gettext_lazy('In general, please select "Shift-JIS" in Windows OS, "UTF-8" in Linux like OS.'),
+  )
+
+  json_file = forms.FileField(
+    label=gettext_lazy('JSON filename'),
+    required=True,
+    widget=forms.FileInput(attrs={
+      'class': 'form-control',
+    }),
+    validators=[
+      FileExtensionValidator(
+        allowed_extensions=['json'],
+        message=gettext_lazy('The extention has to be ".json".'),
+      ),
+    ],
+    help_text=gettext_lazy('The extention is ".json" only.'),
+  )
+
+  def __init__(self, user, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.user = user
+    self.valid_data = None
+
+  def clean(self):
+    cleaned_data = super().clean()
+    json_file = cleaned_data.get('json_file')
+    encoding = cleaned_data.get('encoding')
+
+    try:
+      with TextIOWrapper(json_file, encoding=encoding) as fin:
+        self.valid_data = json.load(fin)
+    except Exception as ex:
+      raise forms.ValidationError(
+        gettext_lazy('Cannot load json file: %(ex)s'),
+        code='invalid_data',
+        params={'ex': str(ex)},
+      )
+
+    return cleaned_data
+
+  def register(self):
+    instance = models.Snapshot.create_instance_from_dict(self.user, self.valid_data)
 
     return instance
 
