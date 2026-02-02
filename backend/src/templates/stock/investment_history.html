@@ -92,6 +92,12 @@
       transform: rotate(0deg);
     }
   }
+
+  /* For Chart.js */
+  .wrap-bar-chart {
+    position: relative;
+    height: 100vh;
+  }
 </style>
 {% endblock %}
 
@@ -136,10 +142,10 @@
     <div class="col">
       <p class="fs-4 mt-3">{% trans "Histories" %}</p>
     </div>
-    <div class="col">
+    <div class="col wrap-bar-chart">
       <canvas id="portfolio-chart" class="w-100"></canvas>
     </div>
-    <div class="col">
+    <div class="col wrap-bar-chart">
       <canvas id="dividend-chart" class="w-100"></canvas>
     </div>
     <div class="col">
@@ -395,8 +401,16 @@
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         indexAxis: 'y',
+        scales: {
+          y: {
+            ticks: {
+              autoSkip: false,
+              maxTicksLimit: history.labels.length,
+            },
+          },
+        },
         plugins: {
           legend: {
             display: false,

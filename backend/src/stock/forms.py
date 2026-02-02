@@ -188,6 +188,7 @@ class UploadJsonFormatSnapshotForm(forms.Form):
     required=True,
     widget=forms.FileInput(attrs={
       'class': 'form-control',
+      'style': 'padding: 2.5rem 1rem 1.75rem 1rem;',
     }),
     validators=[
       FileExtensionValidator(

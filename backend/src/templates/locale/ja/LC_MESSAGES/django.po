@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-01 11:00+0900\n"
+"POT-Creation-Date: 2026-02-01 23:42+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -140,6 +140,7 @@ msgstr "ログイン"
 #: templates/stock/periodic_task_for_snapshot_form.html:30
 #: templates/stock/purchased_stock_form.html:49
 #: templates/stock/snapshot_form.html:30
+#: templates/stock/upload_jsonformat_snapshot.html:30
 msgid "Cancel"
 msgstr "キャンセル"
 
@@ -204,9 +205,13 @@ msgstr "許可"
 msgid "Close"
 msgstr "閉じる"
 
-#: templates/err_base.html:30
-msgid "Redirect to the top page after 3 seconds."
-msgstr "3秒後にトップページに戻ります。"
+#: templates/err_base.html:37
+msgid "Redirect to the top page after 30 seconds."
+msgstr "30秒後にトップページに戻ります。"
+
+#: templates/err_base.html:40
+msgid "Back to top page"
+msgstr "トップページに戻る"
 
 #: templates/header.html:8
 msgid "Asset Management"
@@ -241,7 +246,7 @@ msgstr "口座残高の登録"
 
 #: templates/stock/cashes.html:24 templates/stock/dashboard.html:174
 #: templates/stock/periodic_tasks_for_snapshot.html:36
-#: templates/stock/purchased_stocks.html:25 templates/stock/snapshots.html:36
+#: templates/stock/purchased_stocks.html:25 templates/stock/snapshots.html:44
 #: templates/stock/specific_snapshot.html:16 templates/stock/stocks.html:43
 msgid "No."
 msgstr "No."
@@ -256,7 +261,7 @@ msgstr "登録日"
 
 #: templates/stock/cashes.html:27
 #: templates/stock/periodic_tasks_for_snapshot.html:42
-#: templates/stock/purchased_stocks.html:33 templates/stock/snapshots.html:40
+#: templates/stock/purchased_stocks.html:33 templates/stock/snapshots.html:48
 msgid "Operate"
 msgstr "操作"
 
@@ -596,7 +601,7 @@ msgid "Histories"
 msgstr "投資実績一覧"
 
 #: templates/stock/investment_history.html:150
-#: templates/stock/snapshots.html:37
+#: templates/stock/snapshots.html:45
 msgid "Title"
 msgstr "タイトル"
 
@@ -796,15 +801,20 @@ msgstr "スナップショットの登録/更新"
 msgid "Snapshots"
 msgstr "スナップショット"
 
-#: templates/stock/snapshots.html:38
+#: templates/stock/snapshots.html:23
+#: templates/stock/upload_jsonformat_snapshot.html:5
+msgid "Upload snapshot (JSON format)"
+msgstr "スナップショットのアップロード（JSON形式）"
+
+#: templates/stock/snapshots.html:46
 msgid "Start date"
 msgstr "集計開始日"
 
-#: templates/stock/snapshots.html:39
+#: templates/stock/snapshots.html:47
 msgid "End date"
 msgstr "集計終了日"
 
-#: templates/stock/snapshots.html:88
+#: templates/stock/snapshots.html:106
 msgid "There is no snapshots. Please add the items from the above button."
 msgstr "スナップショットの情報がありません。上記のボタンから登録してください。"
 
@@ -863,6 +873,10 @@ msgstr "銘柄一覧ダウンロード"
 #: templates/stock/stocks.html:267
 msgid "Download"
 msgstr "ダウンロード"
+
+#: templates/stock/upload_jsonformat_snapshot.html:22
+msgid "Upload"
+msgstr "アップロード"
 
 #~ msgid "Purchased history"
 #~ msgstr "購入価格の実績"
