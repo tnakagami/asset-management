@@ -389,6 +389,9 @@
   //
   const drawBarChart = (chart, target, history) => {
     const context = document.getElementById(target);
+    const widthThreshold = 768;
+    const currentWidth = window.screen.availWidth;
+    const judgement = (currentWidth <= widthThreshold) ? true : false;
 
     if (chart) {
       chart.destroy();
@@ -405,9 +408,20 @@
         indexAxis: 'y',
         scales: {
           y: {
+            beforeBuildTicks: function (axis) {
+              axis.chart.options.scales.y.ticks.autoSkip = judgement;
+            },
             ticks: {
               autoSkip: false,
               maxTicksLimit: history.labels.length,
+              callback: function(value, index, ticks) {
+                const maxDisplayLen = 3;
+                const label = this.getLabelForValue(value);
+                const condition = judgement && (label.length > maxDisplayLen);
+                const out = condition ? `${label.slice(0, maxDisplayLen)}...` : label;
+
+                return out;
+              },
             },
           },
         },
@@ -444,8 +458,8 @@
         value: '{{ instance.uuid }}',
         selected: false,
         priority: {{ instance.priority }},
-        startDate: new Date('{{ instance.start_date|date:"Y-m-d" }}'),
-        endDate: new Date('{{ instance.end_date|date:"Y-m-d" }}'),
+        startDate: new Date('{{ instance.start_date|date:"c" }}'),
+        endDate: new Date('{{ instance.end_date|date:"c" }}'),
       },{% endfor %}
     ];
     setupDualListbox('snapshots', options);
