@@ -33,8 +33,8 @@ def get_judgement_funcs():
   return collector, compare_keys, compare_values
 
 @pytest.fixture(params=[
-  ('UTC',        datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-15'),
-  ('Asia/Tokyo', datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-16'),
+  ('UTC',        datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-15T20:15:00+00:00'),
+  ('Asia/Tokyo', datetime(2010,3,15,20,15,0, tzinfo=timezone.utc), '2010-03-16T05:15:00+09:00'),
 ], ids=lambda xs: '+'.join([xs[0], xs[1].strftime('%Y%m%d-%H:%M:%S'), xs[2]]))
 def pseudo_date(request):
   yield request.param
@@ -1923,6 +1923,79 @@ def test_create_response_kwargs_for_ss(mocker, get_config_for_ss):
   assert all([est == exact for est, exact in zip(kwargs['header'], header)])
   assert kwargs['filename'] == expected_fname
 
+@pytest.fixture(params=['none', 'only', 'both'], ids=[
+  'no-cash-no-stocks',
+  'only-one-stock',
+  'cash-and-two-stocks',
+])
+def get_json_stock_info_for_ss(request):
+  key = request.param
+
+  if key == 'none':
+    kwargs = {
+      'title': 'none-data',
+      'start_date': datetime(2021,3,24,0,0,0, tzinfo=timezone.utc),
+      'end_date': datetime(2021,4,25,0,0,0, tzinfo=timezone.utc),
+      'priority': 2,
+    }
+    detail = {
+      'cash': {},
+      'purchased_stocks': [],
+    }
+    this_tz = 'UTC'
+  elif key == 'only':
+    kwargs = {
+      'title': 'only-data',
+      'start_date': datetime(2021,3,25,0,0,0, tzinfo=ZoneInfo('Asia/Tokyo')),
+      'end_date': datetime(2021,4,26,0,0,0, tzinfo=ZoneInfo('Asia/Tokyo')),
+      'priority': 1,
+    }
+    detail = {
+      'cash': {},
+      'purchased_stocks': [{'price': 123.4, 'count': 200}],
+    }
+    this_tz = 'Asia/Tokyo'
+  elif key == 'both':
+    kwargs = {
+      'title': '日本語タイトル',
+      'start_date': datetime(2021,3,27,0,0,0, tzinfo=timezone.utc),
+      'end_date': datetime(2021,4,28,0,0,0, tzinfo=timezone.utc),
+      'priority': 99,
+    }
+    detail = {
+      'cash': {'balance': 3456, 'registered_date': '2007-11-04T12:44:59'},
+      'purchased_stocks': [{'price': 1547, 'purchase_date': '2022-01-03T02:34:54', 'count': 456}],
+    }
+    this_tz = 'UTC'
+
+  return kwargs, detail, this_tz
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_create_json_from_model_for_ss(settings, get_json_stock_info_for_ss):
+  kwargs, detail, this_tz = get_json_stock_info_for_ss
+  settings.TIME_ZONE = this_tz
+  instance = factories.SnapshotFactory(
+    user=factories.UserFactory(),
+    **kwargs,
+  )
+  instance.detail = json.dumps(detail)
+  instance.save()
+  out = instance.create_json_from_model()
+  fname = instance._replace_title()
+  expected_filename = 'snapshot-{}.json'.format(urllib.parse.quote(fname.encode('utf-8')))
+  expected_output = {
+    'title': kwargs['title'],
+    'detail': detail,
+    'priority': kwargs['priority'],
+    'start_date': kwargs['start_date'].isoformat(timespec='seconds'),
+    'end_date': kwargs['end_date'].isoformat(timespec='seconds'),
+  }
+
+  assert out['filename'] == expected_filename
+  assert out['data'] == expected_output
+
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
@@ -1957,6 +2030,46 @@ def test_update_periodic_task():
   assert instance.description == snapshot.title
   assert kwargs['user_pk'] == user.pk
   assert kwargs['snapshot_pk'] == snapshot.pk
+
+@pytest.fixture(params=['unset', 'set'], ids=['unset-detail', 'set-detail'])
+def get_json_params_for_ss(request):
+  key = request.param
+  expected = {
+    'title': 'hogehoge-param',
+    'start_date': datetime(2021,3,25,0,0,0, tzinfo=timezone.utc).isoformat(timespec='seconds'),
+    'end_date': datetime(2021,3,25,0,0,0, tzinfo=timezone.utc).isoformat(timespec='seconds'),
+    'priority': 3,
+    'detail': '{"cash": {}, "purchased_stocks": []}',
+  }
+  kwargs = {
+    'title': expected['title'],
+    'start_date': expected['start_date'],
+    'end_date': expected['end_date'],
+    'priority': expected['priority'],
+  }
+
+  if key == 'set':
+    expected['detail'] = '{"manual-data": "set"}'
+    kwargs['detail'] = {
+      'manual-data': 'set',
+    }
+
+  return kwargs, expected
+
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+def test_create_instance_from_dict_for_ss(settings, get_json_params_for_ss):
+  settings.TIME_ZONE = 'UTC'
+  kwargs, expected = get_json_params_for_ss
+  user = factories.UserFactory()
+  instance = models.Snapshot.create_instance_from_dict(user, kwargs)
+
+  assert instance.title == expected['title']
+  assert instance.start_date == expected['start_date']
+  assert instance.end_date == expected['end_date']
+  assert instance.priority == expected['priority']
+  assert instance.detail == expected['detail']
 
 @pytest.mark.stock
 @pytest.mark.model
