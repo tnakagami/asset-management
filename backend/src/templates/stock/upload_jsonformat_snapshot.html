@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Upload snapshot (JSON format)") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" id="snapshot-upload-form" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          {{ form }}
+
+          {# Register or cancel #}
+          <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <button
+                type="submit"
+                class="btn btn-primary w-100 custom-boxshadow"
+              >
+                {% trans "Upload" %}
+              </button>
+            </div>
+            <div class="col">
+              <a
+                href="{% url 'stock:list_snapshot' %}"
+                class="btn btn-secondary w-100 custom-boxshadow"
+              >
+                {% trans "Cancel" %}
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

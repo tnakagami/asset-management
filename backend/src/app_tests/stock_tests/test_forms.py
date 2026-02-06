@@ -2,6 +2,8 @@ import pytest
 import ast
 import json
 import urllib.parse
+import tempfile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django_celery_beat.models import PeriodicTask
 from datetime import datetime, timezone
@@ -260,6 +262,9 @@ def test_invalid_pattern_of_validation_method_for_validateCondition(condition, e
 
   assert err_msg in str(ex.value)
 
+# ========
+# CashForm
+# ========
 @pytest.mark.stock
 @pytest.mark.form
 @pytest.mark.django_db
@@ -293,6 +298,9 @@ def test_cash_form(get_user, params, is_valid):
 
   assert form.is_valid() == is_valid
 
+# ==================
+# PurchasedStockForm
+# ==================
 @pytest.mark.stock
 @pytest.mark.form
 @pytest.mark.django_db
@@ -498,6 +506,9 @@ def test_check_invalid_custom_modeldatalist_field(arg_idx):
 
   assert 'Select a valid choice' in str(ex.value)
 
+# ============
+# SnapshotForm
+# ============
 @pytest.mark.stock
 @pytest.mark.form
 @pytest.mark.django_db
@@ -580,6 +591,215 @@ def test_save_method_of_snapshot(get_user, forced_update, commit, output_dlen, r
   assert len(detail_output) == output_dlen
   assert len(detail_estimated) == record_dlen
 
+# ============================
+# UploadJsonFormatSnapshotForm
+# ============================
+@pytest.fixture
+def get_form_params_with_fds():
+  def inner(encoding, suffix='.json'):
+    # Setup temporary file
+    tmp_fp = tempfile.NamedTemporaryFile(mode='r+', encoding=encoding, suffix=suffix)
+
+    with open(tmp_fp.name, encoding=encoding, mode='w') as json_file:
+      json_file.writelines([
+        '{\n',
+          '"title": "hoge",\n',
+          '"detail": {\n',
+            '"cash": {\n',
+              '"balance": 123,\n',
+              '"registered_date": "2001-11-07T00:00:00+09:00"\n',
+            '},\n',
+            '"purchased_stocks": [\n',
+              '{\n',
+                '"stock": {},\n',
+                '"price": 960.0,\n',
+                '"purchase_date": "2000-12-27T00:00:00+09:00",\n',
+                '"count": 100\n',
+              '}\n',
+            ']\n',
+          '},\n',
+          '"priority": 99,\n',
+          '"start_date": "2019-01-01T00:00:00+09:00",\n',
+          '"end_date": "5364-12-30T00:00:00+09:00"\n',
+        '}\n',
+      ])
+      json_file.flush()
+    with open(tmp_fp.name, encoding=encoding, mode='r') as fin:
+      json_file = SimpleUploadedFile(fin.name, bytes(fin.read(), encoding=fin.encoding))
+      # Create form data
+      params = {
+        'encoding': encoding,
+      }
+      files = {
+        'json_file': json_file,
+      }
+
+    return tmp_fp, json_file, params, files
+
+  return inner
+
+@pytest.fixture(params=['utf-8-encoding', 'sjis-encoding', 'cp932-encoding'])
+def get_valid_form_param(request, get_form_params_with_fds):
+  encoding = 'utf-8'
+  # Define encoding
+  if request.param == 'utf-8-encoding':
+    encoding = 'utf-8'
+  elif request.param == 'sjis-encoding':
+    encoding = 'shift_jis'
+  elif request.param == 'cp932-encoding':
+    encoding = 'cp932'
+  # Setup temporary file
+  tmp_fp, json_file, params, files = get_form_params_with_fds(encoding)
+
+  yield params, files
+
+  # Post-process
+  json_file.close()
+  tmp_fp.close()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+def test_valid_input_pattern_for_ujf_ss_form(get_valid_form_param):
+  user = factories.UserFactory()
+  params, files = get_valid_form_param
+  form = forms.UploadJsonFormatSnapshotForm(user=user, data=params, files=files)
+  is_valid = form.is_valid()
+
+  assert is_valid
+
+@pytest.fixture(params=[
+  ('no-encoding', '.json'),
+  ('no-file', '.json'),
+  ('invalid-suffix', '.txt'),
+], ids=[
+  'without-encoding',
+  'without-jsonfile',
+  'invalid-suffix',
+])
+def get_invalid_form_param(request, get_form_params_with_fds):
+  key, suffix = request.param
+  # Setup temporary file
+  tmp_fp, json_file, params, files = get_form_params_with_fds('utf-8', suffix)
+  err_msg = 'This field is required'
+  # Setup form data
+  if key == 'no-encoding':
+    del params['encoding']
+  elif key == 'no-file':
+    del files['json_file']
+  elif key == 'invalid-suffix':
+    err_msg = 'The extention has to be &quot;.json&quot;.'
+
+  yield params, files, err_msg
+
+  # Post-process
+  json_file.close()
+  tmp_fp.close()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+def test_invalid_field_data_for_ujf_ss_form(get_invalid_form_param):
+  user = factories.UserFactory()
+  params, files, err_msg = get_invalid_form_param
+  form = forms.UploadJsonFormatSnapshotForm(user=user, data=params, files=files)
+  is_valid = form.is_valid()
+
+  assert not is_valid
+  assert err_msg in str(form.errors)
+
+@pytest.fixture
+def get_params_for_register_in_ujf_ss_form(get_form_params_with_fds):
+  tmp_fp, json_file, params, files = get_form_params_with_fds('utf-8')
+
+  yield params, files
+
+  # Post-process
+  json_file.close()
+  tmp_fp.close()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+def test_check_register_method_for_ujf_ss_form(settings, mocker, get_params_for_register_in_ujf_ss_form):
+  settings.TIME_ZONE = 'Asia/Tokyo'
+  user = factories.UserFactory()
+  mocker.patch('stock.forms.UploadJsonFormatSnapshotForm.clean', return_value=None)
+  valid_data = {
+    'title': 'dummy-data-for-ujf-ss',
+    'detail': {
+      'cash': {
+        'balance': 7890,
+        'registered_date': '2000-01-02',
+      },
+      'purchased_stocks': [{
+        'stock': {
+          'hoge': 'foo',
+        },
+        'price': 950.4,
+        'purchase_date': '2001-03-12',
+        'count': 123,
+      }],
+    },
+    'priority': 98,
+    'start_date': '1999-12-11T00:00:00+09:00',
+    'end_date': '2100-12-31T00:00:00+09:00',
+  }
+  # Create form
+  params, files = get_params_for_register_in_ujf_ss_form
+  form = forms.UploadJsonFormatSnapshotForm(user=user, data=params, files=files)
+  is_valid = form.is_valid()
+  form.valid_data = valid_data
+  instance = form.register()
+  output_detail = json.loads(instance.detail)
+
+  assert is_valid
+  assert instance.title == valid_data['title']
+  assert output_detail == valid_data['detail']
+  assert instance.start_date == valid_data['start_date']
+  assert instance.end_date == valid_data['end_date']
+  assert instance.priority == valid_data['priority']
+
+@pytest.fixture
+def get_invalid_form_params_with_fds():
+  # Setup temporary file
+  encoding = 'utf-8'
+  tmp_fp = tempfile.NamedTemporaryFile(mode='r+', encoding=encoding, suffix='.json')
+
+  with open(tmp_fp.name, encoding=encoding, mode='w') as json_file:
+    json_file.writelines(['}\n', '{\n'])
+    json_file.flush()
+  with open(tmp_fp.name, encoding=encoding, mode='r') as fin:
+    json_file = SimpleUploadedFile(fin.name, bytes(fin.read(), encoding=fin.encoding))
+    # Create form data
+    params = {
+      'encoding': encoding,
+    }
+    files = {
+      'json_file': json_file,
+    }
+
+  yield params, files, 'Cannot load json file:'
+
+  # Post-process
+  json_file.close()
+  tmp_fp.close()
+
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+def test_invalid_clean_method_for_ujf_ss_form(get_invalid_form_params_with_fds):
+  user = factories.UserFactory()
+  params, files, err_msg = get_invalid_form_params_with_fds
+  form = forms.UploadJsonFormatSnapshotForm(user=user, data=params, files=files)
+  is_valid = form.is_valid()
+
+  assert not is_valid
+  assert err_msg in str(form.errors)
+
+# ===========================
+# PeriodicTaskForSnapshotForm
+# ===========================
 @pytest.fixture
 def pseudo_periodic_task_params(django_db_blocker, get_user):
   with django_db_blocker.unblock():
@@ -856,6 +1076,9 @@ def test_invalid_crontab_of_ptask_for_ss_form(pseudo_periodic_task_params, sched
   assert not is_valid
   assert err_msg in str(form.errors)
 
+# ===============
+# StockSearchForm
+# ===============
 @pytest.mark.stock
 @pytest.mark.form
 @pytest.mark.parametrize([
@@ -980,6 +1203,9 @@ def test_get_queryset_with_condition_method_of_stock_search_form(params, indices
   assert len(expected) == qs.count()
   assert all([record.pk == exact.pk for record, exact in zip(qs, expected)])
 
+# =================
+# StockDownloadForm
+# =================
 @pytest.mark.stock
 @pytest.mark.form
 @pytest.mark.parametrize([

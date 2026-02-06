@@ -2,6 +2,16 @@
 {% load i18n %}
 {% get_current_language as LANGUAGE_CODE %}
 
+{% block header %}
+<style>
+  /* For Chart.js */
+  .wrap-bar-chart {
+    position: relative;
+    height: 100vh;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 {% include 'breadcrumbs.html' with title=_("Dashboard") %}
 <div class="row justify-content-center">
@@ -10,10 +20,8 @@
   <div class="row row-cols-1 g-2">
     <div class="col">
       <p class="fs-5">{% trans "Target snapshot" %}</p>
-      <select name="snapshot" id="all-snapshots" class="form-control">
-        {% for instance in snapshots %}
-        <option value="{{ instance.uuid }}" {% if forloop.first %}selected{% endif %}>{{ instance.title }}({{ instance.created_at|date:'Y-m-d' }})</option>
-        {% endfor %}
+      <select name="snapshot" id="all-snapshots" class="form-control">{% for instance in snapshots %}
+        <option value="{{ instance.uuid }}"{% if forloop.first %} selected{% endif %}>{{ instance.title }}</option>{% endfor %}
       </select>
     </div>
     <div class="col">
@@ -153,7 +161,7 @@
           tabindex="0"
         >
           <div class="row">
-            <div class="col">
+            <div class="col wrap-bar-chart">
               <canvas id="asset-diff-chart" class="w-100"></canvas>
             </div>
           </div>
@@ -385,21 +393,21 @@
       };
     });
     const stocks = (() => {
-      const _dict = {};
+      const purchasedPairs = {};
       const _calcValue = (item) => item.price * item.count;
       const _calcYield = (target) => target.realDividend / target.value * 100.0;
 
       for (const item of originalStocks) {
         const code = item.code;
 
-        if (Object.hasOwn(_dict, code)) {
-          _dict[code].realDividend += item.realDividend;
-          _dict[code].value += _calcValue(item);
-          _dict[code].count += item.count;
-          _dict[code].diff += item.diff;
+        if (Object.hasOwn(purchasedPairs, code)) {
+          purchasedPairs[code].realDividend += item.realDividend;
+          purchasedPairs[code].value += _calcValue(item);
+          purchasedPairs[code].count += item.count;
+          purchasedPairs[code].diff += item.diff;
         }
         else {
-          _dict[code] = {
+          purchasedPairs[code] = {
             name: item.name,
             code: code,
             industry: item.industry,
@@ -414,10 +422,10 @@
             options: item.options,
           };
         }
-        _dict[code].yield = _calcYield(_dict[code]);
+        purchasedPairs[code].yield = _calcYield(purchasedPairs[code]);
       }
 
-      return Object.values(_dict);
+      return Object.values(purchasedPairs);
     })();
     const records = [{
       name: '{% trans "Cash" %}',
@@ -435,36 +443,47 @@
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
-    const sectorList = stocks.reduce((_dict, item) => {
-      const trendIdx = (item.isDefensive) ? 0 : 1;
+    const sectorList = stocks.reduce((pairs, item) => {
+      const trendIdx = item.isDefensive ? 0 : 1;
       const displayName = `${item.industry}(${trendNameList[trendIdx]})`;
-      _dict[item.industry] = displayName;
+      pairs[item.industry] = displayName;
 
-      return _dict;
+      return pairs;
     }, {});
     const sectorNameList = Object.values(sectorList);
     // Define color dictionaries
     const stockColorDict = (() => {
       const arr = stockNameList.slice(1);
       const palette = _generateColorPalette(arr.length);
-      const lightGrey = '#C9CBCF';
-      const initVal = {[records[0].name]: lightGrey};
+      const initVal = {[records[0].name]: '#C9CBCF'};
+      const out = arr.reduce((pairs, name, idx) => {
+        pairs[name] = palette[idx];
 
-      return arr.reduce((_dict, name, idx) => {_dict[name] = palette[idx]; return _dict; }, initVal);
+        return pairs;
+      }, initVal);
+
+      return out;
     })();
     const sectorColorDict = (() => {
       const palette = _generateColorPalette(sectorNameList.length);
+      const out = sectorNameList.reduce((pairs, name, idx) => {
+        pairs[name] = palette[idx];
 
-      return sectorNameList.reduce((_dict, name, idx) => {_dict[name] = palette[idx]; return _dict;}, {});
+        return pairs;
+      }, {});
+
+      return out;
     })();
     const trendColorDict = {
       [trendNameList[0]]: 'rgba(136, 200, 244, 0.9)',
       [trendNameList[1]]: 'rgba(243, 136, 158, 0.9)',
     };
-    const diffColorDict = stockNameList.slice(1).reduce((_dict, name) => {
-      _dict[name] = 'rgba(136, 200, 244, 0.9)'; return _dict;
-    }, {});
+    const diffColorDict = stockNameList.slice(1).reduce((pairs, name) => {
+      pairs[name] = 'rgba(136, 200, 244, 0.9)';
 
+      return pairs;
+    }, {});
+    // Define chart data
     const pairs = {
       dividendPortfolioData: {
         title: '{% trans "Portfolio (dividend)" %}',
@@ -551,11 +570,11 @@
         }],
       }
     };
-    const output = Object.entries(pairs).reduce((_dict, [key, item]) => {
+    const output = Object.entries(pairs).reduce((accItems, [key, item]) => {
       const dataset = item.datasets[0];
       const target = dataset.data;
       const indices = target.map((_, idx) => idx);
-      const sortedIndices = (sortCallback) ? indices.sort((li, ri) => sortCallback(target[li], target[ri])) : indices;
+      const sortedIndices = indices.sort((li, ri) => sortCallback(target[li], target[ri]));
       const cores = {
         label: dataset.label,
         data: sortedIndices.map((idx) => target[idx]),
@@ -565,13 +584,13 @@
         cores.indexAxis = dataset.axis;
       }
       // Store data
-      _dict[key] = {
+      accItems[key] = {
         title: item.title,
         labels: sortedIndices.map((idx) => item.labels[idx]),
         datasets: [cores],
       };
 
-      return _dict;
+      return accItems;
     }, {});
     output.records = records;
 
@@ -739,6 +758,9 @@
   };
   const drawBarChart = (chart, target, asset) => {
     const context = document.getElementById(target);
+    const widthThreshold = 768;
+    const currentWidth = window.screen.availWidth;
+    const judgement = (currentWidth <= widthThreshold) ? true : false;
 
     if (chart) {
       chart.destroy();
@@ -751,8 +773,27 @@
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         indexAxis: 'y',
+        scales: {
+          y: {
+            beforeBuildTicks: function (axis) {
+              axis.chart.options.scales.y.ticks.autoSkip = judgement;
+            },
+            ticks: {
+              autoSkip: false,
+              maxTicksLimit: asset.labels.length,
+              callback: function(value, index, ticks) {
+                const maxDisplayLen = 3;
+                const label = this.getLabelForValue(value);
+                const condition = judgement && (label.length > maxDisplayLen);
+                const out = condition ? `${label.slice(0, maxDisplayLen)}...` : label;
+
+                return out;
+              },
+            },
+          },
+        },
         plugins: {
           legend: {
             display: false,
@@ -778,21 +819,17 @@
   const init = () => {
     const _sortAlgorithm = (sortType) => {
       const types = {
-        none: undefined,
+        none: 0,
         asc: 1,
         desc: -1,
       };
       const sign = types[sortType];
-
-      if (sign === undefined) {
-        return null;
+      // lv: left-value, rv: right-value
+      if (sign === 0) {
+        return (lv, rv) => 0;
       }
       else {
-        return (lv, rv) => { // lv: left-value, rv: right-value
-          if      (lv > rv) { return  sign; }
-          else if (lv < rv) { return -sign; }
-          else              { return 0; }
-        };
+        return ((lv, rv) => (lv > rv) ? sign : ((lv < rv) ? (-sign) : 0));
       }
     };
     // Define chart's variables

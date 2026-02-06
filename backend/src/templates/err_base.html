@@ -16,6 +16,13 @@
       .custom-min-width {
         min-width: 290px;
       }
+      .custom-boxshadow {
+        box-shadow: 0 3px 3px rgba(72, 78, 85, 0.6);
+        transition: all 0.2s ease-out;
+      }
+      .custom-boxshadow:hover {
+        box-shadow: 0 10px 10px rgba(72, 78, 85, 0.6);
+      }
     </style>
     {% block header %}
     {% endblock %}
@@ -27,7 +34,12 @@
     <main class="w-100 mx-auto mb-auto">
       <div class="container">
         {% block content %}
-        <span>{% trans "Redirect to the top page after 3 seconds." %}</span>
+        <p>{% trans "Redirect to the top page after 30 seconds." %}</p>
+        <p>
+          <a href="{% url 'account:index' %}" class="btn btn-secondary custom-boxshadow">
+            {% trans "Back to top page" %}
+          </a>
+        </p>
         {% endblock %}
       </div>
     </main>
@@ -44,7 +56,7 @@
       (function(){
         setTimeout(() => {
           window.location.href = "{% url 'account:index' %}";
-        }, 3000);
+        }, 30 * 1000);
       }());
     </script>
     {% block bodyjs %}

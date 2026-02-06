@@ -92,6 +92,12 @@
       transform: rotate(0deg);
     }
   }
+
+  /* For Chart.js */
+  .wrap-bar-chart {
+    position: relative;
+    height: 100vh;
+  }
 </style>
 {% endblock %}
 
@@ -136,10 +142,10 @@
     <div class="col">
       <p class="fs-4 mt-3">{% trans "Histories" %}</p>
     </div>
-    <div class="col">
+    <div class="col wrap-bar-chart">
       <canvas id="portfolio-chart" class="w-100"></canvas>
     </div>
-    <div class="col">
+    <div class="col wrap-bar-chart">
       <canvas id="dividend-chart" class="w-100"></canvas>
     </div>
     <div class="col">
@@ -383,6 +389,9 @@
   //
   const drawBarChart = (chart, target, history) => {
     const context = document.getElementById(target);
+    const widthThreshold = 768;
+    const currentWidth = window.screen.availWidth;
+    const judgement = (currentWidth <= widthThreshold) ? true : false;
 
     if (chart) {
       chart.destroy();
@@ -395,8 +404,27 @@
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         indexAxis: 'y',
+        scales: {
+          y: {
+            beforeBuildTicks: function (axis) {
+              axis.chart.options.scales.y.ticks.autoSkip = judgement;
+            },
+            ticks: {
+              autoSkip: false,
+              maxTicksLimit: history.labels.length,
+              callback: function(value, index, ticks) {
+                const maxDisplayLen = 3;
+                const label = this.getLabelForValue(value);
+                const condition = judgement && (label.length > maxDisplayLen);
+                const out = condition ? `${label.slice(0, maxDisplayLen)}...` : label;
+
+                return out;
+              },
+            },
+          },
+        },
         plugins: {
           legend: {
             display: false,
@@ -430,8 +458,8 @@
         value: '{{ instance.uuid }}',
         selected: false,
         priority: {{ instance.priority }},
-        startDate: new Date('{{ instance.start_date|date:"Y-m-d" }}'),
-        endDate: new Date('{{ instance.end_date|date:"Y-m-d" }}'),
+        startDate: new Date('{{ instance.start_date|date:"c" }}'),
+        endDate: new Date('{{ instance.end_date|date:"c" }}'),
       },{% endfor %}
     ];
     setupDualListbox('snapshots', options);

@@ -1,9 +1,11 @@
 import pytest
 import csv
 import json
+import tempfile
 import urllib.parse
 from io import StringIO
 from webtest.app import AppError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from datetime import datetime, timezone
@@ -1191,12 +1193,126 @@ def test_invalid_access_for_detail_snapshot_page(init_webtest):
 
   assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
+# ===========================
+# Upload JSON Format Snapshot
+# ===========================
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_can_move_to_upload_page(init_webtest):
+  app, users = init_webtest
+  url = reverse('stock:list_snapshot')
+  page = app.get(url, user=users['owner'])
+  response = page.click('Upload snapshot')
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == reverse('stock:upload_jsonformat_snapshot')
+
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_can_move_to_parent_page_from_upload_page(init_webtest):
+  app, users = init_webtest
+  url = reverse('stock:upload_jsonformat_snapshot')
+  page = app.get(url, user=users['owner'])
+  response = page.click('Cancel')
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == reverse('stock:list_snapshot')
+
+@pytest.fixture(params=['utf-8', 'shift_jis', 'cp932'])
+def get_valid_form_param_of_jsonfile(request):
+  encoding = request.param
+  info = {
+    'title': 'upload-json-file',
+    'detail': {
+      'cash': {
+        'balance': 123,
+        'registered_date': "2001-11-07T00:00:00+09:00",
+      },
+      'purchased_stocks': [{
+        'stock': {},
+        'price': 960.0,
+        'purchase_date': "2000-12-27T00:00:00+09:00",
+        'count': 145,
+      }],
+    },
+    'priority': 99,
+    'start_date': "2019-01-01T00:00:00+09:00",
+    'end_date': "5364-12-30T00:00:00+09:00",
+  }
+  # Create form data
+  params = {
+    'encoding': encoding,
+    'json_file': ('test-file.json', bytes(json.dumps(info), encoding=encoding)), # For django-webtest format
+  }
+
+  return params
+
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_send_post_request_from_upload_page(settings, get_valid_form_param_of_jsonfile, init_webtest):
+  settings.TIME_ZONE = 'Asia/Tokyo'
+  params = get_valid_form_param_of_jsonfile
+  # Send request
+  app, users = init_webtest
+  url = reverse('stock:upload_jsonformat_snapshot')
+  forms = app.get(url, user=users['owner']).forms
+  form = forms['snapshot-upload-form']
+  for key, val in params.items():
+    form[key] = val
+  response = form.submit().follow()
+  # Collect expected queryset
+  instance = models.Snapshot.objects.filter(title__contains='upload-json-file').first()
+  detail = json.loads(instance.detail)
+
+  assert response.status_code == status.HTTP_200_OK
+  assert get_current_path(response) == reverse('stock:list_snapshot')
+  assert instance is not None
+  assert instance.start_date.isoformat(timespec='seconds') == '2018-12-31T15:00:00+00:00'
+  assert instance.end_date.isoformat(timespec='seconds') == '5364-12-29T15:00:00+00:00'
+  assert instance.priority == 99
+  assert detail['cash']['balance'] == 123
+  assert len(detail['purchased_stocks']) == 1
+  assert detail['purchased_stocks'][0]['count'] == 145
+
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_send_invalid_encoding_of_upload_page(init_webtest):
+  app, users = init_webtest
+  url = reverse('stock:upload_jsonformat_snapshot')
+  forms = app.get(url, user=users['owner']).forms
+  form = forms['snapshot-upload-form']
+
+  with pytest.raises(ValueError):
+    form['encoding'] = 'euc-jp'
+
+@pytest.mark.webtest
+@pytest.mark.django_db
+def test_send_invalid_extensions_of_upload_page(init_webtest):
+  params = {
+    'encoding': 'utf-8',
+    'json_file': ('hoge.txt', bytes('{}', 'utf-8')),
+  }
+  err_msg = 'The extention has to be &quot;.json&quot;.'
+  # Send request
+  app, users = init_webtest
+  url = reverse('stock:upload_jsonformat_snapshot')
+  forms = app.get(url, user=users['owner']).forms
+  form = forms['snapshot-upload-form']
+  for key, val in params.items():
+    form[key] = val
+  response = form.submit()
+  errors = response.context['form'].errors
+
+  assert response.status_code == status.HTTP_200_OK
+  assert err_msg in str(errors)
+
 # ============================
 # Check a series of processing
 # ============================
 @pytest.mark.webtest
 @pytest.mark.django_db
-def test_check_seires_of_processing(csrf_exempt_django_app):
+def test_check_seires_of_processing(settings, csrf_exempt_django_app):
+  settings.TIME_ZONE = 'Asia/Tokyo'
   app = csrf_exempt_django_app
   user_params = {
     'username': 'test',
@@ -1330,7 +1446,7 @@ def test_check_seires_of_processing(csrf_exempt_django_app):
   status_codes.append(res.status_code)
   next_link = get_current_path(res)
   details = []
-  # Collect detail of snapshots (ordering: '-created_at')
+  # Collect detail of snapshots (ordering: '-end_date')
   for ss in snapshots:
     uuid = str(ss.uuid)
     element = res.html.find('script', id=uuid)
@@ -1344,7 +1460,7 @@ def test_check_seires_of_processing(csrf_exempt_django_app):
   res = app.get(next_link).click('Investment history')
   status_codes.append(res.status_code)
   histories = []
-  # Collect histories of snapshots (ordering: '-created_at')
+  # Collect histories of snapshots (ordering: '-end_date')
   for ss in snapshots:
     uuid = str(ss.uuid)
     element = res.html.find('script', id=uuid)
@@ -1360,11 +1476,11 @@ def test_check_seires_of_processing(csrf_exempt_django_app):
   assert all(results)
   # Check cashes
   assert chk_ss(lambda target: target[2]['cash']['balance'] == 750000)
-  assert chk_ss(lambda target: target[2]['cash']['registered_date'] == '2020-12-11')
+  assert chk_ss(lambda target: target[2]['cash']['registered_date'] == '2020-12-11T00:00:00+09:00')
   assert chk_ss(lambda target: target[1]['cash']['balance'] == 122788)
-  assert chk_ss(lambda target: target[1]['cash']['registered_date'] == '2021-09-10')
+  assert chk_ss(lambda target: target[1]['cash']['registered_date'] == '2021-09-10T00:00:00+09:00')
   assert chk_ss(lambda target: target[0]['cash']['balance'] == 77516)
-  assert chk_ss(lambda target: target[0]['cash']['registered_date'] == '2022-02-02')
+  assert chk_ss(lambda target: target[0]['cash']['registered_date'] == '2022-02-02T00:00:00+09:00')
   # Check purchsed stock
   assert chk_ss(lambda target: calc_pstock_sum(target[2]['purchased_stocks']) == 0)
   assert chk_ss(lambda target: calc_pstock_sum(target[1]['purchased_stocks']) == 627212)

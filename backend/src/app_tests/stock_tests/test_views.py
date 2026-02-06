@@ -1,7 +1,9 @@
 import pytest
 import json
+import tempfile
 import urllib.parse
 from pytest_django.asserts import assertTemplateUsed, assertQuerySetEqual
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from app_tests import status
 from datetime import datetime, timezone
@@ -485,15 +487,14 @@ def test_get_request_to_detail_snapshot(mocker, login_process):
   assert abs(records['A1CC'].purchased_value - 1000.00*300) < 1e-6
   assert records['A1CC'].count == 300
 
-# ================
-# DownloadSnapshot
-# ================
+# ===========================
+# Upload Json Format Snapshot
+# ===========================
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_get_access_to_download_snapshot_without_authentication(client):
-  instance = factories.SnapshotFactory()
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+def test_get_access_to_upload_jfs_without_authentication(client):
+  url = reverse('stock:upload_jsonformat_snapshot')
   response = client.get(url)
 
   assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -501,10 +502,155 @@ def test_get_access_to_download_snapshot_without_authentication(client):
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_post_access_in_download_snapshot(login_process):
+def test_post_access_to_upload_jfs_without_authentication(client):
+  url = reverse('stock:upload_jsonformat_snapshot')
+  response = client.post(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_upload_jfs(login_process):
+  client, user = login_process
+  url = reverse('stock:upload_jsonformat_snapshot')
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_200_OK
+
+@pytest.fixture(params=['utf-8', 'shift_jis', 'cp932'])
+def get_valid_form_param_in_upload_jfs(request):
+  encoding = request.param
+  # Setup temporary file
+  tmp_fp = tempfile.NamedTemporaryFile(mode='r+', encoding=encoding, suffix='.json')
+
+  with open(tmp_fp.name, encoding=encoding, mode='w') as json_file:
+    json_file.writelines([
+      '{\n',
+        '"title": "view-sample",\n',
+        '"detail": {\n',
+          '"cash": {\n',
+            '"balance": 123,\n',
+            '"registered_date": "2001-11-07T00:00:00+09:00"\n',
+          '},\n',
+          '"purchased_stocks": [\n',
+            '{\n',
+              '"stock": {},\n',
+              '"price": 960.0,\n',
+              '"purchase_date": "2000-12-27T00:00:00+09:00",\n',
+              '"count": 145\n',
+            '}\n',
+          ']\n',
+        '},\n',
+        '"priority": 99,\n',
+        '"start_date": "2019-01-01T00:00:00+09:00",\n',
+        '"end_date": "5364-12-30T00:00:00+09:00"\n',
+      '}\n',
+    ])
+    json_file.flush()
+  with open(tmp_fp.name, encoding=encoding, mode='r') as fin:
+    json_file = SimpleUploadedFile(fin.name, bytes(fin.read(), encoding=fin.encoding))
+    # Create form data
+    params = {
+      'encoding': encoding,
+      'json_file': json_file,
+    }
+
+  yield params
+
+  # Post-process
+  json_file.close()
+  tmp_fp.close()
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_check_valid_post_access_in_upload_jfs(settings, get_valid_form_param_in_upload_jfs, login_process):
+  settings.TIME_ZONE = 'Asia/Tokyo'
+  client, user = login_process
+  params = get_valid_form_param_in_upload_jfs
+  # Send request
+  url = reverse('stock:upload_jsonformat_snapshot')
+  response = client.post(url, data=params)
+  # Collect expected queryset
+  instance = models.Snapshot.objects.filter(title__contains='view-sample').first()
+  detail = json.loads(instance.detail)
+
+  assert response.status_code == status.HTTP_302_FOUND
+  assert response['Location'] == reverse('stock:list_snapshot')
+  assert instance is not None
+  assert instance.start_date.isoformat(timespec='seconds') == '2018-12-31T15:00:00+00:00'
+  assert instance.end_date.isoformat(timespec='seconds') == '5364-12-29T15:00:00+00:00'
+  assert instance.priority == 99
+  assert detail['cash']['balance'] == 123
+  assert len(detail['purchased_stocks']) == 1
+  assert detail['purchased_stocks'][0]['count'] == 145
+
+@pytest.fixture(params=['invalid-json-format', 'invalid-extensions'])
+def get_invalid_form_param_in_upload_jfs(mocker, request):
+  err_msg = ''
+  input_data = '{}'
+  suffix = '.json'
+
+  if request.param == 'invalid-json-format':
+    input_data = '}{'
+    err_msg = 'Cannot load json file'
+  elif request.param == 'invalid-extensions':
+    suffix = '.txt'
+    err_msg = 'The extention has to be &quot;.json&quot;.'
+  # Setup temporary file
+  encoding = 'utf-8'
+  tmp_fp = tempfile.NamedTemporaryFile(mode='r+', encoding=encoding, suffix=suffix)
+  with open(tmp_fp.name, encoding=encoding, mode='w') as json_file:
+    json_file.write(input_data)
+  with open(tmp_fp.name, encoding=encoding, mode='r') as fin:
+    json_file = SimpleUploadedFile(fin.name, bytes(fin.read(), encoding=fin.encoding))
+    # Create form data
+    params = {
+      'encoding': encoding,
+      'json_file': json_file,
+    }
+
+  yield params, err_msg
+
+  # Post-process
+  json_file.close()
+  tmp_fp.close()
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_check_invalid_post_access_in_upload_jfs(get_invalid_form_param_in_upload_jfs, login_process):
+  client, user = login_process
+  params, err_msg = get_invalid_form_param_in_upload_jfs
+  # Send request
+  url = reverse('stock:upload_jsonformat_snapshot')
+  response = client.post(url, data=params)
+  errors = response.context['form'].errors
+
+  assert response.status_code == status.HTTP_200_OK
+  assert err_msg in str(errors)
+
+# =====================
+# Download CSV Snapshot
+# =====================
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_download_csv_snapshot_without_authentication(client):
+  instance = factories.SnapshotFactory()
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_post_access_in_download_csv_snapshot(login_process):
   client, user = login_process
   instance = factories.SnapshotFactory(user=user)
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
   response = client.post(url)
 
   assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
@@ -512,10 +658,10 @@ def test_post_access_in_download_snapshot(login_process):
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_invalid_request_to_download_snapshot(login_process):
+def test_invalid_request_to_download_csv_snapshot(login_process):
   client, _ = login_process
   instance = factories.SnapshotFactory()
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
   response = client.get(url)
 
   assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -523,7 +669,7 @@ def test_invalid_request_to_download_snapshot(login_process):
 @pytest.mark.stock
 @pytest.mark.view
 @pytest.mark.django_db
-def test_get_request_to_download_snapshot(mocker, login_process):
+def test_get_request_to_download_csv_snapshot(mocker, login_process):
   output = {
     'rows': [['hoge','foo'], ['bar', '123']],
     'header': ['Col1', 'Col2'],
@@ -534,7 +680,7 @@ def test_get_request_to_download_snapshot(mocker, login_process):
   # Get access
   client, user = login_process
   instance = factories.SnapshotFactory(user=user)
-  url = reverse('stock:download_snapshot', kwargs={'pk': instance.pk})
+  url = reverse('stock:download_csv_snapshot', kwargs={'pk': instance.pk})
   response = client.get(url)
   attachment = response.get('content-disposition')
   stream = response.getvalue()
@@ -542,6 +688,73 @@ def test_get_request_to_download_snapshot(mocker, login_process):
   assert response.has_header('content-disposition')
   assert output['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
   assert expected in stream
+
+# ======================
+# Download JSON Snapshot
+# ======================
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_access_to_download_json_snapshot_without_authentication(client):
+  instance = factories.SnapshotFactory()
+  url = reverse('stock:download_json_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_post_access_in_download_json_snapshot(login_process):
+  client, user = login_process
+  instance = factories.SnapshotFactory(user=user)
+  url = reverse('stock:download_json_snapshot', kwargs={'pk': instance.pk})
+  response = client.post(url)
+
+  assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_invalid_request_to_download_json_snapshot(login_process):
+  client, _ = login_process
+  instance = factories.SnapshotFactory()
+  url = reverse('stock:download_json_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+
+  assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+def test_get_request_to_download_json_snapshot(mocker, login_process):
+  output = {
+    'data': {
+      'title': 'test',
+      'detail': {
+        'cash': {},
+        'purchased_stocks': [],
+      },
+      'priority': 9,
+      'start_date': '2021-02-13',
+      'end_date': '2021-03-13',
+    },
+    'filename': urllib.parse.unquote('snapshot-test.json'),
+  }
+  text = json.dumps(output['data'], indent=2)
+  expected = bytes(text.encode('utf-8'))
+  # Get access
+  client, user = login_process
+  instance = factories.SnapshotFactory(user=user)
+  mocker.patch('stock.models.Snapshot.create_json_from_model', return_value=output)
+  url = reverse('stock:download_json_snapshot', kwargs={'pk': instance.pk})
+  response = client.get(url)
+  attachment = response.get('content-disposition')
+  binary = response.getvalue()
+
+  assert response.has_header('content-disposition')
+  assert output['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
+  assert expected in binary
 
 # ==========================
 # Periodic task for snapshot
