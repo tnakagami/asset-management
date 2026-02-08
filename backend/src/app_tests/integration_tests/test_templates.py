@@ -5,6 +5,7 @@ import urllib.parse
 from io import StringIO
 from webtest.app import AppError
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy
 from django.urls import reverse
 from decimal import Decimal
 from app_tests import (
@@ -1347,8 +1348,23 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
     config = get_test_data_of_download_snapshot
     settings.TIME_ZONE = config['timezone']
     mocker.patch('stock.models.get_language', return_value=config['lang'])
-    # Create expected data (ignore header)
+    # Create expected data
     pstock = config['pstock']
+    cash = models._SnapshotRecord(
+      code='-',
+      price=0.0,
+      dividend=0.0,
+      per=0.0,
+      pbr=0.0,
+      eps=0.0,
+      bps=0.0,
+      roe=0.0,
+      er=0.0,
+      name=str(gettext_lazy('Cash')),
+      industry='-',
+      trend='-',
+      purchased_value=config['cash'].balance,
+    )
     instance = models._SnapshotRecord(
       code=pstock.stock.code,
       price=float(pstock.stock.price),
@@ -1361,12 +1377,13 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
       er=float(pstock.stock.er),
     )
     instance.name = pstock.stock.get_name()
-    instance.industry = str(pstock.stock.industry)
+    instance.industry = pstock.stock.industry.get_name()
     instance.trend = str(instance._get_trend(pstock.stock.industry.is_defensive))
     instance.add_count(pstock.count)
     instance.add_value(float(pstock.price), pstock.count)
     lines = '\n'.join([
-      f'-,-,0.00,0.00,{config["cash"].balance}.00,0,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00',
+      ','.join([str(val) for val in instance.get_header()]),
+      ','.join(cash.get_record()),
       ','.join(instance.get_record()) + '\n',
     ])
     expected = {
@@ -1640,7 +1657,7 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
 @pytest.mark.webtest
 @pytest.mark.django_db
 class TestWholeTimeSeriesProcessing(BaseStockTestUtils):
-  def test_check_seires_of_processing(self, settings, csrf_exempt_django_app):
+  def test_check_a_seires_of_processing(self, settings, csrf_exempt_django_app):
     settings.TIME_ZONE = 'Asia/Tokyo'
     app = csrf_exempt_django_app
     user_params = {

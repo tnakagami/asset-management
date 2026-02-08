@@ -64,6 +64,13 @@ class _DatalistInfo():
 @pytest.mark.utils
 @pytest.mark.widget
 class TestDatalist:
+  def test_check_variables_of_datalist(self):
+    instance = widgets.Datalist()
+
+    assert instance.template_name == 'widgets/custom_datalist.html'
+    assert instance.option_template_name == 'widgets/custom_datalist_option.html'
+    assert not instance.use_dataset()
+
   @pytest.mark.parametrize([
     'attrs',
     'exact',
@@ -142,13 +149,10 @@ class TestDatalist:
 class TestDropdownWithInput:
   def test_check_variables_of_dropdown_with_input(self):
     instance = widgets.DropdownWithInput()
-    exact_input_type = 'text'
-    exact_template_name = 'widgets/custom_dropdown.html'
-    exact_option_template_name = 'widgets/custom_dropdown_option.html'
 
-    assert instance.input_type == exact_input_type
-    assert instance.template_name == exact_template_name
-    assert instance.option_template_name == exact_option_template_name
+    assert instance.input_type == 'text'
+    assert instance.template_name == 'widgets/custom_dropdown.html'
+    assert instance.option_template_name == 'widgets/custom_dropdown_option.html'
 
   def test_check_create_option_method(self):
     instance = widgets.DropdownWithInput()
@@ -177,18 +181,6 @@ class TestDropdownWithInput:
     assert widget['type'] == 'text'
     assert widget['initial'] == exact
     assert widget['dropdown_id'] == f'{name}_dropdown'
-
-@pytest.mark.utils
-@pytest.mark.widget
-class TestDatalist:
-  def test_check_variables_of_datalist(self):
-    instance = widgets.Datalist()
-    exact_template_name = 'widgets/custom_datalist.html'
-    exact_option_template_name = 'widgets/custom_datalist_option.html'
-
-    assert instance.template_name == exact_template_name
-    assert instance.option_template_name == exact_option_template_name
-    assert not instance.use_dataset()
 
 @pytest.mark.utils
 @pytest.mark.widget
