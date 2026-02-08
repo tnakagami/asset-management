@@ -46,6 +46,8 @@ django-webtest = "^1.9.13"
 PYTHONPATH = "/opt/app"
 DJANGO_EXECUTABLE_TYPE = "release"
 DJANGO_IS_SECURE_COOKIE = "False"
+DJANGO_LANGUAGE_CODE = "en"
+DJANGO_TIME_ZONE = "UTC"
 
 [tool.pytest.ini_options]
 addopts = "-vv --rootdir=/opt/app --cov=. --cov-report=xml --cov-report=html --cov-config=.coveragerc"

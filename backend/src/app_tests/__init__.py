@@ -1,4 +1,16 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from . import factories
+
+class BaseTestUtils:
+  def get_pks(self, xs):
+    return [obj.pk for obj in xs]
+
+# Get date based on tuple data (yyyy,mm,dd)
+def get_date(ymd, tzinfo=timezone.utc):
+  date_with_tz = datetime(*ymd, 1, 2, 3, tzinfo=tzinfo)
+
+  return date_with_tz
 
 @dataclass(frozen=True)
 class _HTTP_STATUS_CODE:
@@ -59,4 +71,9 @@ class _HTTP_STATUS_CODE:
 
 status = _HTTP_STATUS_CODE()
 
-__all__ = ['status']
+__all__ = [
+  'factories',
+  'status',
+  'get_date',
+  'BaseTestUtils',
+]
