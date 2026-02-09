@@ -35,5 +35,6 @@ urlpatterns = [
   # Stock
   path('list/stocks', views.ListStock.as_view(), name='list_stock'),
   path('download/stocks', views.DownloadStockPage.as_view(), name='download_stock'),
+  # Explanation
   path('explanation', views.ExplanationPage.as_view(), name='explanation'),
 ]

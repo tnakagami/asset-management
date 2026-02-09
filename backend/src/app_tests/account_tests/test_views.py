@@ -1,145 +1,94 @@
 import pytest
 from dataclasses import dataclass
-from django.urls import reverse
 from django.contrib.auth import get_user_model
-from app_tests import status
+from django.urls import reverse
+from app_tests import status, factories
 
-User = get_user_model()
-
-@dataclass
-class _UserInfo:
-  username: str
-  email: str
-  password: str
-  user: User
-
-@pytest.fixture
-def init_records(django_db_blocker):
-  # First user
-  hoge = {
-    'username': 'hoge',
-    'email': 'hoge@example.com',
-    'password': 'password1',
-  }
-  # Second user
-  foo = {
-    'username': 'foo',
-    'email': 'foo@example.com',
-    'password': 'password2',
-  }
-
-  with django_db_blocker.unblock():
-    users = [
-      _UserInfo(**hoge, user=User.objects.create_user(**hoge)),
-      _UserInfo(**foo, user=User.objects.create_user(**foo))
-    ]
-
-  return users
-
-@pytest.mark.account
-@pytest.mark.view
-def test_index_view_get_access(client):
-  url = reverse('account:index')
-  response = client.get(url)
-
-  assert response.status_code == status.HTTP_200_OK
-
-@pytest.mark.account
-@pytest.mark.view
-def test_login_view_get_access(client):
-  url = reverse('account:login')
-  response = client.get(url)
-
-  assert response.status_code == status.HTTP_200_OK
+UserModel = get_user_model()
 
 @pytest.mark.account
 @pytest.mark.view
 @pytest.mark.django_db
-def test_login_view_post_access(init_records, client):
-  user = init_records[0]
-  params = {
-    'username': user.username,
-    'password': user.password,
-  }
-  url = reverse('account:login')
-  response = client.post(url, params)
+class TestIndexLoginLogout:
+  index_url = reverse('account:index')
+  login_url = reverse('account:login')
+  logout_url = reverse('account:logout')
 
-  assert response.status_code == status.HTTP_302_FOUND
-  assert response['Location'] == reverse('account:index')
+  def test_index_view_get_access(self, client):
+    response = client.get(self.index_url)
 
-@pytest.mark.account
-@pytest.mark.view
-@pytest.mark.django_db
-def test_with_authenticated_client_for_user_profile(init_records, client):
-  info = init_records[0]
-  client.force_login(info.user)
-  url = reverse('account:user_profile', kwargs={'pk': info.user.pk})
-  response = client.get(url)
+    assert response.status_code == status.HTTP_200_OK
 
-  assert response.status_code == status.HTTP_200_OK
+  def test_login_view_get_access(self, client):
+    response = client.get(self.login_url)
 
-@pytest.mark.account
-@pytest.mark.view
-@pytest.mark.django_db
-def test_without_authentication_for_user_profile(init_records, client):
-  info = init_records[0]
-  url = reverse('account:user_profile', kwargs={'pk': info.user.pk})
-  response = client.get(url)
+    assert response.status_code == status.HTTP_200_OK
 
-  assert response.status_code == status.HTTP_403_FORBIDDEN
+  def test_login_view_post_access(self, get_user_with_option, client):
+    option, _ = get_user_with_option
+    params = {
+      'username': option['username'],
+      'password': option['password'],
+    }
+    response = client.post(self.login_url, params)
 
-@pytest.mark.account
-@pytest.mark.view
-@pytest.mark.django_db
-def test_invalid_user_profile_page(init_records, client):
-  own = init_records[0]
-  other = init_records[1]
-  client.force_login(own.user)
-  url = reverse('account:user_profile', kwargs={'pk': other.user.pk})
-  response = client.get(url)
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == self.index_url
 
-  assert response.status_code == status.HTTP_403_FORBIDDEN
+  def test_logout_page(self, get_user_with_option, client):
+    _, user = get_user_with_option
+    client.force_login(user)
+    response = client.post(self.logout_url)
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == self.index_url
 
 @pytest.mark.account
 @pytest.mark.view
 @pytest.mark.django_db
-def test_access_to_update_user_profile_page(init_records, client):
-  screen_name = 'test-user-profile'
-  user = init_records[0].user
-  user.screen_name = screen_name
-  user.save()
-  url = reverse('account:update_profile', kwargs={'pk': user.pk})
-  client.force_login(user)
-  response = client.get(url)
+class TestUserProfile:
+  profile_url = lambda _self, pk: reverse('account:user_profile', kwargs={'pk': pk})
+  update_profile_url = lambda _self, pk: reverse('account:update_profile', kwargs={'pk': pk})
 
-  assert response.status_code == status.HTTP_200_OK
+  def test_with_authenticated_client_for_user_profile(self, get_user_with_option, client):
+    _, user = get_user_with_option
+    client.force_login(user)
+    response = client.get(self.profile_url(user.pk))
 
-@pytest.mark.account
-@pytest.mark.view
-@pytest.mark.django_db
-def test_update_user_profile(init_records, client):
-  old_name = 'old-name'
-  new_name = 'new-name'
-  user = init_records[0].user
-  user.screen_name = old_name
-  user.save()
-  url = reverse('account:update_profile', kwargs={'pk': user.pk})
-  client.force_login(user)
-  response = client.post(url, data={'screen_name': new_name})
-  modified_user = User.objects.get(pk=user.pk)
+    assert response.status_code == status.HTTP_200_OK
 
-  assert response.status_code == status.HTTP_302_FOUND
-  assert response['Location'] == reverse('account:user_profile', kwargs={'pk': user.pk})
-  assert modified_user.screen_name == new_name
+  def test_without_authentication_for_user_profile(self, get_user_with_option, client):
+    _, user = get_user_with_option
+    response = client.get(self.profile_url(user.pk))
 
-@pytest.mark.account
-@pytest.mark.view
-@pytest.mark.django_db
-def test_logout_page(init_records, client):
-  info = init_records[0]
-  client.force_login(info.user)
-  url = reverse('account:logout')
-  response = client.post(url)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
-  assert response.status_code == status.HTTP_302_FOUND
-  assert response['Location'] == reverse('account:index')
+  def test_invalid_user_profile_page(self, get_user_with_option, client):
+    _, owner = get_user_with_option
+    other = factories.UserFactory()
+    client.force_login(owner)
+    response = client.get(self.profile_url(other.pk))
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_access_to_update_user_profile_page(self, get_user_with_option, client):
+    _, user = get_user_with_option
+    user.screen_name = 'test-user-profile'
+    user.save()
+    client.force_login(user)
+    response = client.get(self.update_profile_url(user.pk))
+
+    assert response.status_code == status.HTTP_200_OK
+
+  def test_update_user_profile(self, get_user_with_option, client):
+    _, user = get_user_with_option
+    new_name = 'new-name'
+    user.screen_name = 'old-name'
+    user.save()
+    client.force_login(user)
+    response = client.post(self.update_profile_url(user.pk), data={'screen_name': new_name})
+    updated_user = UserModel.objects.get(pk=user.pk)
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == self.profile_url(user.pk)
+    assert updated_user.screen_name == new_name

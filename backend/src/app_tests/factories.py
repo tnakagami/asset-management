@@ -1,24 +1,45 @@
 import factory
 import uuid
+from celery import states
 from django.utils import timezone
-from faker import Factory as FakerFactory
-from stock import models
 from django_celery_results.models import TaskResult
 from django_celery_beat import models as beat_models
-from celery import states
-from app_tests.account_tests import factories as account_factories
+from faker import Factory as FakerFactory
+from account.models import User
+from stock import models
 
 faker = FakerFactory.create()
-_clip = account_factories.clip
-UserFactory = account_factories.UserFactory
 
-def _get_code(idx, max_len=16):
+def clip(target_name, max_length):
+  if len(target_name) > max_length:
+    clipped = target_name[:max_length]
+  else:
+    clipped = target_name
+
+  return clipped
+
+def get_code(idx, max_len=16):
   val = faker.pyint(min_value=0, max_value=9999, step=1)
   alphabets = faker.pystr(min_chars=2, max_chars=5)
-  pseudo_code = _clip(f'{alphabets}{idx}{val}', max_len)
+  pseudo_code = clip(f'{alphabets}{idx}{val}', max_len)
 
   return pseudo_code
 
+# =======
+# Account
+# =======
+class UserFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = User
+
+  username = factory.Sequence(lambda idx: f'user{idx}')
+  email = factory.LazyAttribute(lambda instance: clip(f'{instance.username}@example.com', 128).lower())
+  screen_name = factory.LazyAttribute(lambda instance: clip(faker.name(), 128))
+  date_joined = factory.LazyFunction(timezone.now)
+
+# =====
+# Stock
+# =====
 class IndustryFactory(factory.django.DjangoModelFactory):
   class Meta:
     model = models.Industry
@@ -29,7 +50,7 @@ class LocalizedIndustryFactory(factory.django.DjangoModelFactory):
   class Meta:
     model = models.LocalizedIndustry
 
-  name = factory.LazyAttribute(lambda instance: _clip(faker.name(), 64))
+  name = factory.LazyAttribute(lambda instance: clip(faker.name(), 64))
   language_code = 'en'
   industry = factory.SubFactory(IndustryFactory)
 
@@ -58,7 +79,7 @@ class StockFactory(factory.django.DjangoModelFactory):
       'min_value': 0,
     }
 
-  code = factory.Sequence(lambda idx: _get_code(idx, max_len=16))
+  code = factory.Sequence(lambda idx: get_code(idx, max_len=16))
   industry = factory.SubFactory(IndustryFactory)
   price = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=8, **instance.money_params))
   dividend = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=5, **instance.money_params))
@@ -122,7 +143,7 @@ class SnapshotFactory(factory.django.DjangoModelFactory):
 
   user = factory.SubFactory(UserFactory)
   uuid = factory.LazyFunction(uuid.uuid4)
-  title = factory.LazyAttribute(lambda instance: _clip(faker.name(), 255))
+  title = factory.LazyAttribute(lambda instance: clip(faker.name(), 255))
   end_date = factory.LazyFunction(timezone.now)
   created_at = factory.LazyFunction(timezone.now)
 
@@ -165,7 +186,7 @@ class PeriodicTaskFactory(factory.django.DjangoModelFactory):
   class Meta:
     model = beat_models.PeriodicTask
 
-  name = factory.Sequence(lambda idx: _clip(f'No.{idx}-task', 200))
+  name = factory.Sequence(lambda idx: clip(f'No.{idx}-task', 200))
   task = 'stock.tasks.update_specific_snapshot'
   crontab = factory.SubFactory(CrontabScheduleFactory)
   enabled = True
