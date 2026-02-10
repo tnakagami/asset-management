@@ -507,6 +507,39 @@ class PurchasedStockQuerySet(models.QuerySet):
   def older(self):
     return self.order_by('purchase_date')
 
+  def _annotate_names(self):
+    stocks = LocalizedStock.objects.select_current_lang().filter(stock=models.OuterRef('pk'))
+    industries = LocalizedIndustry.objects.select_current_lang().filter(industry=models.OuterRef('stock__industry__pk'))
+    queryset = self.annotate(
+      code=models.F('stock__code')
+    ).annotate(
+      name=models.Subquery(stocks.values('name'))
+    ).annotate(
+      industry_name=models.Subquery(industries.values('name'))
+    )
+
+    return queryset
+
+  def _annotate_diff(self):
+    return self.annotate(
+      diff=(models.F('stock__price')-models.F('price'))*models.F('count'),
+    )
+
+  def select_targets(self, tree=None):
+    queryset = self.select_related('stock') \
+                   .prefetch_related('stock__locals') \
+                   ._annotate_names() \
+                   ._annotate_diff()
+
+    if tree:
+      # Assumption: abstract syntax tree is validated by caller
+      visitor = _AnalyzeAndCreateQmodelCondition()
+      visitor.visit(tree)
+      print(visitor.condition)
+      queryset = queryset.filter(visitor.condition)
+
+    return queryset
+
   def selected_range(self, from_date=None, to_date=None):
     queryset = self.select_related('stock').filter(has_been_sold=False)
 
