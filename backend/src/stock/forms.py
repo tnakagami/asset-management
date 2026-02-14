@@ -664,16 +664,15 @@ class StockSearchForm(forms.Form):
   )
 
   def __init__(self, *args, **kwargs):
-    params = kwargs.pop('data', None)
+    params = kwargs.pop('data', {})
     # Convert message
-    if params is not None:
-      for key, val in params.items():
-        if key == 'ordering':
-          target = val.split(',')
-        else:
-          utf8str = val.encode('utf-8', 'ignore')
-          target = urllib.parse.unquote(utf8str)
-        params[key] = target
+    for key, val in params.items():
+      if key == 'ordering':
+        target = val.split(',')
+      else:
+        utf8str = val.encode('utf-8', 'ignore')
+        target = urllib.parse.unquote(utf8str)
+      params[key] = target
     super().__init__(*args, data=params, **kwargs)
 
   def get_queryset_with_condition(self):
@@ -801,12 +800,11 @@ class PurchasedStockFilteringForm(forms.Form):
   )
 
   def __init__(self, *args, **kwargs):
-    params = kwargs.pop('data', None)
+    params = kwargs.pop('data', {})
     # Convert message
-    if params is not None:
-      for key, val in params.items():
-        target = val.encode('utf-8', 'ignore')
-        params[key] = urllib.parse.unquote(target)
+    for key, val in params.items():
+      target = val.encode('utf-8', 'ignore')
+      params[key] = urllib.parse.unquote(target)
     super().__init__(*args, data=params, **kwargs)
 
   def get_queryset_with_condition(self, user):

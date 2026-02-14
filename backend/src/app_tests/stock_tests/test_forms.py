@@ -1137,6 +1137,11 @@ class TestStockSearchForm(BaseTestUtils):
 
     assert form.is_valid() == is_valid
 
+  def test_no_input_arguments(self):
+    form = forms.StockSearchForm()
+
+    assert form.is_valid()
+
   @pytest.mark.parametrize([
     'params',
     'is_valid',
@@ -1258,6 +1263,11 @@ class TestPurchasedStockFilteringForm(BaseTestUtils):
     form = forms.PurchasedStockFilteringForm(data=params)
 
     assert form.is_valid() == is_valid
+
+  def test_no_input_arguments(self):
+    form = forms.PurchasedStockFilteringForm()
+
+    assert form.is_valid()
 
   @pytest.mark.parametrize([
     'params',
