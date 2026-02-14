@@ -35,9 +35,7 @@
       <div class="container">
         {% block content %}
         <p>
-          {% blocktrans %}
-          Redirect to the top page after <span id="rest-count">30</span> seconds.
-          {% endblocktrans  %}
+          {% blocktrans %}Redirect to the top page after <span id="rest-count">30</span> seconds.{% endblocktrans  %}
         </p>
         <p>
           <a href="{% url 'account:index' %}" class="btn btn-secondary custom-boxshadow">
