@@ -34,7 +34,11 @@
     <main class="w-100 mx-auto mb-auto">
       <div class="container">
         {% block content %}
-        <p>{% trans "Redirect to the top page after 30 seconds." %}</p>
+        <p>
+          {% blocktrans %}
+          Redirect to the top page after <span id="rest-count">30</span> seconds.
+          {% endblocktrans  %}
+        </p>
         <p>
           <a href="{% url 'account:index' %}" class="btn btn-secondary custom-boxshadow">
             {% trans "Back to top page" %}
@@ -54,9 +58,20 @@
     <script>
       // redirect process
       (function(){
-        setTimeout(() => {
-          window.location.href = "{% url 'account:index' %}";
-        }, 30 * 1000);
+        const init = () => {
+          const element = document.getElementById('rest-count');
+          const timerId = setInterval(() => {
+            const count = Number(element.textContent);
+            element.textContent = count - 1;
+            // Check counter
+            if (count <= 1) {
+              window.location.href = "{% url 'account:index' %}";
+              clearInterval(timerId);
+            }
+          }, 1000);
+        };
+        // Add DOM event
+        document.addEventListener('DOMContentLoaded', init);
       }());
     </script>
     {% block bodyjs %}

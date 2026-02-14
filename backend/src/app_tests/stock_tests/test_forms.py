@@ -2,12 +2,17 @@ import pytest
 import ast
 import json
 import urllib.parse
+import sys
+from functools import wraps
 from django.core.exceptions import ValidationError
 from django_celery_beat.models import PeriodicTask
 from stock import forms, models
 from app_tests import factories, get_date, BaseTestUtils
 
 class _DummyASTCondition:
+  for_str = forms._ValidateCondition.for_str
+  for_number = forms._ValidateCondition.for_number
+
   def __init__(self, *args, **kwargs):
     pass
 
@@ -16,6 +21,68 @@ class _DummyASTCondition:
 
   def validate(self):
     pass
+
+class CommonConditionConfig:
+  def get_search_form_config(self):
+    _meta = models.Stock._meta
+    fields = {
+      'code':          _meta.get_field('code'),
+      'name':          models.LocalizedStock._meta.get_field('name'),
+      'industry_name': models.LocalizedIndustry._meta.get_field('name'),
+      'price':         _meta.get_field('price'),
+      'dividend':      _meta.get_field('dividend'),
+      'div_yield':     forms._IgnoredField(),
+      'per':           _meta.get_field('per'),
+      'pbr':           _meta.get_field('pbr'),
+      'multi_pp':      forms._IgnoredField(),
+      'eps':           _meta.get_field('eps'),
+      'bps':           _meta.get_field('bps'),
+      'roe':           _meta.get_field('roe'),
+      'er':            _meta.get_field('er'),
+    }
+    # Define comparison operators to check the relationship between variable and value
+    comp_ops = {
+      'code':          _DummyASTCondition.for_str,
+      'name':          _DummyASTCondition.for_str,
+      'industry_name': _DummyASTCondition.for_str,
+      'price':         _DummyASTCondition.for_number,
+      'dividend':      _DummyASTCondition.for_number,
+      'div_yield':     _DummyASTCondition.for_number,
+      'per':           _DummyASTCondition.for_number,
+      'pbr':           _DummyASTCondition.for_number,
+      'multi_pp':      _DummyASTCondition.for_number,
+      'eps':           _DummyASTCondition.for_number,
+      'bps':           _DummyASTCondition.for_number,
+      'roe':           _DummyASTCondition.for_number,
+      'er':            _DummyASTCondition.for_number,
+    }
+
+    return fields, comp_ops
+
+  def get_filtering_form_config(self):
+    # Define purchased stock fields to check right operand
+    _meta = models.PurchasedStock._meta
+    fields = {
+      'code':          models.Stock._meta.get_field('code'),
+      'name':          models.LocalizedStock._meta.get_field('name'),
+      'industry_name': models.LocalizedIndustry._meta.get_field('name'),
+      'price':         _meta.get_field('price'),
+      'purchase_date': _meta.get_field('purchase_date'),
+      'count':         _meta.get_field('count'),
+      'diff':          forms._IgnoredField(),
+    }
+    # Define comparison operators to check the relationship between variable and value
+    comp_ops = {
+      'code':          _DummyASTCondition.for_str,
+      'name':          _DummyASTCondition.for_str,
+      'industry_name': _DummyASTCondition.for_str,
+      'price':         _DummyASTCondition.for_number,
+      'purchase_date': _DummyASTCondition.for_number,
+      'count':         _DummyASTCondition.for_number,
+      'diff':          _DummyASTCondition.for_number,
+    }
+
+    return fields, comp_ops
 
 @pytest.mark.stock
 @pytest.mark.form
@@ -61,7 +128,7 @@ class TestIgnoredField:
 
 @pytest.mark.stock
 @pytest.mark.form
-class TestValidateCondition:
+class TestValidateCondition(CommonConditionConfig):
   @pytest.mark.parametrize([
     'condition',
   ], [
@@ -71,11 +138,11 @@ class TestValidateCondition:
     'simple-pattern',
     'with-return-code',
   ])
-  def test_valid_filtering_patterns(self, mocker, condition):
+  def test_validate_search_patterns(self, mocker, condition):
     mocker.patch('stock.forms._ValidateCondition', new=_DummyASTCondition)
 
     try:
-      forms.validate_filtering_condition(condition)
+      forms.validate_search_condition(condition)
     except Exception as ex:
       pytest.fail(f'Unexpected Error: {ex}')
 
@@ -92,17 +159,15 @@ class TestValidateCondition:
     'raise-index-error',
     'raise-key-error',
   ])
-  def test_invalid_filtering_patterns(self, mocker, method_name, exception, err_msg):
+  def test_invalid_search_patterns(self, mocker, method_name, exception, err_msg):
     mocker.patch('stock.forms._ValidateCondition', new=_DummyASTCondition)
     mocker.patch(f'stock.forms._ValidateCondition.{method_name}', side_effect=exception)
 
     with pytest.raises(ValidationError) as ex:
-      forms.validate_filtering_condition('price < 100')
+      forms.validate_search_condition('price < 100')
 
     assert err_msg in str(ex.value)
 
-  @pytest.mark.stock
-  @pytest.mark.form
   @pytest.mark.parametrize([
     'condition',
   ], [
@@ -137,7 +202,8 @@ class TestValidateCondition:
     'check-boolop-both-with-bracket',
   ])
   def test_valid_visit_method(self, condition):
-    visitor = forms._ValidateCondition()
+    fields, comp_ops = self.get_search_form_config()
+    visitor = forms._ValidateCondition(fields, comp_ops)
     tree = ast.parse(condition, mode='eval')
 
     try:
@@ -173,7 +239,8 @@ class TestValidateCondition:
     'check-er-with-eq', 'check-er-with-not-eq', 'check-er-with-lt', 'check-er-with-lte', 'check-er-with-gt', 'check-er-with-gte',
   ])
   def test_valid_validate_method(self, condition):
-    visitor = forms._ValidateCondition()
+    fields, comp_ops = self.get_search_form_config()
+    visitor = forms._ValidateCondition(fields, comp_ops)
     tree = ast.parse(condition, mode='eval')
     visitor.visit(tree)
 
@@ -211,7 +278,8 @@ class TestValidateCondition:
     'use-attribute',
   ])
   def test_invalid_operator(self, condition, err_msg):
-    visitor = forms._ValidateCondition()
+    fields, comp_ops = self.get_search_form_config()
+    visitor = forms._ValidateCondition(fields, comp_ops)
     tree = ast.parse(condition, mode='eval')
 
     with pytest.raises(SyntaxError) as ex:
@@ -235,7 +303,8 @@ class TestValidateCondition:
     'invalid-operator-for-number',
   ])
   def test_invalid_validation_method_patterns(self, condition, exception_type, err_msg):
-    visitor = forms._ValidateCondition()
+    fields, comp_ops = self.get_search_form_config()
+    visitor = forms._ValidateCondition(fields, comp_ops)
     tree = ast.parse(condition, mode='eval')
     visitor.visit(tree)
 
@@ -243,6 +312,76 @@ class TestValidateCondition:
       visitor.validate()
 
     assert err_msg in str(ex.value)
+
+
+# ==================
+# TestWrapValidation
+# ==================
+class _ExceptionCallback(_DummyASTCondition):
+  def __init__(self, exception_class, err_msg):
+    self.exception_class = exception_class
+    self.err_msg = err_msg
+
+  def validate(self):
+    raise self.exception_class(self.err_msg)
+
+@pytest.mark.stock
+@pytest.mark.form
+class TestWrapValidation(CommonConditionConfig):
+  def test_decorator_of_validation(self):
+    @forms.wrap_validation
+    def sample_callback():
+      return _DummyASTCondition()
+
+    ret = sample_callback('1 < 2')
+
+    assert ret is None
+
+  @pytest.mark.parametrize([
+    'exception_class',
+    'err_msg',
+    'expected_err',
+  ], [
+    (SyntaxError, 'hoge', 'Invalid syntax: hoge'),
+    (IndexError, 'foo', 'Invalid syntax: foo'),
+    (KeyError, 'bar', "Invalid variable: \'bar\'"),
+  ], ids=[
+    'syntax-error',
+    'index-error',
+    'key-error',
+  ])
+  def test_invalid_case_of_decorator(self, exception_class, err_msg, expected_err):
+    @forms.wrap_validation
+    def sample_callback():
+      return _ExceptionCallback(exception_class, err_msg)
+
+    with pytest.raises(ValidationError) as ex:
+      _ = sample_callback('1 < 2')
+
+    assert expected_err in str(ex.value)
+
+  @pytest.mark.parametrize([
+    'test_func_name',
+    'config_name',
+  ], [
+    ('validate_search_condition', 'get_search_form_config'),
+    ('validate_filtering_condition', 'get_filtering_form_config'),
+  ], ids=[
+    'check-search-condition',
+    'check-filtering-condition',
+  ])
+  def test_validate_conditions(self, test_func_name, config_name):
+    # Call test function
+    decorated_test_func = getattr(forms, test_func_name)
+    instance = decorated_test_func.__wrapped__()
+    field_keys = instance._fields.keys()
+    op_keys = instance._comp_ops.keys()
+    # Get expected values
+    config_getter = getattr(self, config_name)
+    expected_fields, expected_ops = config_getter()
+
+    assert all([key in field_keys for key in expected_fields.keys()])
+    assert all([key in op_keys for key in expected_ops.keys()])
 
 # ========
 # CashForm
@@ -993,10 +1132,15 @@ class TestStockSearchForm(BaseTestUtils):
     'empty-input',
     'invalid-inputs',
   ])
-  def test_stock_search_form_validation(self, params, is_valid):
+  def test_input_validation(self, params, is_valid):
     form = forms.StockSearchForm(data=params)
 
     assert form.is_valid() == is_valid
+
+  def test_no_input_arguments(self):
+    form = forms.StockSearchForm()
+
+    assert form.is_valid()
 
   @pytest.mark.parametrize([
     'params',
@@ -1023,6 +1167,20 @@ class TestStockSearchForm(BaseTestUtils):
 
     assert form.is_valid() == is_valid
 
+  @pytest.fixture(scope='class')
+  def get_pseudo_stocks(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      industry = factories.IndustryFactory()
+      stocks = [
+        factories.StockFactory(code='100', price=100, industry=industry),
+        factories.StockFactory(code='600', price=250, industry=industry),
+        factories.StockFactory(code='200', price=300, industry=industry),
+        factories.StockFactory(code='800', price=500, industry=industry),
+        factories.StockFactory(code='400', price=750, industry=industry),
+      ]
+
+    return stocks
+
   @pytest.mark.parametrize([
     'params',
     'indices',
@@ -1046,21 +1204,140 @@ class TestStockSearchForm(BaseTestUtils):
     'empty-ordering',
     'invalid-condition',
   ])
-  def test_check_get_queryset_with_condition(self, mocker, params, indices, exact_valid):
-    industry = factories.IndustryFactory()
-    stocks = [
-      factories.StockFactory(code='100', price=100, industry=industry),
-      factories.StockFactory(code='600', price=250, industry=industry),
-      factories.StockFactory(code='200', price=300, industry=industry),
-      factories.StockFactory(code='800', price=500, industry=industry),
-      factories.StockFactory(code='400', price=750, industry=industry),
-    ]
+  def test_check_get_queryset_with_condition(self, get_pseudo_stocks, mocker, params, indices, exact_valid):
+    stocks = get_pseudo_stocks
     queryset = models.Stock.objects.filter(pk__in=self.get_pks(stocks))
     mocker.patch('stock.models.StockManager.get_queryset', return_value=queryset)
     form = forms.StockSearchForm(data=params)
     is_valid = form.is_valid()
     qs = form.get_queryset_with_condition()
     expected = [stocks[idx] for idx in indices]
+
+    assert is_valid == exact_valid
+    assert len(expected) == qs.count()
+    assert all([record.pk == exact.pk for record, exact in zip(qs, expected)])
+
+# ===========================
+# PurchasedStockFilteringForm
+# ===========================
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+class TestPurchasedStockFilteringForm(BaseTestUtils):
+  @pytest.mark.parametrize([
+    'params',
+    'exacts',
+  ], [
+    ({}, {'condition': ''}),
+    ({'condition': ''}, {'condition': ''}),
+    ({'condition': 'price < 123'}, {'condition': 'price < 123'}),
+  ], ids=[
+    'empty-param',
+    'empty-condition-data',
+    'valid-condition-data',
+  ])
+  def test_init_method(self, params, exacts):
+    form = forms.PurchasedStockFilteringForm(data=params)
+    is_valid = form.is_valid()
+    condition = form.cleaned_data['condition']
+    exact_cond = exacts['condition']
+
+    assert is_valid
+    assert condition == exacts['condition']
+
+  @pytest.mark.parametrize([
+    'params',
+    'is_valid',
+  ], [
+    ({'condition': 'price < 100'}, True),
+    ({'condition': 'price < 100\nand\ncode=="cone"'}, True),
+    ({'condition': ''}, True),
+    ({'condition': 'code<"1200"'}, False),
+  ], ids=[
+    'valid-inputs',
+    'valid-inputs-with-return-code',
+    'empty-input',
+    'invalid-inputs',
+  ])
+  def test_input_validation(self, params, is_valid):
+    form = forms.PurchasedStockFilteringForm(data=params)
+
+    assert form.is_valid() == is_valid
+
+  def test_no_input_arguments(self):
+    form = forms.PurchasedStockFilteringForm()
+
+    assert form.is_valid()
+
+  @pytest.mark.parametrize([
+    'params',
+    'is_valid',
+  ], [
+    ({'target': 'code', 'compop': '==', 'inputs': '"hoge"', 'condition': ''}, True),
+    ({'target': 'code', 'compop': '==', 'inputs': '"hoge"'}, True),
+    ({'target': 'code', 'compop': '=='}, True),
+    ({'target': 'code'}, True),
+    ({}, True),
+    ({'no-field': 'hogehoge'}, True),
+  ], ids=[
+    'send-target-compop-inputs-condition',
+    'send-target-compop-inputs',
+    'send-target-compop',
+    'send-target-only',
+    'send-empty-data',
+    'ignore-field',
+  ])
+  def test_target_field_data(self, params, is_valid):
+    form = forms.PurchasedStockFilteringForm(data=params)
+
+    assert form.is_valid() == is_valid
+
+  @pytest.fixture(scope='class')
+  def get_pseudo_purchased_stocks(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      industry = factories.IndustryFactory()
+      stock1 = factories.StockFactory(code='001abc', price=1000, industry=industry)
+      stock2 = factories.StockFactory(code='002xyz', price=2000, industry=industry)
+      _ = factories.LocalizedStockFactory(name='hogehoge', stock=stock1)
+      _ = factories.LocalizedStockFactory(name='foobar', stock=stock2)
+      purchased_stocks = [
+        factories.PurchasedStockFactory(user=user, stock=stock1, price=999,  count=1,   purchase_date=get_date((2020, 1, 1))),
+        factories.PurchasedStockFactory(user=user, stock=stock1, price=1001, count=1,   purchase_date=get_date((2022, 6, 7))),
+        factories.PurchasedStockFactory(user=user, stock=stock2, price=1999, count=1,   purchase_date=get_date((2019, 3, 4))),
+        factories.PurchasedStockFactory(user=user, stock=stock2, price=2002, count=1,   purchase_date=get_date((2020, 1, 1))),
+        factories.PurchasedStockFactory(user=user, stock=stock2, price=2003, count=100, purchase_date=get_date((2021, 2, 3))),
+      ]
+
+    return user, purchased_stocks
+
+  @pytest.mark.parametrize([
+    'params',
+    'indices',
+    'exact_valid',
+  ], [
+    ({'condition': 'price < 1000'}, [0], True),
+    ({'condition': 'count == 1'}, [1, 0, 3, 2], True),
+    ({'condition': 'count == 1 and code == "002xyz"'}, [3, 2], True),
+    ({'condition': 'count == 1\n and\n diff < 0'}, [1, 3], True),
+    ({}, [1, 4, 0, 3, 2], True),
+    ({'condition': ''}, [1, 4, 0, 3, 2], True),
+    ({'condition': 'price + 100 < 5000'}, [1, 4, 0, 3, 2], False),
+  ], ids=[
+    'set-condition-with-single-match',
+    'set-condition-with-multiple-matches',
+    'set-multi-conditions',
+    'set-multi-conditions-with-return-code',
+    'set-no-fields',
+    'empty-condition',
+    'invalid-condition',
+  ])
+  def test_check_get_queryset_with_condition(self, get_pseudo_purchased_stocks, params, indices, exact_valid):
+    user, purchased_stocks = get_pseudo_purchased_stocks
+    form = forms.PurchasedStockFilteringForm(data=params)
+    is_valid = form.is_valid()
+    qs = form.get_queryset_with_condition(user)
+    expected = [purchased_stocks[idx] for idx in indices]
 
     assert is_valid == exact_valid
     assert len(expected) == qs.count()

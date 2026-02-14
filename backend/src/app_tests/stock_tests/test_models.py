@@ -16,6 +16,47 @@ from app_tests import factories, get_date, BaseTestUtils
 
 UserModel = get_user_model()
 
+@pytest.fixture(scope='module')
+def pseudo_stock_data(django_db_blocker):
+  with django_db_blocker.unblock():
+    industries = [
+      factories.IndustryFactory(),
+      factories.IndustryFactory(),
+      factories.IndustryFactory(),
+    ]
+    localized_industries = [
+      factories.LocalizedIndustryFactory(industry=industries[0], name='foo-bar'),
+      factories.LocalizedIndustryFactory(industry=industries[1], name='foo'),
+      factories.LocalizedIndustryFactory(industry=industries[2], name='hogehoge'),
+    ]
+    stock_params = [
+      {'code': '0010', 'name': 'sampel1', 'industry': 0, 'price': '1200', 'dividend': '15',
+        'per':  '0.2', 'pbr': '1.3', 'eps': '1.7', 'bps': '2.3', 'roe': '5.0', 'er': '23.2'},
+      {'code': '0012', 'name': 'alpha01', 'industry': 0, 'price': '800', 'dividend': '5',
+        'per':  '1.3', 'pbr': '2.5', 'eps': '0.25', 'bps': '1.1', 'roe': '5.3', 'er': '16'},
+      {'code': '0033', 'name': 'beta20', 'industry': 1, 'price': '2000', 'dividend': '15.1',
+        'per':  '2.2', 'pbr': '4.3', 'eps': '5.3', 'bps': '4.1', 'roe': '7.2', 'er': '12.7'},
+      {'code': '005A', 'name': 'kappa88', 'industry': 1, 'price': '1500', 'dividend': '5.2',
+        'per':  '5.7', 'pbr': '1.3', 'eps': '7.9', 'bps': '-5.6', 'roe': '2.1', 'er': '8'},
+      {'code': '040a', 'name': 'gamma_c', 'industry': 2, 'price': '1000', 'dividend': '9',
+        'per':  '1.7', 'pbr': '0.1', 'eps': '3.5', 'bps': '3.7', 'roe': '0.9', 'er': '7.2'},
+    ]
+    stocks = [
+      factories.StockFactory(
+        code=kwargs['code'], industry=industries[kwargs['industry']],
+        price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
+        per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
+        bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
+      ) for kwargs in stock_params
+    ]
+    localized_stocks = [
+      factories.LocalizedStockFactory(stock=stock, name=kwargs['name'])
+      for stock, kwargs in zip(stocks, stock_params)
+    ]
+
+  return stocks
+
+
 class SharedFixtures(BaseTestUtils):
   @pytest.fixture
   def get_judgement_funcs(self):
@@ -39,46 +80,6 @@ class SharedFixtures(BaseTestUtils):
   ], ids=lambda xs: '+'.join([xs[0], xs[1].strftime('%Y%m%d-%H:%M:%S'), xs[2]]))
   def pseudo_date(self, request):
     yield request.param
-
-  @pytest.fixture(scope='module')
-  def pseudo_stock_data(self, django_db_blocker):
-    with django_db_blocker.unblock():
-      industries = [
-        factories.IndustryFactory(),
-        factories.IndustryFactory(),
-        factories.IndustryFactory(),
-      ]
-      localized_industries = [
-        factories.LocalizedIndustryFactory(industry=industries[0], name='foo-bar'),
-        factories.LocalizedIndustryFactory(industry=industries[1], name='foo'),
-        factories.LocalizedIndustryFactory(industry=industries[2], name='hogehoge'),
-      ]
-      stock_params = [
-        {'code': '0010', 'name': 'sampel1', 'industry': 0, 'price': '1200', 'dividend': '15',
-          'per':  '0.2', 'pbr': '1.3', 'eps': '1.7', 'bps': '2.3', 'roe': '5.0', 'er': '23.2'},
-        {'code': '0012', 'name': 'alpha01', 'industry': 0, 'price': '800', 'dividend': '5',
-          'per':  '1.3', 'pbr': '2.5', 'eps': '0.25', 'bps': '1.1', 'roe': '5.3', 'er': '16'},
-        {'code': '0033', 'name': 'beta20', 'industry': 1, 'price': '2000', 'dividend': '15.1',
-          'per':  '2.2', 'pbr': '4.3', 'eps': '5.3', 'bps': '4.1', 'roe': '7.2', 'er': '12.7'},
-        {'code': '005A', 'name': 'kappa88', 'industry': 1, 'price': '1500', 'dividend': '5.2',
-          'per':  '5.7', 'pbr': '1.3', 'eps': '7.9', 'bps': '-5.6', 'roe': '2.1', 'er': '8'},
-        {'code': '040a', 'name': 'gamma_c', 'industry': 2, 'price': '1000', 'dividend': '9',
-          'per':  '1.7', 'pbr': '0.1', 'eps': '3.5', 'bps': '3.7', 'roe': '0.9', 'er': '7.2'},
-      ]
-      stocks = [
-        factories.StockFactory(
-          code=kwargs['code'], industry=industries[kwargs['industry']],
-          price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
-          per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
-          bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
-        ) for kwargs in stock_params
-      ]
-      localized_stocks = [
-        factories.LocalizedStockFactory(stock=stock, name=kwargs['name'])
-        for stock, kwargs in zip(stocks, stock_params)
-      ]
-
-    return stocks
 
 class SelectedRangeFixture:
   @pytest.fixture(params=[
@@ -1052,6 +1053,80 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
     assert queryset[0].purchase_date == exact0318
     assert queryset[1].purchase_date == exact0319
     assert queryset[2].purchase_date == exact0320
+
+  @pytest.fixture(scope='class')
+  def get_dummy_pstocks(self, pseudo_stock_data, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      stocks = pseudo_stock_data
+      purchased_params = [
+        {'stock': stocks[0], 'price': '1100', 'count': 100, 'purchase_date': get_date((2021, 1, 5))},
+        {'stock': stocks[0], 'price': '1250', 'count': 100, 'purchase_date': get_date((2021, 1, 7))},
+        {'stock': stocks[1], 'price': '2500', 'count': 200, 'purchase_date': get_date((2021, 2, 3))},
+        {'stock': stocks[2], 'price': '1500', 'count': 100, 'purchase_date': get_date((2021, 5, 4))},
+        {'stock': stocks[4], 'price':  '900', 'count': 100, 'purchase_date': get_date((2021, 7,12))},
+        {'stock': stocks[4], 'price': '1200', 'count': 300, 'purchase_date': get_date((2021, 7,15))},
+      ]
+      purchased_stocks = [
+        factories.PurchasedStockFactory(user=user, **conf)
+        for conf in purchased_params
+      ]
+      expected_stock_indices = [0, 0, 1, 2, 4, 4]
+
+    return user, stocks, purchased_stocks, expected_stock_indices
+
+  def test_default_select_targets_queryset(self, mocker, get_dummy_pstocks):
+    mocker.patch('stock.models.get_language', return_value='en')
+    user, stocks, purchased_stocks, indices = get_dummy_pstocks
+    expected = []
+    # Create expected data
+    for idx, target in zip(indices, purchased_stocks):
+      base = stocks[idx]
+      expected += [
+        {
+          'code': base.code,
+          'name': base.get_name(),
+          'industry_name': base.industry.get_name(),
+          'diff': (float(base.price) - float(target.price)) * target.count,
+        }
+      ]
+    queryset = user.purchased_stocks.select_targets().order_by('pk')
+
+    assert queryset.count() == len(purchased_stocks)
+    assert all([obj.code == ext_vals['code'] for obj, ext_vals in zip(queryset, expected)])
+    assert all([obj.name == ext_vals['name'] for obj, ext_vals in zip(queryset, expected)])
+    assert all([obj.industry_name == ext_vals['industry_name'] for obj, ext_vals in zip(queryset, expected)])
+    assert all([abs(float(obj.diff) - ext_vals['diff']) < 1e-2 for obj, ext_vals in zip(queryset, expected)])
+
+  @pytest.mark.parametrize([
+    'expression',
+    'indices',
+  ], [
+    ('code not in "001"', [3, 4, 5]),
+    ('name == "gamma_c"', [4, 5]),
+    ('"bar" in industry_name', [0, 1, 2]),
+    ('price > 2300', [2]),
+    ('count == 100', [0, 1, 3, 4]),
+    ('"2021-02-01T09:00+09:00" < purchase_date and purchase_date < "2021-05-31T09:00+09:00"', [2, 3]),
+    ('diff < 0', [1, 2, 5]),
+  ], ids=[
+    'based-on-code',
+    'based-on-name',
+    'based-on-industry',
+    'based-on-price',
+    'based-on-count',
+    'based-on-purchase-date',
+    'based-on-diff',
+  ])
+  def test_select_targets_with_tree(self, mocker, get_dummy_pstocks, expression, indices):
+    mocker.patch('stock.models.get_language', return_value='en')
+    user, _, purchased_stocks, _ = get_dummy_pstocks
+    tree = ast.parse(expression, mode='eval')
+    queryset = user.purchased_stocks.select_targets(tree=tree).order_by('pk')
+    expected = [purchased_stocks[idx].pk for idx in indices]
+
+    assert queryset.count() == len(expected)
+    assert all([record.pk == pk for record, pk in zip(queryset, expected)])
 
   def test_selected_range_queryset(self, get_selected_range):
     config, user = get_selected_range

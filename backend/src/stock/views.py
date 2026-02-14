@@ -105,6 +105,7 @@ class DeleteCash(CustomDeleteView, DjangoBreadcrumbsMixin):
 class ListPurchasedStock(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
   template_name = 'stock/purchased_stocks.html'
+  form_class = forms.PurchasedStockFilteringForm
   paginate_by = 20
   context_object_name = 'pstocks'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
@@ -115,9 +116,17 @@ class ListPurchasedStock(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
 
   def get_queryset(self):
     user = self.request.user
-    queryset = user.purchased_stocks.all()
+    params = self.request.GET.copy() or {}
+    self.form = self.form_class(data=params)
+    queryset = self.form.get_queryset_with_condition(user)
 
     return queryset
+
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    context['form'] = self.form
+
+    return context
 
 class RegisterPurchasedStock(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock

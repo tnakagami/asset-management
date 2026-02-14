@@ -17,6 +17,17 @@
         </a>
       </div>
       <div class="col">
+        <button
+          type="button"
+          id="record-filtering"
+          class="btn btn-success w-100 custom-boxshadow"
+          data-bs-toggle="modal"
+          data-bs-target="#record-filtering-modal"
+        >
+          {% trans "Search purchased stock (Shift + f)" %}
+        </button>
+      </div>
+      <div class="col">
         {% if pstocks %}
         <div class="table-responsive">
           <table class="table table-hover">
@@ -181,6 +192,134 @@
     </div>
   </div>
 </div>
+
+{# Filtering purchased stock modal #}
+<div class="modal fade" id="record-filtering-modal" tabindex="-1" aria-labelledby="record-filtering-label" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title h3" id="record-filtering-label">{% trans "Seach purchased stock" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row row-cols-2 row-cols-lg-4 g-2">
+          <div class="col">
+            <div class="form-floating">
+            {% with field=form.target %}
+              {{ field }}
+              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {% endwith %}
+            </div>
+          </div>
+          <div class="col">
+            <div class="form-floating">
+            {% with field=form.compop %}
+              {{ field }}
+              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {% endwith %}
+            </div>
+          </div>
+          <div class="col">
+            <div class="form-floating">
+            {% with field=form.inputs %}
+              {{ field }}
+              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {% endwith %}
+            </div>
+          </div>
+          <div class="col">
+            <button
+              type="button"
+              id="add-command"
+              class="btn btn-outline-primary w-100 h-100 custom-boxshadow"
+            >
+              {% trans "Add (Enter)" %}
+            </button>
+          </div>
+          <div class="col">
+            <button
+              type="button"
+              id="and-operator"
+              accesskey="a"
+              class="btn btn-outline-success w-100 custom-boxshadow"
+            >
+              {% trans "AND" %}(<u>a</u>)
+            </button>
+          </div>
+          <div class="col">
+            <button
+              type="button"
+              id="or-operator"
+              accesskey="o"
+              class="btn btn-outline-success w-100 custom-boxshadow"
+            >
+              {% trans "OR" %}(<u>o</u>)
+            </button>
+          </div>
+          <div class="col">
+            <button
+              type="button"
+              id="left-bracket"
+              accesskey="l"
+              class="btn btn-outline-success w-100 custom-boxshadow"
+            >
+              {% trans "(" %}<span class="ps-1">(<u>l</u>)</span>
+            </button>
+          </div>
+          <div class="col">
+            <button
+              type="button"
+              id="right-bracket"
+              accesskey="r"
+              class="btn btn-outline-success w-100 custom-boxshadow"
+            >
+              {% trans ")" %}<span class="ps-1">(<u>r</u>)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="row row-cols-1 g-2 w-100">
+          {% if form.errors %}
+          <div class="col text-danger">
+            <p class="h5">{% trans "Errors" %}</p>
+            {{ form.errors }}
+          </div>
+          {% endif %}
+          <div class="col">
+            <form method="GET" id="record-filtering-form">
+              <div class="row row-cols-1 g-2 mb-2">
+                <div class="col">
+                  <div class="form-floating">
+                  {% with field=form.condition %}
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                  {% endwith %}
+                  </div>
+                </div>
+              </div>
+              <div class="row row-cols-1 row-cols-lg-2 g-2">
+                <div class="col">
+                  <button
+                    type="submit"
+                    class="btn btn-primary w-100 custom-boxshadow"
+                  >
+                    {% trans "Search (Ctrl + Enter)" %}
+                  </button>
+                </div>
+                <div class="col">
+                  <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+                    {% trans "Close" %}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block bodyjs %}
@@ -192,52 +331,180 @@
     formID: 'delete-form',
     modalID: 'delete-modal',
   });
-  const stockModal = new bootstrap.Modal('#stock-modal');
-  const canClickLinks = document.querySelectorAll('.js-click-link');
-  const _keys = Object.freeze([
-    'code',
-    'name',
-    'industry',
-    'price',
-    'dividend',
-    'yield',
-    'per',
-    'pbr',
-    'multi',
-    'eps',
-    'bps',
-    'roe',
-    'er',
-  ]);
-  const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
-  const isNegative = (val) => pattern.test(val);
+  // Setup filtering form
+  const setupFilteringForm = () => {
+    const removeAllAttrs = (element, ...attrs) => attrs.forEach((_attr) => element.removeAttribute(_attr));
+    const targetColumn = document.getElementById('target-column-name');
+    const compOperator = document.getElementById('comp-operator');
+    const inputData = document.getElementById('input-data');
+    const condition = document.getElementById('condition');
+    const addCmd = document.getElementById('add-command');
+    const operatorValuePair = Object.freeze({
+      'and-operator': ' and ',
+      'or-operator': ' or ',
+      'left-bracket': '(',
+      'right-bracket': ')',
+    });
+    const defaultOperator = compOperator.cloneNode(true);
+    removeAllAttrs(defaultOperator, 'id', 'name');
 
-  for (const link of canClickLinks) {
+    // Add modal shown event
+    (() => {
+      const modal = document.getElementById('record-filtering-modal');
+      modal.addEventListener('shown.bs.modal', (event) => {
+        targetColumn.focus();
+      });
+    })();
+    // Add change event
+    targetColumn.addEventListener('change', (event) => {
+      const target = event.target;
+      const selectedOption = target.options[target.selectedIndex];
+      const dataType = selectedOption.dataset.type;
+      // Get valid options
+      const validOptions = Array.from(defaultOperator.options).filter((option) => {
+        const _type = option.dataset.type;
+        const ret = (_type === 'both') || (_type === dataType);
+
+        return ret;
+      });
+      // Delete all children
+      while (compOperator.firstChild) {
+        compOperator.removeChild(compOperator.firstChild);
+      }
+      // Add relevant options
+      for (const _option of validOptions) {
+        const element = document.createElement('OPTION');
+        element.setAttribute('value', _option.value);
+        element.setAttribute('data-type', _option.dataset.type);
+        const text = document.createTextNode(_option.textContent);
+        element.appendChild(text);
+        compOperator.appendChild(element);
+      }
+    });
+    // Add key event
+    inputData.addEventListener('keyup', (event) => {
+      if (!event.ctrlKey && (event.key === 'Enter')) {
+        addCmd.click();
+      }
+    });
+    // Add focus event
+    let picker = null;
+    inputData.addEventListener('focusin', (event) => {
+      const selectedOption = targetColumn.options[targetColumn.selectedIndex];
+      const variableName = targetColumn.value;
+      const dataType = selectedOption.dataset.type;
+
+      if (variableName === 'purchase_date') {
+        if (!picker) {
+          picker = g_setupPicker(event.target);
+          picker.updateOptions({
+            localization: {
+              format: 'yyyy-MM-dd',
+              dayViewHeaderFormat: { year: 'numeric', month: 'long' },
+            },
+          });
+          picker.clear();
+        }
+        event.target.type = 'text';
+      }
+      else {
+        if (picker) {
+          picker.clear();
+          picker.dispose();
+          picker = null;
+        }
+        event.target.type = (dataType === 'number') ? 'number' : 'text';
+      }
+    });
     // Add click event
-    link.addEventListener('click', (event) => {
-      const parent = event.target.parentElement;
+    addCmd.addEventListener('click', () => {
+      const _variableName = targetColumn.value;
+      const _compOp = compOperator.value;
+      const _inputVal = inputData.value;
 
-      for (const key of _keys) {
-        const node = document.querySelector(`[data-target="${key}"]`);
-        const value = parent.dataset[key];
-        node.textContent = value;
-
-        if (isNegative(value)) {
-          node.parentElement.classList.add('text-danger');
-        }
-        else {
-          node.parentElement.classList.remove('text-danger');
-        }
-      }
-      stockModal.show();
-    });
-    // Add key press event
-    link.addEventListener('keyup', (event) => {
-      if (event.key === 'Enter') {
-        link.click();
+      if (_variableName && _compOp && _inputVal) {
+        const selectedOption = targetColumn.options[targetColumn.selectedIndex];
+        const dataType = selectedOption.dataset.type;
+        const value = ((dataType === 'str') || (_variableName === 'purchase_date')) ? `"${_inputVal}"` : _inputVal;
+        const command = `${_variableName} ${_compOp} ${value}`;
+        condition.value += command;
       }
     });
-  }
+    for (const [key, word] of Object.entries(operatorValuePair)) {
+      const element = document.getElementById(key);
+      element.addEventListener('click', () => {
+        const sentence = condition.value;
+        const position = condition.selectionStart;
+        const beforeWord = sentence.substr(0, position);
+        const afterWord = sentence.substr(position, sentence.length);
+        condition.value = beforeWord + word + afterWord;
+        targetColumn.focus();
+      });
+    }
+    targetColumn.dispatchEvent(new Event('change'));
+  };
+  // Setup click link event
+  const setupClickLinkEvent = () => {
+    const columns = Object.freeze([
+      'code', 'name', 'industry', 'price', 'dividend', 'yield',
+      'per', 'pbr', 'multi', 'eps', 'bps', 'roe', 'er',
+    ]);
+    const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
+    const isNegative = (val) => pattern.test(val);
+    const canClickLinks = document.querySelectorAll('.js-click-link');
+    const stockModal = new bootstrap.Modal('#stock-modal');
+
+    for (const link of canClickLinks) {
+      // Add click event
+      link.addEventListener('click', (event) => {
+        const parent = event.target.parentElement;
+
+        for (const key of columns) {
+          const node = document.querySelector(`[data-target="${key}"]`);
+          const value = parent.dataset[key];
+          node.textContent = value;
+
+          if (isNegative(value)) {
+            node.parentElement.classList.add('text-danger');
+          }
+          else {
+            node.parentElement.classList.remove('text-danger');
+          }
+        }
+        stockModal.show();
+      });
+      // Add key press event
+      link.addEventListener('keyup', (event) => {
+        if (event.key === 'Enter') {
+          link.click();
+        }
+      });
+    }
+  };
+
+  // Define initialization function
+  const init = () => {
+    // Setup filtering form
+    const filteringBtn = document.getElementById('record-filtering');
+    setupFilteringForm();
+    setupClickLinkEvent();
+
+    // Add key event
+    document.addEventListener('keyup', (event) => {
+      if (event.key === 'F') { /* F := Shift + f */
+        filteringBtn.click();
+      }
+      else if (event.ctrlKey && (event.key === 'Enter')) {
+        const filteringForm = document.getElementById('record-filtering-form');
+        filteringForm.submit();
+      }
+    });
+    {% if form.errors %}
+    filteringBtn.click();
+    {% endif %}
+  };
+  // Add DOM event
+  document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
 {% endblock %}
