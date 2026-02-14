@@ -443,9 +443,9 @@
     }
     targetColumn.dispatchEvent(new Event('change'));
   };
-  // Setup link click event
-  const setupLinkClickEvent = () => {
-    const _keys = Object.freeze([
+  // Setup click link event
+  const setupClickLinkEvent = () => {
+    const columns = Object.freeze([
       'code', 'name', 'industry', 'price', 'dividend', 'yield',
       'per', 'pbr', 'multi', 'eps', 'bps', 'roe', 'er',
     ]);
@@ -459,7 +459,7 @@
       link.addEventListener('click', (event) => {
         const parent = event.target.parentElement;
 
-        for (const key of _keys) {
+        for (const key of columns) {
           const node = document.querySelector(`[data-target="${key}"]`);
           const value = parent.dataset[key];
           node.textContent = value;
@@ -487,6 +487,7 @@
     // Setup filtering form
     const filteringBtn = document.getElementById('record-filtering');
     setupFilteringForm();
+    setupClickLinkEvent();
 
     // Add key event
     document.addEventListener('keyup', (event) => {

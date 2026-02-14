@@ -14,6 +14,7 @@ from utils.widgets import (
 )
 from . import models
 from collections import deque
+from functools import wraps
 from io import TextIOWrapper
 import ast
 import urllib.parse
@@ -465,6 +466,7 @@ class _ValidateCondition(ast.NodeVisitor):
     return node
 
 def wrap_validation(callback):
+  @wraps(callback)
   def wrapper(value):
     condition = ' '.join(value.splitlines())
     visitor = callback()

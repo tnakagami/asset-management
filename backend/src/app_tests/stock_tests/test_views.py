@@ -343,6 +343,44 @@ class TestPurchasedStockViews(SharedFixture):
     assert response.status_code == status.HTTP_302_FOUND
     assert response['Location'] == expected
 
+  @pytest.fixture(scope='class')
+  def get_pseudo_purchased_stocks(self, django_db_blocker, get_stock_records):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      stocks = get_stock_records
+      purchased_stocks = [
+        factories.PurchasedStockFactory(user=user, stock=stocks[0], price=500,  purchase_date=get_date((2010, 1, 1))),
+        factories.PurchasedStockFactory(user=user, stock=stocks[2], price=1000, purchase_date=get_date((2017, 1, 1))),
+        factories.PurchasedStockFactory(user=user, stock=stocks[5], price=1500, purchase_date=get_date((2017, 1, 2))),
+        factories.PurchasedStockFactory(user=user, stock=stocks[3], price=1400, purchase_date=get_date((2018, 1, 1))),
+        factories.PurchasedStockFactory(user=user, stock=stocks[3], price=1200, purchase_date=get_date((2017, 1, 2))),
+      ]
+
+    return user, purchased_stocks
+
+  @pytest.mark.parametrize([
+    'query_params',
+    'indices',
+  ], [
+    ({'condition': 'price >= 1000'}, [3, 4, 2, 1]),
+    ({'condition': '10 < 100'}, [3, 4, 2, 1, 0]),
+    ({}, [3, 4, 2, 1, 0]),
+  ], ids=[
+    'with-valid-condition',
+    'with-invalid-condition',
+    'without-condition',
+  ])
+  def test_access_with_query(self, login_process, get_pseudo_purchased_stocks, query_params, indices):
+    user, purchased_stocks = get_pseudo_purchased_stocks
+    client, user = login_process(user=user)
+    response = client.get(self.list_url, query_params=query_params)
+    exact_qs = models.PurchasedStock.objects.filter(pk__in=self.get_pks([purchased_stocks[idx] for idx in indices]))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.context['form'] is not None
+    assert response.context['pstocks'].count() == exact_qs.count()
+    assertQuerySetEqual(response.context['pstocks'], exact_qs, ordered=True)
+
   # ==========
   # CreateView
   # ==========

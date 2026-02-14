@@ -549,6 +549,58 @@ class TestStockAppOperation(BaseStockTestUtils):
     assert response.status_code == status.HTTP_200_OK
     assert len(response.context['tasks']) == 2
 
+  @pytest.fixture(scope='class')
+  def get_pseudo_purchased_stocks(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      industry = factories.IndustryFactory()
+      stocks = [
+        factories.StockFactory(code='NH3',    price=1000, industry=industry),
+        factories.StockFactory(code='XYZ123', price=1200, industry=industry),
+        factories.StockFactory(code='003ijk', price=1300, industry=industry),
+      ]
+      configs = [
+        {'stock': stocks[2], 'price': 1000, 'purchase_date': get_date((2000, 1, 1))},
+        {'stock': stocks[1], 'price': 1150, 'purchase_date': get_date((2000, 1, 1))},
+        {'stock': stocks[0], 'price': 1500, 'purchase_date': get_date((2001, 1, 1))},
+        {'stock': stocks[2], 'price': 1050, 'purchase_date': get_date((2003, 1, 1))},
+      ]
+      purchased_stocks = [factories.PurchasedStockFactory(user=user, count=1, **conf) for conf in configs]
+
+    return user, purchased_stocks
+
+  @pytest.mark.parametrize([
+    'condition',
+    'indices',
+  ], [
+    ('purchase_date < "2002-01-01T09:00+09:00"', [2, 0, 1]),
+    ('price > 1100', [2, 1]),
+    ('diff < 0', [2]),
+    ('code == "003ijk" and price > 1025', [3]),
+  ], ids=[
+    'purchase-date-condition',
+    'price-condition',
+    'diff-condition',
+    'multi-conditions',
+  ])
+  def test_filtering_purchased_stocks(self, csrf_exempt_django_app, get_pseudo_purchased_stocks, condition, indices):
+    user, all_pstocks = get_pseudo_purchased_stocks
+    targets = [all_pstocks[idx] for idx in indices]
+    expected_pstocks = models.PurchasedStock.objects.filter(pk__in=self.get_pks(targets))
+    app = csrf_exempt_django_app
+    # Execution
+    forms = app.get(self.pstock_list_url, user=user).forms
+    form = forms['record-filtering-form']
+    form['condition'] = condition
+    response = form.submit()
+    # Collect response data
+    records = response.context['pstocks']
+
+    assert response.status_code == status.HTTP_200_OK
+    assert get_current_path(response) == self.pstock_list_url
+    assert len(records) == len(expected_pstocks)
+    assert all([estimated.pk == expected.pk for estimated, expected in zip(records, expected_pstocks)])
+
   # ===========
   # Create page
   # ===========
