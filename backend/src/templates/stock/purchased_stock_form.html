@@ -175,7 +175,8 @@
   };
   // Define initialization function
   const init = () => {
-    g_setupPicker(document.getElementById('purchase-date-id'));
+    const helper = new HelperMethods();
+    helper.setupPicker(document.getElementById('purchase-date-id'));
     setupStockField(document.getElementById('stock-id'));
   };
   // Add DOM event

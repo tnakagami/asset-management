@@ -44,7 +44,8 @@
 (function () {
   // Define initialization function
   const init = () => {
-    g_setupPicker(document.getElementById('registered-date-id'));
+    const helper = new HelperMethods();
+    helper.setupPicker(document.getElementById('registered-date-id'));
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);

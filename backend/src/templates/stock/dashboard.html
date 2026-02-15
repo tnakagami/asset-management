@@ -173,7 +173,7 @@
           aria-labelledby="all-assets-tab"
           tabindex="0"
         >
-          <div class="row">
+          <div class="row row-cols-1 g-2">
             <div class="col">
               <div class="table-responsive">
                 <table class="table table-hover">
@@ -203,6 +203,25 @@
                       <th><span name="total-diff"></span></th>
                     </tr>
                   </tfoot>
+                </table>
+              </div>
+            </div>
+            <div class="col">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th scope="col">{% trans "No." %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "#Target stocks" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Value" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
+                    </tr>
+                  </thead>
+                  <tbody id="all-sectors-list" class="table-group-divider">
+                  </tbody>
                 </table>
               </div>
             </div>
@@ -307,7 +326,7 @@
   </div>
 </div>
 
-<template id="tbody-template">
+<template id="asset-tbody-template">
 <tr>
   <td scope="row"><span class="asset-idx"></span></td>
   <td><span class="asset-code"></span></td>
@@ -319,6 +338,18 @@
   <td><span class="asset-value"></span></td>
   <td><span class="asset-count"></span></td>
   <td><span class="asset-diff"></span></td>
+</tr>
+</template>
+
+<template id="sector-tbody-template">
+<tr>
+  <td scope="row"><span class="sector-idx"></span></td>
+  <td><span class="sector-industry"></span></td>
+  <td><span class="sector-trend"></span></td>
+  <td><span class="sector-count"></span></td>
+  <td><span class="sector-dividend"></span></td>
+  <td><span class="sector-value"></span></td>
+  <td><span class="sector-diff"></span></td>
 </tr>
 </template>
 {% endblock %}
@@ -344,8 +375,9 @@
     });
     const _getDiffArr = (arr) => arr.map((item) => item.diff);
     const _getDividendArr = (arr) => arr.map((item) => item.realDividend);
-    const _stockValSum = (arr, initVal=0.0) => _getValArr(arr).reduce((acc, val) => acc + val, initVal);
-    const _dividendValSum = (arr, initVal=0.0) => _getDividendArr(arr).reduce((acc, val) => acc + val, initVal);
+    const _calcTotal = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
+    const _stockValSum = (arr, initVal=0.0) => _calcTotal(_getValArr(arr), initVal);
+    const _dividendValSum = (arr, initVal=0.0) => _calcTotal(_getDividendArr(arr), initVal);
     const _generateColorPalette = (len, offset=180) => {
       const hueArray = (() => {
         const scaler = (len > 360) ? 1.0 : 360.0 / len;
@@ -443,14 +475,37 @@
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
-    const sectorList = stocks.reduce((pairs, item) => {
-      const trendIdx = item.isDefensive ? 0 : 1;
-      const displayName = `${item.industry}(${trendNameList[trendIdx]})`;
-      pairs[item.industry] = displayName;
+    const sectorList = (() => {
+      const configs = stocks.reduce((pairs, item) => {
+        const industry = item.industry;
+        const isDefensive = item.isDefensive;
+        const trendIdx = isDefensive ? 0 : 1;
+        const trendType = trendNameList[trendIdx];
+        pairs[industry] = {
+          industry: industry,
+          isDefensive: isDefensive,
+          trendIdx: trendIdx,
+          trendType: trendType,
+          displayName: `${industry}(${trendType})`,
+        };
 
-      return pairs;
-    }, {});
-    const sectorNameList = Object.values(sectorList);
+        return pairs;
+      }, {});
+      const arr = Object.values(configs).sort((le, re) => {
+        // le: left element
+        // re: right element
+        const sign = 1; // ASC
+        const compare = ((val) => (val > 0) ? sign : ((val < 0) ? (-sign) : 0));
+        const indexOrder = compare(le.trendIdx - re.trendIdx);
+        const out = (indexOrder !== 0) ? indexOrder : compare(le.industry.localeCompare(re.industry));
+
+        return out;
+      });
+
+      return arr;
+    })();
+
+    const sectorNameList = sectorList.map((item) => item.displayName);
     // Define color dictionaries
     const stockColorDict = (() => {
       const arr = stockNameList.slice(1);
@@ -484,6 +539,24 @@
       return pairs;
     }, {});
     // Define chart data
+    const sectors = sectorList.map((config) => {
+      const industry = config.industry;
+      const targets = records.filter((item) => item.industry === industry);
+      const totalDividend = _dividendValSum(targets);
+      const totalPrice = _stockValSum(targets);
+      const totalDiff = _calcTotal(_getDiffArr(targets));
+      const out = {
+        industry: industry,
+        isDefensive: config.isDefensive,
+        trend: config.trendType,
+        value: totalPrice,
+        count: targets.length,
+        dividend: totalDividend,
+        diff: totalDiff,
+      };
+
+      return out;
+    });
     const pairs = {
       dividendPortfolioData: {
         title: '{% trans "Portfolio (dividend)" %}',
@@ -509,12 +582,7 @@
         colors: sectorColorDict,
         datasets: [{
           label: '{% trans "Dividend" %}',
-          data: Object.keys(sectorList).map((name) => {
-            const targets = records.filter((item) => item.industry === name);
-            const total = _dividendValSum(targets);
-
-            return total;
-          }),
+          data: sectors.map((item) => item.dividend),
         }],
       },
       sectorPriceData: {
@@ -523,12 +591,7 @@
         colors: sectorColorDict,
         datasets: [{
           label: '{% trans "Price" %}',
-          data: Object.keys(sectorList).map((name) => {
-            const targets = records.filter((item) => item.industry === name);
-            const score = _stockValSum(targets);
-
-            return score;
-          }),
+          data: sectors.map((item) => item.value),
         }],
       },
       trendDividendData: {
@@ -538,8 +601,8 @@
         datasets: [{
           label: '{% trans "Dividend" %}',
           data: [true, false].map((isDefensive) => {
-            const targets = records.filter((item) => item.isDefensive === isDefensive);
-            const total = _dividendValSum(targets);
+            const targets = sectors.filter((item) => item.isDefensive === isDefensive);
+            const total = _calcTotal(targets.map((item) => item.dividend));
 
             return total;
           }),
@@ -552,10 +615,10 @@
         datasets: [{
           label: '{% trans "Price" %}',
           data: [true, false].map((isDefensive) => {
-            const targets = records.filter((item) => item.isDefensive === isDefensive);
-            const score = _stockValSum(targets);
+            const targets = sectors.filter((item) => item.isDefensive === isDefensive);
+            const total = _calcTotal(targets.map((item) => item.value));
 
-            return score;
+            return total;
           }),
         }],
       },
@@ -568,7 +631,7 @@
           label: '{% trans "Diff" %}',
           data: _getDiffArr(records.slice(1)),
         }],
-      }
+      },
     };
     const output = Object.entries(pairs).reduce((accItems, [key, item]) => {
       const dataset = item.datasets[0];
@@ -592,11 +655,12 @@
 
       return accItems;
     }, {});
+    output.sectors = sectors;
     output.records = records;
 
     return output;
   };
-  const updateTable = (records) => {
+  const updateTable = (records, sectors) => {
     const updateNodeStatus = (item, element) => {
       if (item.options) {
         const get_yield = (price, dividend) => ((dividend > 0) ? (dividend / price * 100.0).toFixed(2) : '0.00');
@@ -615,14 +679,14 @@
         element.classList.add('text-decoration-underline', 'text-primary');
         // Add click event
         element.addEventListener('click', () => {
-          const _keys = Object.freeze([
+          const columns = Object.freeze([
             'code', 'name', 'industry', 'price', 'dividend',
             'yield', 'per', 'pbr', 'eps', 'bps', 'roe', 'er',
           ]);
           const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
           const isNegative = (val) => pattern.test(val);
           // Update modal data and show modal
-          for (const key of _keys) {
+          for (const key of columns) {
             const node = document.querySelector(`[data-target="${key}"]`);
             const value = element.dataset[key];
             node.textContent = value;
@@ -645,70 +709,105 @@
         });
       }
     };
-    const tbody = document.getElementById('all-assets-list');
-    const tfoot = document.getElementById('asset-totals');
-    const template = document.getElementById('tbody-template');
-    const nodeList = {
-      'idx': (_, idx) => idx,
-      'code': (val, _) => val,
-      'name': (val, _) => val,
-      'industry': (val, _) => val,
-      'trend': (val, _) => val,
-      'realDividend': (val, _) => val.toLocaleString(),
-      'yield': (val, _) => val.toFixed(2),
-      'value': (val, _) => val.toLocaleString(),
-      'count': (val, _) => val.toLocaleString(),
-      'diff': (val, _) => val.toLocaleString(),
-    };
-    const totals = {
-      dividend: 0,
-      value: 0,
-      count: 0,
-      diff: 0,
-    };
-    tbody.innerHTML = '';
+    //
+    // Update asset table
+    //
+    (() => {
+      const tbody = document.getElementById('all-assets-list');
+      const tfoot = document.getElementById('asset-totals');
+      const template = document.getElementById('asset-tbody-template');
+      const nodeList = {
+        'idx': (_, idx) => idx,
+        'code': (val, _) => val,
+        'name': (val, _) => val,
+        'industry': (val, _) => val,
+        'trend': (val, _) => val,
+        'realDividend': (val, _) => val.toLocaleString(),
+        'yield': (val, _) => val.toFixed(2),
+        'value': (val, _) => val.toLocaleString(),
+        'count': (val, _) => val.toLocaleString(),
+        'diff': (val, _) => val.toLocaleString(),
+      };
+      const totals = {
+        dividend: 0,
+        value: 0,
+        count: 0,
+        diff: 0,
+      };
+      tbody.innerHTML = '';
 
-    records.forEach((item, idx) => {
-      const clone = template.content.cloneNode(true);
+      records.forEach((item, idx) => {
+        const clone = template.content.cloneNode(true);
 
-      for (const [key, callback] of Object.entries(nodeList)) {
-        const element = clone.querySelector(`.asset-${key}`);
-        const val = item[key];
-        element.textContent = callback(val, idx);
+        for (const [key, callback] of Object.entries(nodeList)) {
+          const element = clone.querySelector(`.asset-${key}`);
+          const val = item[key];
+          element.textContent = callback(val, idx);
+
+          if ((key === 'diff') && (val < 0)) {
+            element.classList.add('text-danger');
+          }
+          else if (key === 'name') {
+            updateNodeStatus(item, element);
+          }
+        }
+        totals.dividend += item.realDividend;
+        totals.value += item.value;
+        totals.count += item.count;
+        totals.diff += item.diff;
+        tbody.appendChild(clone);
+      });
+      // Ignore cash
+      totals.value -= records[0].value;
+      // Set total value
+      ['dividend', 'value', 'count', 'diff'].forEach((key) => {
+        const element = tfoot.querySelector(`th > span[name="total-${key}"]`);
+        const val = totals[key];
+        element.textContent = val.toLocaleString();
 
         if ((key === 'diff') && (val < 0)) {
           element.classList.add('text-danger');
         }
-        else if (key === 'name') {
-          updateNodeStatus(item, element);
+        else {
+          element.classList.remove('text-danger');
         }
-      }
-      totals.dividend += item.realDividend;
-      totals.value += item.value;
-      totals.count += item.count;
-      totals.diff += item.diff;
-      tbody.appendChild(clone);
-    });
-    // Ignore cash
-    totals.value -= records[0].value;
-    // Set total value
-    ['dividend', 'value', 'count', 'diff'].forEach((key) => {
-      const element = tfoot.querySelector(`th > span[name="total-${key}"]`);
-      const val = totals[key];
-      element.textContent = val.toLocaleString();
-
-      if ((key === 'diff') && (val < 0)) {
-        element.classList.add('text-danger');
-      }
-      else {
-        element.classList.remove('text-danger');
-      }
-    });
-    // Calculate average dividend yield and reflect it to footer
-    (() => {
+      });
+      // Calculate average dividend yield and reflect it to footer
       const element = tfoot.querySelector('th > span[name="average-yield"]');
       const val = totals.dividend / totals.value * 100.0;
       element.textContent = val.toFixed(2);
+    })();
+    //
+    // Update sector table
+    //
+    (() => {
+      const tbody = document.getElementById('all-sectors-list');
+      const template = document.getElementById('sector-tbody-template');
+      const nodeList = {
+        'idx': (_, idx) => idx + 1,
+        'industry': (val, _) => val,
+        'trend': (val, _) => val,
+        'count': (val, _) => val.toLocaleString(),
+        'dividend': (val, _) => val.toLocaleString(),
+        'value': (val, _) => val.toLocaleString(),
+        'diff': (val, _) => val.toLocaleString(),
+      };
+      tbody.innerHTML = '';
+
+      sectors.forEach((item, idx) => {
+        const clone = template.content.cloneNode(true);
+
+        for (const [key, callback] of Object.entries(nodeList)) {
+          const element = clone.querySelector(`.sector-${key}`);
+          const val = item[key];
+          element.textContent = callback(val, idx);
+
+          if ((key === 'diff') && (val < 0)) {
+            element.classList.add('text-danger');
+          }
+        }
+        tbody.appendChild(clone);
+      });
     })();
   };
   const drawPieChart = (chart, target, asset) => {
@@ -848,7 +947,7 @@
       // Create relevant data
       const output = createChartData(data, sortFunction, collectionType.value);
       // Update table
-      updateTable(output.records);
+      updateTable(output.records, output.sectors);
       // Draw charts
       stockPortfolioChart = drawPieChart(stockPortfolioChart, 'stock-portfolio-chart', output.stockPortfolioData);
       dividendPortfolioChart = drawPieChart(dividendPortfolioChart, 'dividend-portfolio-chart', output.dividendPortfolioData);
