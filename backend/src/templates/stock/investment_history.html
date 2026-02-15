@@ -29,7 +29,8 @@
     margin-block-end: 0;
     padding-inline-start: 0;
   }
-  .dual-listbox .dual-listbox__buttons {
+  .dual-listbox .dual-listbox__buttons,
+  .dual-listbox .custom-listbox-buttons {
     display: flex;
     flex-direction: row;
     justify-content: space-around;
@@ -75,6 +76,7 @@
     .dual-listbox .dual-listbox__container {
       display: grid;
       grid-template-columns: repeat(11, minmax(0, 1fr));
+      grid-template-rows: auto minmax(0, 1fr);
       gap: 1rem;
     }
     .dual-listbox__container > div:nth-of-type(odd) {
@@ -86,6 +88,11 @@
       align-items: center;
       grid-column: span 1 / span 1;
       margin: 0;
+    }
+    .dual-listbox .custom-listbox-buttons {
+      justify-content: center;
+      align-items: center;
+      grid-column: 1 / 12;
     }
     .dual-listbox__buttons span {
       display: inline-block;
@@ -114,6 +121,8 @@
         id="snapshots"
         data-available="{% trans 'All snapshots' %}"
         data-selected="{% trans 'Selected snapshots' %}"
+        data-uptxt="{% trans 'Move selected item up' %}"
+        data-downtxt="{% trans 'Move selected item down' %}"
       ></select>
     </div>
     <div class="col">
@@ -216,13 +225,40 @@
     const dualListbox = new DualListbox(element, {
       availableTitle: element.dataset.available,
       selectedTitle:  element.dataset.selected,
-      sortable: true,
-      upButtonText: '{% trans "Up" %}',
-      downButtonText: '{% trans "Down" %}',
-      draggable: true,
+      draggable: false,
       enableDoubleClick: true,
       options: options,
+      {% comment %}
+      showSortButtons: true,
+      upButtonText: element.dataset.uptxt,
+      downButtonText: element.dataset.downtxt,
+      {% endcomment %}
     });
+    // Add search field's events
+    dualListbox.addEventListener('added', (event) => {
+      dualListbox.search_left.focus();
+      dualListbox.search_left.dispatchEvent(new Event('change'));
+    });
+    dualListbox.addEventListener('removed', (event) => {
+      dualListbox.search_right.focus();
+      dualListbox.search_right.dispatchEvent(new Event('change'));
+    });
+    dualListbox.search_left.addEventListener('focusin', (event) => {
+      dualListbox.search_right.value = '';
+      dualListbox.search_right.dispatchEvent(new Event('change'));
+    });
+    dualListbox.search_right.addEventListener('focusin', (event) => {
+      dualListbox.search_left.value = '';
+      dualListbox.search_left.dispatchEvent(new Event('change'));
+    });
+    // Update sort function
+    dualListbox.sortFunction = (leftOpt, rightOpt) => {
+      const lv = leftOpt.order || 0;
+      const rv = rightOpt.order || 0;
+      const out = (lv < rv) ? (-1) : ((lv > rv) ? 1 : 0);
+
+      return out;
+    };
     // Update css
     dualListbox.search_left.classList.remove('dual-listbox__search');
     dualListbox.search_left.classList.add('form-control', 'px-2');
@@ -236,11 +272,53 @@
     });
     // Replace original css setting to bootstrap-based one
     for (const [name, text] of Object.entries(textPairs)) {
-      const text = textPairs[name];
       dualListbox[name].classList.remove('dual-listbox__button');
       dualListbox[name].classList.add('btn', 'btn-outline-dark', 'w-100', 'h-100', 'm-2');
       dualListbox[name].innerHTML = `<span>${text}</span>`;
     }
+    {% comment %}
+    // Replace original css to sort buttons
+    const lastChild = dualListbox.dualListBoxContainer.lastChild;
+    const sortBtns = lastChild.querySelectorAll('button');
+    for (const btn of sortBtns) {
+      btn.classList.remove('dual-listbox__button');
+      btn.classList.add('btn', 'btn-outline-dark', 'w-100', 'h-100', 'm-2');
+      // Remove event listener
+      const clone = btn.cloneNode(true);
+      btn.replaceWith(clone);
+      // Add new event listener
+      clone.addEventListener('click', (event) => {
+        event.preventDefault();
+        const getSelectedItems = () => document.querySelectorAll('.dual-listbox__selected > li');
+        const self = dualListbox;
+        const query = 'dual-listbox__item--selected';
+        const selected = document.querySelector(`.${query}`);
+        // Selected item exists
+        if (selected) {
+          const oldIndex = self.options.findIndex((opt) => opt.value == selected.dataset.id);
+          const newIndex = (btn.innerText === self.upButtonText) ? (oldIndex - 1) : (oldIndex + 1);
+          const selectedItems = getSelectedItems();
+          // Target index is valid
+          if ((0 <= newIndex) && (newIndex < selectedItems.length)) {
+            const cutOptions = self.options.splice(oldIndex, 1);
+            self.options.splice(newIndex, 0, cutOptions[0]);
+            self.updateAvailableListbox();
+            self.updateSelectedListbox();
+            self.syncSelect();
+            // Update selected status
+            for (const item of getSelectedItems()) {
+              if (item.dataset.id === selected.dataset.id) {
+                item.classList.add(query);
+                break;
+              }
+            }
+          }
+        }
+      });
+    }
+    lastChild.classList.remove('dual-listbox__buttons');
+    lastChild.classList.add('custom-listbox-buttons');
+    {% endcomment %}
 
     return dualListbox;
   };
@@ -456,6 +534,7 @@
       {
         text: '{{ instance.title }}',
         value: '{{ instance.uuid }}',
+        order: {{ forloop.counter }},
         selected: false,
         priority: {{ instance.priority }},
         startDate: new Date('{{ instance.start_date|date:"c" }}'),
@@ -517,7 +596,6 @@
       event.target.disabled = false;
     });
   };
-
   //
   // Add DOM event
   //

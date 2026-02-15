@@ -326,13 +326,8 @@
 {{ block.super }}
 <script>
 (function () {
-  g_registerDeleteModalEvent({
-    targetCSS: 'delete-target-record',
-    formID: 'delete-form',
-    modalID: 'delete-modal',
-  });
   // Setup filtering form
-  const setupFilteringForm = () => {
+  const setupFilteringForm = (helper) => {
     const removeAllAttrs = (element, ...attrs) => attrs.forEach((_attr) => element.removeAttribute(_attr));
     const targetColumn = document.getElementById('target-column-name');
     const compOperator = document.getElementById('comp-operator');
@@ -396,7 +391,7 @@
 
       if (variableName === 'purchase_date') {
         if (!picker) {
-          picker = g_setupPicker(event.target);
+          picker = helper.setupPicker(event.target);
           picker.updateOptions({
             localization: {
               format: 'yyyy-MM-dd',
@@ -484,9 +479,16 @@
 
   // Define initialization function
   const init = () => {
+    const helper = new HelperMethods();
+    // Register delete modal event
+    helper.registerDeleteModalEvent({
+      targetCSS: 'delete-target-record',
+      formID: 'delete-form',
+      modalID: 'delete-modal',
+    });
     // Setup filtering form
     const filteringBtn = document.getElementById('record-filtering');
-    setupFilteringForm();
+    setupFilteringForm(helper);
     setupClickLinkEvent();
 
     // Add key event

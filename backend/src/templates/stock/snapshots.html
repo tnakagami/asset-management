@@ -146,18 +146,24 @@
 {{ block.super }}
 <script>
 (function () {
-  g_registerDeleteModalEvent({
-    targetCSS: 'delete-target-record',
-    formID: 'delete-form',
-    modalID: 'delete-modal',
-  });
   const init = () => {
+    const helper = new HelperMethods();
+    // Register delete modal event
+    helper.registerDeleteModalEvent({
+      targetCSS: 'delete-target-record',
+      formID: 'delete-form',
+      modalID: 'delete-modal',
+    });
+    // Define popper event
+    const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    [...tooltipElements].map((elem) => new bootstrap.Tooltip(elem));
     {% comment %}
+    // Add update-snapshot event
     const updateSnapshots = document.getElementById('update-all-snapshots');
     updateSnapshots.addEventListener('click', async (event) => {
       event.target.disabled = true;
-      const url = "{% url 'stock:update_all_snapshots' %}";
-      const csrfToken = g_getCookie('csrftoken');
+      const url = '{% url "stock:update_all_snapshots" %}';
+      const csrfToken = helper.getCookie('csrftoken');
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -174,9 +180,6 @@
       event.target.disabled = false;
     });
     {% endcomment %}
-    // Define popper event
-    const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    [...tooltipElements].map((elem) => new bootstrap.Tooltip(elem));
   };
   // Add DOM event
   document.addEventListener('DOMContentLoaded', init);

@@ -97,7 +97,8 @@
 {{ block.super }}
 <script>
 (function () {
-  g_registerDeleteModalEvent({
+  const helper = new HelperMethods();
+  helper.registerDeleteModalEvent({
     targetCSS: 'delete-target-record',
     formID: 'delete-form',
     modalID: 'delete-modal',
