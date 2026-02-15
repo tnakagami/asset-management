@@ -607,6 +607,55 @@ class PurchasedStock(models.Model):
     self.full_clean()
     super().save(*args, **kwargs)
 
+  @staticmethod
+  def csv_length_checker(row):
+    # CSV header format
+    # Code,Purchase date,Price,Count
+    return len(row) == 4
+
+  @classmethod
+  def csv_record_checker(cls, records):
+    fields = [
+      cls._meta.get_field('purchase_date'),
+      cls._meta.get_field('price'),
+      cls._meta.get_field('count'),
+    ]
+
+    for row in records:
+      code = row[0]
+
+      try:
+        # Get target stock
+        stock = Stock.objects.get(code=code)
+      except Stock.DoesNotExist:
+        raise ValidationError(
+          gettext_lazy('%(name)s does not exist.'),
+          code='invalid_data',
+          params={'name': code},
+        )
+      # Check each field data
+      for value, field in zip(row[1:], fields):
+        try:
+          field.clean(f'{value}', None)
+        except ValidationError as ex:
+          raise ValidationError(
+            gettext_lazy('Invalid data (%(value)s): %(ex)s'),
+            code='invalid_data',
+            params={'value': str(value), 'ex': str(ex)},
+          )
+
+  @classmethod
+  def from_list(cls, user, data):
+    kwargs = {
+      'stock': Stock.objects.get(code=data[0]),
+      'purchase_date': data[1],
+      'price': data[2],
+      'count': data[3],
+    }
+    instance = cls(user=user, **kwargs)
+
+    return instance
+
   def __str__(self):
     target_time = convert_timezone(self.purchase_date, is_string=True)
     out = f'{self.stock.get_name()}({target_time},{self.count})'

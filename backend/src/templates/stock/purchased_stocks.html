@@ -17,6 +17,14 @@
         </a>
       </div>
       <div class="col">
+        <a
+          href="{% url 'stock:upload_purchased_stock' %}"
+          class="btn btn-warning w-100 custom-boxshadow"
+        >
+          {% trans "Upload purchsed stocks using csv file" %}
+        </a>
+      </div>
+      <div class="col">
         <button
           type="button"
           id="record-filtering"

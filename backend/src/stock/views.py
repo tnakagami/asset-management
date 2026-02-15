@@ -161,6 +161,29 @@ class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
   success_url = reverse_lazy('stock:list_purchased_stock')
 
+class UploadPurchasedStock(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
+  raise_exception = True
+  form_class = forms.UploadPurchasedStockForm
+  template_name = 'stock/upload_purchased_stock_with_csvformat.html'
+  success_url = reverse_lazy('stock:list_purchased_stock')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:upload_purchased_stock',
+    title=gettext_lazy('Upload purchased stock (CSV format)'),
+    parent_view_class=ListPurchasedStock,
+  )
+
+  def get_form_kwargs(self, *args, **kwargs):
+    kwargs = super().get_form_kwargs(*args, **kwargs)
+    kwargs['user'] = self.request.user
+
+    return kwargs
+
+  def form_valid(self, form):
+    form.register()
+    response = super().form_valid(form)
+
+    return response
+
 class ListSnapshot(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   model = models.Snapshot
   template_name = 'stock/snapshots.html'
