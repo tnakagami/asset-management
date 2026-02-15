@@ -1,5 +1,7 @@
 from django import forms
 from django.core.validators import FileExtensionValidator
+from django.db import transaction
+from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy
 from django.utils.html import format_html
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
@@ -180,14 +182,17 @@ class UploadPurchasedStockForm(forms.Form):
     help_text=gettext_lazy('Describes whether the csv file has header or not.'),
   )
 
-  def __init__(self, user, *args, **kwargs):
+  def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self.user = user
     self.valid_data = None
     self.length_checker = models.PurchasedStock.csv_length_checker
+    self.extractor = models.PurchasedStock.csv_extractor
     self.record_checker = models.PurchasedStock.csv_record_checker
 
-  def _validate_csv_file(self, csv_file, encoding, has_header):
+  def filtering(self, data):
+    return [val for val in data if val != '']
+
+  def validate_csv_file(self, csv_file, encoding, has_header):
     idx = 0
 
     try:
@@ -200,29 +205,29 @@ class UploadPurchasedStockForm(forms.Form):
         if has_header:
           next(reader)
         for idx, data in enumerate(reader, 1):
-          row = tuple([val for val in data if val != ''])
+          row = self.filtering(data)
           is_valid = self.length_checker(row)
 
           if not is_valid:
-            raise ValidationError(
+            raise forms.ValidationError(
               gettext_lazy('The length in line %(idx)d is invalid.'),
               code='invalid_file',
               params={'idx': idx},
             )
           # Store the current row
-          records += [row]
+          records += [self.extractor(row)]
         # Check specific columns
         self.record_checker(records)
         # Store valid data list to self.valid_data
         self.valid_data = records
     except UnicodeDecodeError as ex:
-      raise ValidationError(
+      raise forms.ValidationError(
         gettext_lazy('Failed to decode in line %(idx)d (Encoding: %(encoding)s).'),
         code='invalid_file',
         params={'idx': idx, 'encoding': str(ex.encoding)},
       )
     except (ValueError, TypeError, AttributeError) as ex:
-      raise ValidationError(
+      raise forms.ValidationError(
         gettext_lazy('Raise exception: %(ex)s.'),
         code='has_error',
         params={'ex': str(ex)},
@@ -233,19 +238,32 @@ class UploadPurchasedStockForm(forms.Form):
     csv_file = cleaned_data.get('csv_file')
     encoding = cleaned_data.get('encoding')
     has_header = cleaned_data.get('header')
-    self._validate_csv_file(csv_file, encoding, has_header)
+    self.validate_csv_file(csv_file, encoding, has_header)
 
     return cleaned_data
 
   def get_data(self):
     return self.valid_data
 
-  def register(self):
-    instances = [
-      models.PurchasedStock.from_list(self.user, row)
-      for row in self.get_data()
-    ]
-    models.PurchasedStock.objects.bulk_create(instances)
+  def register(self, user):
+    instances = []
+
+    try:
+      enabled_items = [
+        models.PurchasedStock.from_list(user, row)
+        for row in self.get_data()
+      ]
+      with transaction.atomic():
+        instances = models.PurchasedStock.objects.bulk_create(enabled_items)
+    except IntegrityError as ex:
+      error = forms.ValidationError(
+        gettext_lazy('Include invalid records. Please check the detail: %(ex)s.'),
+        code='invalid_records',
+        params={'ex': str(ex)},
+      )
+      self.add_error(None, error)
+
+    return instances
 
 class SnapshotForm(_BaseModelFormWithCSS):
   class Meta:

@@ -8,6 +8,7 @@ from django.views.generic import (
   FormView,
 )
 from django.conf import settings
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.utils.translation import gettext_lazy
 from django.http import JsonResponse, StreamingHttpResponse, HttpResponseRedirect
@@ -172,15 +173,13 @@ class UploadPurchasedStock(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin)
     parent_view_class=ListPurchasedStock,
   )
 
-  def get_form_kwargs(self, *args, **kwargs):
-    kwargs = super().get_form_kwargs(*args, **kwargs)
-    kwargs['user'] = self.request.user
-
-    return kwargs
-
   def form_valid(self, form):
-    form.register()
-    response = super().form_valid(form)
+    form.register(self.request.user)
+    # Check errors
+    if not form.has_error(NON_FIELD_ERRORS):
+      response = super().form_valid(form)
+    else:
+      response = super().form_invalid(form)
 
     return response
 

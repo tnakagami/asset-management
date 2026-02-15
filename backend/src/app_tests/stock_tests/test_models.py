@@ -930,20 +930,27 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
   ], [
     ({}, ),
     ({'price': 0}, ),
+    ({'price': 100}, ),
     ({'price': 999999999.99}, ),
     ({'count': 0}, ),
+    ({'count': 100}, ),
     ({'count': 2147483647}, ),
+    ({'purchase_date': '1999-02-03 00:00:00+00:00'}, ),
   ], ids=[
-    'valid-values',
+    'empty-values',
     'min-value-of-price',
+    'valid-value-of-price',
     'max-value-of-price',
     'min-value-of-count',
+    'valid-value-of-count',
     'max-value-of-count',
+    'yyyy-mm-dd-format',
   ])
   def test_check_valid_inputs(self, options, get_user):
     kwargs = {
       'price': Decimal('1.23'),
       'count': 100,
+      'purchase_date': '1999-01-02 00:00:00+00:00',
     }
     kwargs.update(options)
 
@@ -951,7 +958,6 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
       _ = models.PurchasedStock.objects.create(
         user=get_user,
         stock=factories.StockFactory(),
-        purchase_date=get_date((1999, 1, 2)),
         **kwargs,
       )
     except ValidationError as ex:
@@ -962,22 +968,27 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
     'exception_type',
     'err_msg',
   ], [
-    ({'price':          -0.01}, ValidationError, '11 digits in total'),
-    ({'price':         12.991}, ValidationError, '2 decimal places'),
-    ({'price':  1000000000.00}, ValidationError, '9 digits before the decimal point'),
-    ({'count':             -1}, ValidationError, 'greater than or equal to 0'),
-    ({'count': 2147483647 + 1}, ValidationError, 'less than or equal to 2147483647'),
+    ({'price':                               -0.01}, ValidationError, '11 digits in total'),
+    ({'price':                              12.991}, ValidationError, '2 decimal places'),
+    ({'price':                       1000000000.00}, ValidationError, '9 digits before the decimal point'),
+    ({'count':                                  -1}, ValidationError, 'greater than or equal to 0'),
+    ({'count':                      2147483647 + 1}, ValidationError, 'less than or equal to 2147483647'),
+    ({'purchase_date': '1999/02/03 00:00:00+00:00'}, ValidationError, 'value has an invalid format. It must be in YYYY-MM-DD HH:MM'),
+    ({'purchase_date':                  '1999/2/3'}, ValidationError, 'value has an invalid format. It must be in YYYY-MM-DD HH:MM'),
   ], ids=[
     'negative-purchased-price',
     'invalid-decimal-part-of-purchased-price',
     'invalid-max-digits-of-purchased-price',
     'is-negative-count',
     'is-overflow-count',
+    'yyyy/mm/dd-hh-mm-format',
+    'yyyy/m/d-format',
   ])
   def test_check_invalid_inputs(self, get_user, options, exception_type, err_msg):
     kwargs = {
       'price': Decimal('1.23'),
       'count': 100,
+      'purchase_date': '1999-01-02 00:00:00+00:00'
     }
     kwargs.update(options)
 
@@ -985,7 +996,6 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
       _ = models.PurchasedStock.objects.create(
         user=get_user,
         stock=factories.StockFactory(),
-        purchase_date=get_date((1999, 1, 2)),
         **kwargs,
       )
     assert err_msg in str(ex.value)
@@ -1016,6 +1026,108 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
     assert compare_keys(list(out_dict.keys()), fields)
     assert compare_values(fields, out_dict, instance)
     assert _purchase_date == models.convert_timezone(target, is_string=True)
+
+  @pytest.mark.parametrize([
+    'row',
+    'is_valid',
+  ], [
+    (range(3), False),
+    (range(4), True),
+    (range(5), False),
+  ], ids=[
+    'length-is-3',
+    'length-is-4',
+    'length-is-5',
+  ])
+  def test_csv_length_checker(self, row, is_valid):
+    out = models.PurchasedStock.csv_length_checker(row)
+
+    assert out == is_valid
+
+  @pytest.mark.parametrize([
+    'target_date',
+    'has_time',
+  ], [
+    ('1992/3/5', False), ('1992/03/5', False), ('1992/3/05', False), ('1992/03/05', False),
+    ('1992/3-5', False), ('1992/03-5', False), ('1992/3-05', False), ('1992/03-05', False),
+    ('1992-3/5', False), ('1992-03/5', False), ('1992-3/05', False), ('1992-03/05', False),
+    ('1992-3-5', False), ('1992-03-5', False), ('1992-3-05', False), ('1992-03-05', False),
+    ('1992/3/5',  True), ('1992/03/5',  True), ('1992/3/05',  True), ('1992/03/05',  True),
+    ('1992/3-5',  True), ('1992/03-5',  True), ('1992/3-05',  True), ('1992/03-05',  True),
+    ('1992-3/5',  True), ('1992-03/5',  True), ('1992-3/05',  True), ('1992-03/05',  True),
+    ('1992-3-5',  True), ('1992-03-5',  True), ('1992-3-05',  True), ('1992-03-05',  True),
+  ], ids=[
+    'yyyy/m/d-without-time', 'yyyy/mm/d-without-time', 'yyyy/m/dd-without-time', 'yyyy/mm/dd-without-time',
+    'yyyy/m-d-without-time', 'yyyy/mm-d-without-time', 'yyyy/m-dd-without-time', 'yyyy/mm-dd-without-time',
+    'yyyy-m/d-without-time', 'yyyy-mm/d-without-time', 'yyyy-m/dd-without-time', 'yyyy-mm/dd-without-time',
+    'yyyy-m-d-without-time', 'yyyy-mm-d-without-time', 'yyyy-m-dd-without-time', 'yyyy-mm-dd-without-time',
+    'yyyy/m/d-with-time',    'yyyy/mm/d-with-time',    'yyyy/m/dd-with-time',    'yyyy/mm/dd-with-time',
+    'yyyy/m-d-with-time',    'yyyy/mm-d-with-time',    'yyyy/m-dd-with-time',    'yyyy/mm-dd-with-time',
+    'yyyy-m/d-with-time',    'yyyy-mm/d-with-time',    'yyyy-m/dd-with-time',    'yyyy-mm/dd-with-time',
+    'yyyy-m-d-with-time',    'yyyy-mm-d-with-time',    'yyyy-m-dd-with-time',    'yyyy-mm-dd-with-time',
+  ])
+  def test_csv_extractor(self, target_date, has_time):
+    expected = ('1234', '1992-03-05T00:00:00+00:00', '1024.35', '234')
+
+    if has_time:
+      target_date = f'{target_date} 12:34'
+
+    try:
+      row = ['1234', target_date, '1024.35', '234']
+      output = models.PurchasedStock.csv_extractor(row)
+    except Exception as ex:
+      pytest.fail(f'Unexpected Error: {ex}')
+
+    assert isinstance(output, tuple)
+    assert output == expected
+
+  def test_valid_csv_record_checker(self, pseudo_stock_data):
+    _ = pseudo_stock_data
+    records = [
+      ('0010', '2020-01-02 00:00:00+00:00', '1100.3', '100'),
+      ('0033', '2020-01-03 00:00:00+00:00', '1101.3', '100'),
+    ]
+    try:
+      models.PurchasedStock.csv_record_checker(records)
+    except Exception as ex:
+      pytest.fail(f'Unexpected Error: {ex}')
+
+  @pytest.mark.parametrize([
+    'records',
+    'err_msg',
+  ], [
+    ([('x+4a', '1999-01-02 00:00:00+00:00', '123.54', '100')], 'x+4a does not exist.'),
+    ([('0010',   '99-01-02 00:00:00+00:00', '123.54', '100')], 'Invalid data (99-01-02 00:00:00+00:00)'),
+    ([('0010',   '1999/1/2',                '123.54', '100')], 'Invalid data (1999/1/2)'),
+    ([('0010', '1999-01-02 00:00:00+00:00', '23.997', '100')], 'Invalid data (23.997)'),
+    ([('0010', '1999-01-02 00:00:00+00:00', '123.54', '1.0')], 'Invalid data (1.0)'),
+  ], ids=[
+    'invalid-code',
+    'invalid-purchase-date',
+    'invalid-purchase-date-without-time',
+    'invalid-price',
+    'invalid-count',
+  ])
+  def test_invalid_record_for_csv_record_checker(self, pseudo_stock_data, records, err_msg):
+    _ = pseudo_stock_data
+
+    with pytest.raises(ValidationError) as ex:
+      models.PurchasedStock.csv_record_checker(records)
+
+    assert err_msg in str(ex.value)
+
+  def test_check_from_list_method(self, pseudo_stock_data):
+    _ = pseudo_stock_data
+    user = factories.UserFactory()
+    data = ('0010', '2020-01-02 00:00:00+00:00', '1100.3', '100')
+    instance = models.PurchasedStock.from_list(user, data)
+    instance.save()
+    pdate = models.convert_timezone(instance.purchase_date, is_string=True)
+
+    assert instance.stock.code == data[0]
+    assert pdate == data[1].replace(' ', 'T')
+    assert abs(float(instance.price) - float(data[2])) < 1e-2
+    assert instance.count == int(data[3])
 
   def test_check_str_function(self, mocker, settings, pseudo_date, get_user):
     mocker.patch('stock.models.get_language', return_value='en')

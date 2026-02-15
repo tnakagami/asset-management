@@ -613,6 +613,19 @@ class PurchasedStock(models.Model):
     # Code,Purchase date,Price,Count
     return len(row) == 4
 
+  @staticmethod
+  def csv_extractor(row):
+    code = row[0]
+    price = row[2]
+    count = row[3]
+    # Convert datetime to string format
+    tmp_date = row[1].replace('/', '-').split()[0]
+    target = timezone.datetime.strptime(tmp_date, '%Y-%m-%d')
+    pdate = target.strftime('%Y-%m-%dT00:00:00+00:00')
+    output = (code, pdate, price, count)
+
+    return output
+
   @classmethod
   def csv_record_checker(cls, records):
     fields = [
@@ -646,11 +659,14 @@ class PurchasedStock(models.Model):
 
   @classmethod
   def from_list(cls, user, data):
+    pdate_field = cls._meta.get_field('purchase_date')
+    price_field = cls._meta.get_field('price')
+    count_field = cls._meta.get_field('count')
     kwargs = {
       'stock': Stock.objects.get(code=data[0]),
-      'purchase_date': data[1],
-      'price': data[2],
-      'count': data[3],
+      'purchase_date': pdate_field.clean(data[1], None),
+      'price': price_field.clean(data[2], None),
+      'count': count_field.clean(data[3], None),
     }
     instance = cls(user=user, **kwargs)
 

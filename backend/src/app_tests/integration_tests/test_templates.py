@@ -211,6 +211,7 @@ class BaseStockTestUtils(SharedFixture):
   pstock_create_url = reverse('stock:register_purchased_stock')
   pstock_update_url = lambda _self, pk: reverse('stock:update_purchased_stock', kwargs={'pk': pk})
   pstock_delete_url = lambda _self, pk: reverse('stock:delete_purchased_stock', kwargs={'pk': pk})
+  pstock_upload_url = reverse('stock:upload_purchased_stock')
   # Snapshot
   snapshot_list_url = reverse('stock:list_snapshot')
   snapshot_create_url = reverse('stock:register_snapshot')
@@ -422,6 +423,9 @@ class TestPageTransition(BaseStockTestUtils):
     ('pstock_list_url',),
     ('snapshot_list_url',),
     ('ptask_snapshot_list_url',),
+    ('pstock_upload_url',),
+    ('snapshot_upload_jsonformat_url',),
+    ('list_stock_url',),
   ], ids=[
     'dashboard-page',
     'history-page',
@@ -429,6 +433,9 @@ class TestPageTransition(BaseStockTestUtils):
     'purchased-stock-list-page',
     'snapshot-list-page',
     'periodic-task-for-snapshot-list-page',
+    'pstock-upload-page',
+    'snapshot-upload-jsonformat-page',
+    'list-stock-page',
   ])
   def test_redirect_login_page_without_authentication(self, csrf_exempt_django_app, access_link):
     app = csrf_exempt_django_app
@@ -1199,6 +1206,143 @@ class TestStockAppOperation(BaseStockTestUtils):
 @pytest.mark.webtest
 @pytest.mark.django_db
 class TestDownloadUploadOperation(BaseStockTestUtils):
+  @pytest.fixture(scope='class')
+  def get_sample_data_for_stock_search(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      industries = [factories.IndustryFactory(), factories.IndustryFactory()]
+      _ = factories.LocalizedIndustryFactory(name='alpha', language_code='en', industry=industries[0])
+      _ = factories.LocalizedIndustryFactory(name='gamma', language_code='en', industry=industries[1])
+      # Create Main stock data
+      stocks = [
+        factories.StockFactory(code='0B01', price=Decimal('1199.00'), roe=Decimal('1.03'), industry=industries[0]),
+        factories.StockFactory(code='0B02', price=Decimal('1001.00'), roe=Decimal('2.03'), industry=industries[0]),
+        factories.StockFactory(code='0B03', price=Decimal('1100.00'), roe=Decimal('3.03'), industry=industries[0]),
+        factories.StockFactory(code='0B04', price=Decimal('2000.00'), roe=Decimal('1.03'), industry=industries[0]),
+        factories.StockFactory(code='0B05', price=Decimal('1100.00'), roe=Decimal('1.03'), industry=industries[1]),
+        factories.StockFactory(code='0B06', price=Decimal('1024.00'), roe=Decimal('1.51'), industry=industries[0], skip_task=True),
+      ]
+      # Create other stock data
+      other_stocks  = factories.StockFactory.create_batch(151, price=1, industry=industries[1])
+      # Add stock names
+      for stock, name in zip(stocks, ['hogehoge', 'hoge-foo', 'bar', 'sample', 'test-stock5', 'skipped']):
+        _ = factories.LocalizedStockFactory(name=name, language_code='en', stock=stock)
+      for idx, stock in enumerate(other_stocks, len(stocks) + 1):
+        name = f'stock-test{idx}'
+        _ = factories.LocalizedStockFactory(name=name, language_code='en', stock=stock)
+      # Collect all stock data
+      all_stocks = stocks + other_stocks
+
+    return all_stocks
+
+  # =========================================
+  # Upload purchased stocks by using csv file
+  # =========================================
+  def test_move_to_pstock_csvfile_upload_page(self, init_webtest):
+    app, users = init_webtest
+    owner = users['owner']
+    page = app.get(self.pstock_list_url, user=owner)
+    response = page.click('Upload purchsed stocks using csv file')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert get_current_path(response) == self.pstock_upload_url
+
+  def test_move_to_parent_page_from_pstock_csvfile_upload_page(self, init_webtest):
+    app, users = init_webtest
+    owner = users['owner']
+    page = app.get(self.pstock_upload_url, user=owner)
+    response = page.click('Cancel')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert get_current_path(response) == self.pstock_list_url
+
+  @pytest.fixture(params=[
+    ('utf-8',  True), ('shift_jis',  True), ('cp932',  True),
+    ('utf-8', False), ('shift_jis', False), ('cp932', False),
+  ], ids=[
+    'utf8-with-header',    'sjis-with-header',    'cp932-with-header',
+    'utf8-without-header', 'sjis-without-header', 'cp932-without-header',
+  ])
+  def get_valid_form_param_of_csvfile(self, request, get_sample_data_for_stock_search):
+    encoding, has_header = request.param
+    stocks = get_sample_data_for_stock_search
+    # Create input data
+    data = []
+    if has_header:
+      data += ['Code,Date,Price,Count']
+    data += [
+      f'{stocks[0].code},2024/9/17,2000,100',
+      f'{stocks[1].code},2023-09-03,1000,200',
+    ]
+    # Create form data
+    params = {
+      'encoding': encoding,
+      'header': has_header,
+      'csv_file': ('test-file.csv', bytes('\n'.join(data) + '\n', encoding=encoding)), # For django-webtest format
+    }
+    exacts = [
+      (codes[0], '2024-09-17T00:00:00+00:00', 2000.00, 100),
+      (codes[1], '2023-09-03T00:00:00+00:00', 1000.00, 200),
+    ]
+
+    return params, exacts
+
+  def test_send_post_request_to_upload_page(self, get_valid_form_param_of_csvfile, csrf_exempt_django_app):
+    user = factories.UserFactory()
+    params, exacts = get_valid_form_param_of_csvfile
+    # Send request
+    app = csrf_exempt_django_app
+    forms = app.get(self.pstock_upload_url, user=user).forms
+    form = forms['purchased-stock-upload-form']
+    for key, val in params.items():
+      form[key] = val
+    response = form.submit().follow()
+    # Collect expected queryset
+    queryset = user.purchased_stocks.all()
+    # Define checker
+    def checker(obj, expected):
+      out = all([
+        models.convert_timezone(obj.purchase_date, is_string=True) == expected[1],
+        abs(float(obj.price) - expected[2]) < 1e-2,
+        obj.count == expected[3]
+      ])
+
+      return out
+
+    assert response.status_code == status.HTTP_200_OK
+    assert get_current_path(response) == self.pstock_list_url
+    assert len(queryset) == len(exacts)
+    assert checker(queryset.get(stock__code=exacts[0][0]), exacts[0])
+    assert checker(queryset.get(stock__code=exacts[1][0]), exacts[1])
+
+  def test_send_invalid_encoding_in_upload_page(self, init_webtest):
+    app, users = init_webtest
+    owner = users['owner']
+    forms = app.get(self.pstock_upload_url, user=owner).forms
+    form = forms['purchased-stock-upload-form']
+
+    with pytest.raises(ValueError):
+      form['encoding'] = 'euc-jp'
+
+  def test_send_invalid_extensions_in_upload_page(self, init_webtest):
+    params = {
+      'encoding': 'utf-8',
+      'header': False,
+      'csv_file': ('hoge.txt', bytes('hogehoge\nfogafoga\n', 'utf-8')),
+    }
+    err_msg = 'The extention has to be &quot;.csv&quot;.'
+    # Send request
+    app, users = init_webtest
+    owner = users['owner']
+    forms = app.get(self.pstock_upload_url, user=owner).forms
+    form = forms['purchased-stock-upload-form']
+    for key, val in params.items():
+      form[key] = val
+    response = form.submit()
+    errors = response.context['form'].errors
+
+    assert response.status_code == status.HTTP_200_OK
+    assert err_msg in str(errors)
+
   # ===========================
   # Upload JSON format snapshot
   # ===========================
@@ -1489,9 +1633,10 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
     assert expected['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
     assert expected['data'] in output
 
-  # ====================================
-  # Invalid request for download process
-  # ====================================
+  # =============
+  # Invalid cases
+  # =============
+  # Download process
   @pytest.mark.parametrize([
     'target_link',
   ], [
@@ -1513,34 +1658,6 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
   # ============
   # Stock search
   # ============
-  @pytest.fixture(scope='class')
-  def get_sample_data_for_stock_search(self, django_db_blocker):
-    with django_db_blocker.unblock():
-      industries = [factories.IndustryFactory(), factories.IndustryFactory()]
-      _ = factories.LocalizedIndustryFactory(name='alpha', language_code='en', industry=industries[0])
-      _ = factories.LocalizedIndustryFactory(name='gamma', language_code='en', industry=industries[1])
-      # Create Main stock data
-      stocks = [
-        factories.StockFactory(code='0B01', price=Decimal('1199.00'), roe=Decimal('1.03'), industry=industries[0]),
-        factories.StockFactory(code='0B02', price=Decimal('1001.00'), roe=Decimal('2.03'), industry=industries[0]),
-        factories.StockFactory(code='0B03', price=Decimal('1100.00'), roe=Decimal('3.03'), industry=industries[0]),
-        factories.StockFactory(code='0B04', price=Decimal('2000.00'), roe=Decimal('1.03'), industry=industries[0]),
-        factories.StockFactory(code='0B05', price=Decimal('1100.00'), roe=Decimal('1.03'), industry=industries[1]),
-        factories.StockFactory(code='0B06', price=Decimal('1024.00'), roe=Decimal('1.51'), industry=industries[0], skip_task=True),
-      ]
-      # Create other stock data
-      other_stocks  = factories.StockFactory.create_batch(151, price=1, industry=industries[1])
-      # Add stock names
-      for stock, name in zip(stocks, ['hogehoge', 'hoge-foo', 'bar', 'sample', 'test-stock5', 'skipped']):
-        _ = factories.LocalizedStockFactory(name=name, language_code='en', stock=stock)
-      for idx, stock in enumerate(other_stocks, len(stocks) + 1):
-        name = f'stock-test{idx}'
-        _ = factories.LocalizedStockFactory(name=name, language_code='en', stock=stock)
-      # Collect all stock data
-      all_stocks = stocks + other_stocks
-
-    return all_stocks
-
   @pytest.mark.parametrize([
     'condition',
     'ordering',

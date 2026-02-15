@@ -2,6 +2,8 @@ import pytest
 import json
 import urllib.parse
 from pytest_django.asserts import assertTemplateUsed, assertQuerySetEqual
+from django.db.utils import IntegrityError
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from urllib.parse import urlencode
 from app_tests import (
@@ -312,6 +314,7 @@ class TestPurchasedStockViews(SharedFixture):
   create_url = reverse('stock:register_purchased_stock')
   update_url = lambda _self, pk: reverse('stock:update_purchased_stock', kwargs={'pk': pk})
   delete_url = lambda _self, pk: reverse('stock:delete_purchased_stock', kwargs={'pk': pk})
+  upload_url = reverse('stock:upload_purchased_stock')
 
   @property
   def form_data(self):
@@ -490,6 +493,102 @@ class TestPurchasedStockViews(SharedFixture):
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
     assert total == 1
+
+  # ==========
+  # UploadView
+  # ==========
+  def test_access_to_uploadview(self, login_process):
+    client, user = login_process(user=factories.UserFactory())
+    response = client.get(self.upload_url)
+
+    assert response.status_code == status.HTTP_200_OK
+
+  def test_access_to_uploadview_without_authentication(self, client):
+    response = client.get(self.upload_url)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_valid_post_access_to_uploadview(self, mocker, get_stock_records, login_process, get_csvfile_form_param):
+    stocks = get_stock_records
+    params, files = get_csvfile_form_param
+    data = {
+      'encoding': params['encoding'],
+      'header': params['header'],
+      'csv_file': files['csv_file'],
+    }
+    csv_data = [
+      [stocks[0].code, '2021-01-02',       '1200',     '50'],
+      [stocks[1].code, '2024-01-2',        '1001.12', '100'],
+      [stocks[2].code, '1990-03-02 00:12', '1031.0',  '200'],
+    ]
+    expected = [
+      (stocks[0].code, '2021-01-02T00:00:00+00:00', 1200.00,  50),
+      (stocks[1].code, '2024-01-02T00:00:00+00:00', 1001.12, 100),
+      (stocks[2].code, '1990-03-02T00:00:00+00:00', 1031.00, 200),
+    ]
+    mocker.patch('stock.forms.UploadPurchasedStockForm.filtering', side_effect=csv_data)
+    # Send request
+    client, user = login_process(user=factories.UserFactory())
+    response = client.post(self.upload_url, data=data)
+    pstocks = user.purchased_stocks.all()
+    p1 = pstocks.get(stock__code=expected[0][0])
+    p2 = pstocks.get(stock__code=expected[1][0])
+    p3 = pstocks.get(stock__code=expected[2][0])
+    # Define checker
+    def checker(obj, exacts):
+      valid_date = models.convert_timezone(obj.purchase_date, is_string=True) == exacts[1]
+      valid_price = abs(float(obj.price) - exacts[2]) < 1e-2
+      valid_count = obj.count == exacts[3]
+      out = all([valid_date, valid_price, valid_count])
+
+      return out
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == self.list_url
+    assert len(pstocks) == len(expected)
+    assert checker(p1, expected[0])
+    assert checker(p2, expected[1])
+    assert checker(p3, expected[2])
+
+  @pytest.fixture(params=[
+    'form-invalid',
+    'invalid-bluk-create',
+    'invalid-header-input',
+  ])
+  def invalid_form_data_in_uploadview(self, request, mocker, get_single_csvfile_form_data):
+    has_header = True
+    err_msg = ''
+    key = request.param
+
+    if key == 'form-invalid':
+      mocker.patch('stock.forms.UploadPurchasedStockForm.clean', side_effect=ValidationError('invalid-inputs'))
+      err_msg = 'invalid-inputs'
+    elif request.param == 'invalid-bulk-create':
+      mocker.patch('stock.forms.UploadPurchasedStockForm.clean', return_value=None)
+      mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=[])
+      mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=IntegrityError('invalid'))
+      err_msg = 'Include invalid records. Please check the detail: invalid.'
+    elif request.param == 'invalid-header-input':
+      has_header = False
+      err_msg = 'Raise exception:'
+    params, files = get_single_csvfile_form_data
+    data = {
+      'encoding': params['encoding'],
+      'header': has_header,
+      'csv_file': files['csv_file'],
+    }
+
+    return data, err_msg
+
+  def test_invalid_request_in_uploadview(self, login_process, invalid_form_data_in_uploadview):
+    client, user = login_process(user=factories.UserFactory())
+    data, err_msg = invalid_form_data_in_uploadview
+    # Send request
+    response = client.post(self.upload_url, data=data)
+    errors = response.context['form'].errors
+
+    assert response.status_code == status.HTTP_200_OK
+    assert err_msg in str(errors)
 
 # =============
 # SnapshotViews
