@@ -1,5 +1,7 @@
 from django import forms
 from django.core.validators import FileExtensionValidator
+from django.db import transaction
+from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy
 from django.utils.html import format_html
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
@@ -17,8 +19,9 @@ from collections import deque
 from functools import wraps
 from io import TextIOWrapper
 import ast
-import urllib.parse
+import csv
 import json
+import urllib.parse
 
 def bool_converter(value):
   return value not in ['False', 'false', 'FALSE', '0', False]
@@ -125,6 +128,142 @@ class PurchasedStockForm(BaseModelDatalistForm, _BaseModelFormWithCSS):
     purchased_stock = self._meta.model.objects.get(pk=pk)
     queryset = models.Stock.objects.filter(pk=purchased_stock.stock.pk)
     self.fields['stock'].queryset = queryset
+
+
+class UploadPurchasedStockForm(forms.Form):
+  template_name = 'renderer/custom_form.html'
+
+  encoding = forms.ChoiceField(
+    label=gettext_lazy('Encoding'),
+    choices=(
+      ('utf-8', 'UTF-8'),
+      ('shift_jis', 'Shift-JIS'),
+      ('cp932', 'CP932 (Windows)'),
+    ),
+    initial='utf-8',
+    required=True,
+    widget=forms.Select(attrs={
+      'class': 'form-select',
+      'autofocus': True,
+    }),
+    help_text=gettext_lazy('In general, please select "Shift-JIS" in Windows OS, "UTF-8" in Linux like OS.'),
+  )
+
+  csv_file = forms.FileField(
+    label=gettext_lazy('CSV filename'),
+    required=True,
+    widget=forms.FileInput(attrs={
+      'class': 'form-control',
+      'style': 'padding: 2.5rem 1rem 1.75rem 1rem;',
+    }),
+    validators=[
+      FileExtensionValidator(
+        allowed_extensions=['csv'],
+        message=gettext_lazy('The extention has to be ".csv".'),
+      ),
+    ],
+    help_text=gettext_lazy('The extention is ".csv" only.'),
+  )
+
+  header = forms.TypedChoiceField(
+    label=gettext_lazy('With header/Without header'),
+    coerce=bool_converter,
+    initial=True,
+    empty_value=True,
+    choices=(
+      (True, gettext_lazy('With header')),
+      (False, gettext_lazy('Without header')),
+    ),
+    widget=CustomRadioSelect(attrs={
+      'class': 'form-check form-check-inline',
+      'input-class': 'form-check-input',
+      'label-class': 'form-check-label',
+    }),
+    help_text=gettext_lazy('Describes whether the csv file has header or not.'),
+  )
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.valid_data = None
+    self.length_checker = models.PurchasedStock.csv_length_checker
+    self.extractor = models.PurchasedStock.csv_extractor
+    self.record_checker = models.PurchasedStock.csv_record_checker
+
+  def filtering(self, data):
+    return [val for val in data if val != '']
+
+  def validate_csv_file(self, csv_file, encoding, has_header):
+    idx = 0
+
+    try:
+      with TextIOWrapper(csv_file, encoding=encoding) as text_file:
+        # CSV format
+        #   Code,Price,Purchase date,Count
+        reader = csv.reader(text_file)
+        records = []
+
+        if has_header:
+          next(reader)
+        for idx, data in enumerate(reader, 1):
+          row = self.filtering(data)
+          is_valid = self.length_checker(row)
+
+          if not is_valid:
+            raise forms.ValidationError(
+              gettext_lazy('The length in line %(idx)d is invalid.'),
+              code='invalid_file',
+              params={'idx': idx},
+            )
+          # Store the current row
+          records += [self.extractor(row)]
+        # Check specific columns
+        self.record_checker(records)
+        # Store valid data list to self.valid_data
+        self.valid_data = records
+    except UnicodeDecodeError as ex:
+      raise forms.ValidationError(
+        gettext_lazy('Failed to decode in line %(idx)d (Encoding: %(encoding)s).'),
+        code='invalid_file',
+        params={'idx': idx, 'encoding': str(ex.encoding)},
+      )
+    except (ValueError, TypeError, AttributeError) as ex:
+      raise forms.ValidationError(
+        gettext_lazy('Raise exception: %(ex)s.'),
+        code='has_error',
+        params={'ex': str(ex)},
+      )
+
+  def clean(self):
+    cleaned_data = super().clean()
+    csv_file = cleaned_data.get('csv_file')
+    encoding = cleaned_data.get('encoding')
+    has_header = cleaned_data.get('header')
+    self.validate_csv_file(csv_file, encoding, has_header)
+
+    return cleaned_data
+
+  def get_data(self):
+    return self.valid_data
+
+  def register(self, user):
+    instances = []
+
+    try:
+      enabled_items = [
+        models.PurchasedStock.from_list(user, row)
+        for row in self.get_data()
+      ]
+      with transaction.atomic():
+        instances = models.PurchasedStock.objects.bulk_create(enabled_items)
+    except IntegrityError as ex:
+      error = forms.ValidationError(
+        gettext_lazy('Include invalid records. Please check the detail: %(ex)s.'),
+        code='invalid_records',
+        params={'ex': str(ex)},
+      )
+      self.add_error(None, error)
+
+    return instances
 
 class SnapshotForm(_BaseModelFormWithCSS):
   class Meta:

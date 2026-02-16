@@ -607,6 +607,71 @@ class PurchasedStock(models.Model):
     self.full_clean()
     super().save(*args, **kwargs)
 
+  @staticmethod
+  def csv_length_checker(row):
+    # CSV header format
+    # Code,Purchase date,Price,Count
+    return len(row) == 4
+
+  @staticmethod
+  def csv_extractor(row):
+    code = row[0]
+    price = row[2]
+    count = row[3]
+    # Convert datetime to string format
+    tmp_date = row[1].replace('/', '-').split()[0]
+    target = timezone.datetime.strptime(tmp_date, '%Y-%m-%d')
+    pdate = target.strftime('%Y-%m-%dT00:00:00+00:00')
+    output = (code, pdate, price, count)
+
+    return output
+
+  @classmethod
+  def csv_record_checker(cls, records):
+    fields = [
+      cls._meta.get_field('purchase_date'),
+      cls._meta.get_field('price'),
+      cls._meta.get_field('count'),
+    ]
+
+    for row in records:
+      code = row[0]
+
+      try:
+        # Get target stock
+        stock = Stock.objects.get(code=code)
+      except Stock.DoesNotExist:
+        raise ValidationError(
+          gettext_lazy('%(name)s does not exist.'),
+          code='invalid_data',
+          params={'name': code},
+        )
+      # Check each field data
+      for value, field in zip(row[1:], fields):
+        try:
+          field.clean(f'{value}', None)
+        except ValidationError as ex:
+          raise ValidationError(
+            gettext_lazy('Invalid data (%(value)s): %(ex)s'),
+            code='invalid_data',
+            params={'value': str(value), 'ex': str(ex)},
+          )
+
+  @classmethod
+  def from_list(cls, user, data):
+    pdate_field = cls._meta.get_field('purchase_date')
+    price_field = cls._meta.get_field('price')
+    count_field = cls._meta.get_field('count')
+    kwargs = {
+      'stock': Stock.objects.get(code=data[0]),
+      'purchase_date': pdate_field.clean(data[1], None),
+      'price': price_field.clean(data[2], None),
+      'count': count_field.clean(data[3], None),
+    }
+    instance = cls(user=user, **kwargs)
+
+    return instance
+
   def __str__(self):
     target_time = convert_timezone(self.purchase_date, is_string=True)
     out = f'{self.stock.get_name()}({target_time},{self.count})'

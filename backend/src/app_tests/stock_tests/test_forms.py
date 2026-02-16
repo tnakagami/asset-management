@@ -4,10 +4,18 @@ import json
 import urllib.parse
 import sys
 from functools import wraps
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
+from django.db.utils import IntegrityError
 from django_celery_beat.models import PeriodicTask
 from stock import forms, models
 from app_tests import factories, get_date, BaseTestUtils
+
+@pytest.fixture(scope='module')
+def get_sample_stocks(django_db_blocker):
+  with django_db_blocker.unblock():
+    stocks = factories.StockFactory.create_batch(3)
+
+  return stocks
 
 class _DummyASTCondition:
   for_str = forms._ValidateCondition.for_str
@@ -464,9 +472,9 @@ class TestPurchasedStockForm:
     'count-is-empty',
     'param-is-empty',
   ])
-  def test_purchased_stock_form(self, get_user, exist_stock, kwargs, is_valid):
+  def test_purchased_stock_form(self, get_user, get_sample_stocks, exist_stock, kwargs, is_valid):
     user = get_user
-    instance = factories.StockFactory()
+    instance = get_sample_stocks[0]
     params = {}
     # Check stock status
     if exist_stock:
@@ -480,9 +488,8 @@ class TestPurchasedStockForm:
 
   def test_check_invalid_stock_pk(self, get_user):
     user = get_user
-    instance = factories.StockFactory()
     params = {
-      'stock': instance.pk+1,
+      'stock': 0,
       'price': 10,
       'purchase_date': get_date((2022, 7, 3)),
       'count': 5,
@@ -493,9 +500,9 @@ class TestPurchasedStockForm:
     assert not is_valid
     assert form.fields['stock'].widget._has_error
 
-  def test_stock_field_doesnot_have_error(self, mocker, get_user):
+  def test_stock_field_doesnot_have_error(self, mocker, get_user, get_sample_stocks):
     user = get_user
-    stock = factories.StockFactory()
+    stock = get_sample_stocks[0]
     instance = factories.PurchasedStockFactory(user=user, stock=stock)
     params = {
       'stock': stock.pk,
@@ -511,9 +518,14 @@ class TestPurchasedStockForm:
     assert is_valid
     assert len(form.fields['stock'].error_messages) == 0
 
-  def test_check_valid_update_queryset(self, get_user):
+  def test_check_valid_update_queryset(self, get_user, get_sample_stocks):
     user = get_user
-    instances = factories.PurchasedStockFactory.create_batch(3, user=user)
+    stocks = get_sample_stocks
+    # Create instances
+    instances = [
+      factories.PurchasedStockFactory(user=user, stock=stock)
+      for stock in stocks
+    ]
     params = {
       'stock': instances[1].stock.pk,
       'price': 10,
@@ -531,22 +543,119 @@ class TestPurchasedStockForm:
     assert count == 1
     assert the1st_stock.pk == target_stock_pk
 
-  def test_check_invalid_update_queryset(self, get_user):
+  def test_check_invalid_update_queryset(self, get_user, get_sample_stocks):
     user = get_user
-    instance = factories.PurchasedStockFactory(user=user)
+    stock = get_sample_stocks[0]
+    instance = factories.PurchasedStockFactory(user=user, stock=stock)
     params = {
-      'stock': instance.stock.pk,
+      'stock': stock.pk,
       'price': 10,
       'purchase_date': get_date((2022, 7, 3)),
       'count': 5,
     }
     form = forms.PurchasedStockForm(user=user, data=params)
-    target_pk = instance.pk + 1
 
     with pytest.raises(models.PurchasedStock.DoesNotExist) as ex:
-      form.update_queryset(pk=target_pk)
+      form.update_queryset(pk=0)
 
     assert 'matching query does not exist' in str(ex.value)
+
+# ========================
+# UploadPurchasedStockForm
+# ========================
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+class TestUploadPurchasedStockForm:
+  def test_check_filtering(self):
+    data = ['a', '', 'c', '3']
+    form = forms.UploadPurchasedStockForm()
+    row = form.filtering(data)
+
+    assert row == ['a', 'c', '3']
+
+  def test_valid_form_input(self, mocker, get_csvfile_form_param):
+    params, files = get_csvfile_form_param
+    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    mocker.patch.object(form, 'length_checker', return_value=True)
+    mocker.patch.object(form, 'extractor', side_effect=lambda rows: rows)
+    mocker.patch.object(form, 'record_checker', return_value=None)
+    is_valid = form.is_valid()
+
+    assert is_valid
+    assert form.valid_data is not None
+
+  def test_invalid_form_input(self, mocker, get_err_form_param_with_csvfile):
+    params, files, configs, err_msg = get_err_form_param_with_csvfile
+    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    # Mock specific object
+    for target, kwargs in configs.items():
+      mocker.patch.object(form, target, **kwargs)
+    # Validate form
+    is_valid = form.is_valid()
+
+    assert not is_valid
+    assert err_msg in str(form.errors)
+
+  def test_failed_to_read_csv_file(self, mocker, get_single_csvfile_form_data):
+    mocker.patch('stock.forms.TextIOWrapper', side_effect=UnicodeDecodeError('cp932',b'',1,1,''))
+    err_msg = 'Failed to decode in line 0 (Encoding: cp932).'
+    # Create form
+    params, files = get_single_csvfile_form_data
+    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    is_valid = form.is_valid()
+
+    assert not is_valid
+    assert err_msg in str(form.errors)
+
+  def test_default_valid_data(self):
+    form = forms.UploadPurchasedStockForm()
+    data = form.get_data()
+
+    assert data is None
+
+  def test_valid_registration(self, mocker, get_single_csvfile_form_data):
+    stocks = factories.StockFactory.create_batch(2)
+    records = [
+      (stocks[0].code, '2020-01-02 00:00:00+00:00', '1100.3', '100'),
+      (stocks[1].code, '2020-01-03 00:00:00+00:00', '1101.3', '200'),
+    ]
+    mocker.patch('stock.forms.UploadPurchasedStockForm.validate_csv_file', return_value=None)
+    mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=records)
+    # Create form
+    user = factories.UserFactory()
+    params, files = get_single_csvfile_form_data
+    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    is_valid = form.is_valid()
+    instances = form.register(user)
+    qs = user.purchased_stocks.all()
+    expected_code, expected_date, expected_price, expected_count = records[1]
+    pstock = qs.get(stock__code=expected_code)
+
+    assert is_valid
+    assert not form.has_error(NON_FIELD_ERRORS)
+    assert len(qs) == len(instances)
+    assert models.convert_timezone(pstock.purchase_date, is_string=True) == expected_date.replace(' ', 'T')
+    assert abs(float(pstock.price) - float(expected_price)) < 1e-2
+    assert pstock.count == int(expected_count)
+
+  def test_raise_exception_in_bulk_create(self, mocker, get_single_csvfile_form_data):
+    mocker.patch('stock.forms.UploadPurchasedStockForm.validate_csv_file', return_value=None)
+    mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=[1])
+    mocker.patch('stock.models.PurchasedStock.from_list', return_value=[2])
+    mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=IntegrityError('Invalid data'))
+    # Create form
+    user = factories.UserFactory()
+    params, files = get_single_csvfile_form_data
+    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    is_valid = form.is_valid()
+    instances = form.register(user)
+    err_msg = 'Include invalid records. Please check the detail:'
+
+    assert is_valid
+    assert form.has_error(NON_FIELD_ERRORS)
+    assert err_msg in str(form.non_field_errors())
+    assert len(instances) == 0
 
 # ========================
 # CustomModelDatalistField
@@ -555,13 +664,6 @@ class TestPurchasedStockForm:
 @pytest.mark.form
 @pytest.mark.django_db
 class TestCustomModelDatalistField:
-  @pytest.fixture(scope='class')
-  def get_sample_stocks(self, django_db_blocker):
-    with django_db_blocker.unblock():
-      stocks = factories.StockFactory.create_batch(3)
-
-    return stocks
-
   @pytest.mark.parametrize([
     'arg_idx',
     'checker',

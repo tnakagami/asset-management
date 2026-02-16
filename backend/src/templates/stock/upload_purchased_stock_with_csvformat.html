@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Upload purchased stock (CSV format)") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" id="purchased-stock-upload-form" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          {{ form }}
+
+          {# Register or cancel #}
+          <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <button
+                type="submit"
+                class="btn btn-primary w-100 custom-boxshadow"
+              >
+                {% trans "Upload" %}
+              </button>
+            </div>
+            <div class="col">
+              <a
+                href="{% url 'stock:list_purchased_stock' %}"
+                class="btn btn-secondary w-100 custom-boxshadow"
+              >
+                {% trans "Cancel" %}
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mt-2 mb-2 row justify-content-center">
+  <div class="col">
+    <div class="card">
+      <div class="card-header">
+        {% trans "About CSV file format" %}
+      </div>
+      <div class="card-body row row-cols-1 g-1">
+        <div class="col">
+          <p class="card-text">
+            {% trans "CSV file must be satisfied with the following format." %}
+            {% trans "However, the header may be omitted if necessary." %}
+          </p>
+        </div>
+        <div class="col">
+          <div class="row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <div class="card h-100">
+                <div class="card-body bg-secondary bg-opacity-25">
+                  <pre class="card-text"  style="white-space: pre-line;">
+                    <code>Code,Date,Price,Count
+                      2198,2024/7/4,2199.00,100
+                      3003,2024/10/10,1200,100
+                      9644,2024-09-24,728.00,100
+                      9434,2024-09-30,180,200
+                      ...</code>
+                  </pre>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="table-responsive border border-1 rounded-3 p-2">
+                <table class="table table-hover caption-top">
+                  <caption>{% trans "CSV format as Excel style" %}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" class="text-nowrap">Code</th>
+                      <th scope="col" class="text-nowrap">Date</th>
+                      <th scope="col" class="text-nowrap">Price</th>
+                      <th scope="col" class="text-nowrap">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody class="table-group-divider">
+                    <tr>
+                      <td scope="row"  class="text-nowrap">2198</td>
+                      <td class="text-nowrap">2024/7/4</td>
+                      <td class="text-nowrap">2199.00</td>
+                      <td class="text-nowrap">100</td>
+                    </tr>
+                    <tr>
+                      <td scope="row"  class="text-nowrap">3003</td>
+                      <td class="text-nowrap">2024/10/10</td>
+                      <td class="text-nowrap">1200</td>
+                      <td class="text-nowrap">100</td>
+                    </tr>
+                    <tr>
+                      <td scope="row"  class="text-nowrap">9644</td>
+                      <td class="text-nowrap">2024-09-24</td>
+                      <td class="text-nowrap">728.00</td>
+                      <td class="text-nowrap">100</td>
+                    </tr>
+                    <tr>
+                      <td scope="row"  class="text-nowrap">9434</td>
+                      <td class="text-nowrap">2024-09-30</td>
+                      <td class="text-nowrap">180</td>
+                      <td class="text-nowrap">200</td>
+                    </tr>
+                    <tr>
+                      <td scope="row"  class="text-nowrap">...</td>
+                      <td class="text-nowrap">...</td>
+                      <td class="text-nowrap">...</td>
+                      <td class="text-nowrap">...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

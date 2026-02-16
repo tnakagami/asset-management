@@ -17,6 +17,7 @@ urlpatterns = [
   path('register/purchased-stock', views.RegisterPurchasedStock.as_view(), name='register_purchased_stock'),
   path('update/purchased-stock/<int:pk>', views.UpdatePurchasedStock.as_view(), name='update_purchased_stock'),
   path('delete/purchased-stock/<int:pk>', views.DeletePurchasedStock.as_view(), name='delete_purchased_stock'),
+  path('upload/purchased-stock', views.UploadPurchasedStock.as_view(), name='upload_purchased_stock'),
   # Snapshot
   path('list/snapshots', views.ListSnapshot.as_view(), name='list_snapshot'),
   path('register/snapshot', views.RegisterSnapshot.as_view(), name='register_snapshot'),
