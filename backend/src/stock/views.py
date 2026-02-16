@@ -163,7 +163,6 @@ class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
   success_url = reverse_lazy('stock:list_purchased_stock')
 
 class UploadPurchasedStock(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
-  raise_exception = True
   form_class = forms.UploadPurchasedStockForm
   template_name = 'stock/upload_purchased_stock_with_csvformat.html'
   success_url = reverse_lazy('stock:list_purchased_stock')
@@ -270,7 +269,6 @@ class DetailSnapshot(LoginRequiredMixin, IsSnapshotOwner, DetailView, DjangoBrea
     return context
 
 class UploadJsonFormatSnapshot(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
-  raise_exception = True
   form_class = forms.UploadJsonFormatSnapshotForm
   template_name = 'stock/upload_jsonformat_snapshot.html'
   success_url = reverse_lazy('stock:list_snapshot')
@@ -389,7 +387,6 @@ class DeletePeriodicTaskForSnapshot(LoginRequiredMixin, IsOwnSnapshotTask, Delet
   success_url = reverse_lazy('stock:list_snapshot_task')
 
 class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
-  raise_exception = True
   http_method_names = ['get']
   model = models.Stock
   template_name = 'stock/stocks.html'

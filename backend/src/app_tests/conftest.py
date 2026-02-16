@@ -61,15 +61,15 @@ def get_form_param_with_json_fd():
 
   return inner
 
-@pytest.fixture(params=['utf-8-encoding', 'sjis-encoding', 'cp932-encoding'])
+@pytest.fixture(params=['utf8', 'sjis', 'cp932'])
 def get_jsonfile_form_param(request, get_form_param_with_json_fd):
+  enc_table = {
+    'utf8': 'utf-8',
+    'sjis': 'shift_jis',
+    'cp932': 'cp932',
+  }
   # Define encoding
-  if request.param == 'utf-8-encoding':
-    encoding = 'utf-8'
-  elif request.param == 'sjis-encoding':
-    encoding = 'shift_jis'
-  elif request.param == 'cp932-encoding':
-    encoding = 'cp932'
+  encoding = enc_table[request.param]
   # Setup temporary file
   tmp_fp, json_file, params, files = get_form_param_with_json_fd(encoding)
 
@@ -84,11 +84,12 @@ def get_err_form_param_with_jsonfile(mocker, request):
   err_msg = ''
   input_data = '{}'
   suffix = '.json'
+  key = request.param
 
-  if request.param == 'invalid-json-format':
+  if key == 'invalid-json-format':
     input_data = '}{'
     err_msg = 'Cannot load json file'
-  elif request.param == 'invalid-extensions':
+  elif key == 'invalid-extensions':
     suffix = '.txt'
     err_msg = 'The extention has to be &quot;.json&quot;.'
   # Setup temporary file

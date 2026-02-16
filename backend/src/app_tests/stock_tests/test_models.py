@@ -1862,14 +1862,13 @@ class TestSnapshot(SharedFixtures):
       },
     ]
     # Create purchased stocks
-    if stock_types == 'none':
-      pstocks = []
-    elif stock_types == 'only':
-      pstocks = [all_purchased_stocks[0]]
-    elif stock_types == 'diff':
-      pstocks = [all_purchased_stocks[0], all_purchased_stocks[1]]
-    else:
-      pstocks = all_purchased_stocks
+    purchase_stock_table = {
+      'none': [],
+      'only': [all_purchased_stocks[0]],
+      'diff': [all_purchased_stocks[0], all_purchased_stocks[1]],
+      'same': all_purchased_stocks,
+    }
+    pstocks = purchase_stock_table[stock_types]
     # Define detail data
     data = json.dumps({
       'cash': {'balance': cash} if cash is not None else {},
@@ -1892,22 +1891,13 @@ class TestSnapshot(SharedFixtures):
       'A1B3', 'ge-hoge', 'ge-XXX', 'Defensive', '600.00', '0.16', '383400.00',        # From code to pval
       '300', '-23400.00', '1200.00', '9.31', '1.21', '2.34', '2.34', '0.34', '11.22', # From count to er
     ]
-    if stock_types == 'none':
-      expected_rows = [_cash_data]
-      record_keys = ['cash']
-      title = 'monthly report 20/12'
-    elif stock_types == 'only':
-      expected_rows = [_cash_data, _only_data]
-      record_keys = ['cash', 'A1B3']
-      title = 'monthly report 12/9'
-    elif stock_types == 'diff':
-      expected_rows = [_cash_data, _only_data, _diff_data]
-      record_keys = ['cash', 'A1B3', 'A1CC']
-      title = '月間レポート 21年12月'
-    else:
-      expected_rows = [_cash_data, _same_data, _diff_data]
-      record_keys = ['cash', 'A1B3', 'A1CC']
-      title = '月間レポート 19/08'
+    expected_table = {
+      'none': ([_cash_data], ['cash'], 'monthly report 20/12'),
+      'only': ([_cash_data, _only_data], ['cash', 'A1B3'], 'monthly report 12/9'),
+      'diff': ([_cash_data, _only_data, _diff_data], ['cash', 'A1B3', 'A1CC'], '月間レポート 21年12月'),
+      'same': ([_cash_data, _same_data, _diff_data], ['cash', 'A1B3', 'A1CC'], '月間レポート 19/08'),
+    }
+    expected_rows, record_keys, title = expected_table[stock_types]
 
     with django_db_blocker.unblock():
       instance = factories.SnapshotFactory(user=factories.UserFactory(), title=title)

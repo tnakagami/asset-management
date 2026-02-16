@@ -222,11 +222,12 @@ class TestTask(BaseTestUtils):
   @pytest.fixture(params=['only-one-user', 'multi-users'], scope='class')
   def get_pseudo_pstock_records(self, request, pseudo_purchased_stocks):
     base_users, pstocks = pseudo_purchased_stocks
+    key = request.param
     # Check execution pattern
-    if request.param == 'only-one-user':
+    if key == 'only-one-user':
       pattern = 'single'
       users = [base_users[0]]
-    elif request.param == 'multi-users':
+    elif key == 'multi-users':
       pattern = 'multi'
       users = base_users
 

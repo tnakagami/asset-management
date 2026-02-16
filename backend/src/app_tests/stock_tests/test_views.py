@@ -504,9 +504,12 @@ class TestPurchasedStockViews(SharedFixture):
     assert response.status_code == status.HTTP_200_OK
 
   def test_access_to_uploadview_without_authentication(self, client):
-    response = client.get(self.upload_url)
+    url = self.upload_url
+    response = client.get(url)
+    expected = '{}?next={}'.format(self.login_url, url)
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == expected
 
   def test_valid_post_access_to_uploadview(self, mocker, get_stock_records, login_process, get_csvfile_form_param):
     stocks = get_stock_records
@@ -552,7 +555,7 @@ class TestPurchasedStockViews(SharedFixture):
 
   @pytest.fixture(params=[
     'form-invalid',
-    'invalid-bluk-create',
+    'invalid-bulk-create',
     'invalid-header-input',
   ])
   def invalid_form_data_in_uploadview(self, request, mocker, get_single_csvfile_form_data):
@@ -563,12 +566,12 @@ class TestPurchasedStockViews(SharedFixture):
     if key == 'form-invalid':
       mocker.patch('stock.forms.UploadPurchasedStockForm.clean', side_effect=ValidationError('invalid-inputs'))
       err_msg = 'invalid-inputs'
-    elif request.param == 'invalid-bulk-create':
+    elif key == 'invalid-bulk-create':
       mocker.patch('stock.forms.UploadPurchasedStockForm.clean', return_value=None)
       mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=[])
       mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=IntegrityError('invalid'))
       err_msg = 'Include invalid records. Please check the detail: invalid.'
-    elif request.param == 'invalid-header-input':
+    elif key == 'invalid-header-input':
       has_header = False
       err_msg = 'Raise exception:'
     params, files = get_single_csvfile_form_data
@@ -837,14 +840,20 @@ class TestUploadDownloadViews(SharedFixture):
     assert response.status_code == status.HTTP_200_OK
 
   def test_access_to_upload_json_format_snapshot_without_authentication(self, client):
-    response = client.get(self.json_upload_url)
+    url = self.json_upload_url
+    response = client.get(url)
+    expected = '{}?next={}'.format(self.login_url, url)
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == expected
 
   def test_post_access_to_upload_json_format_snapshot_without_authentication(self, client):
-    response = client.post(self.json_upload_url)
+    url = self.json_upload_url
+    response = client.post(url)
+    expected = '{}?next={}'.format(self.login_url, url)
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == expected
 
   def test_check_valid_post_access_in_upload_json_format_snapshot(self, settings, get_jsonfile_form_param, login_process):
     settings.TIME_ZONE = 'Asia/Tokyo'
@@ -1182,9 +1191,12 @@ class TestStockViews(SharedFixture):
     assert response.status_code == status.HTTP_200_OK
 
   def test_access_to_listview_without_authentication(self, client):
-    response = client.get(self.list_url)
+    url = self.list_url
+    response = client.get(url)
+    expected = '{}?next={}'.format(self.login_url, url)
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == expected
 
   @pytest.mark.parametrize([
     'query_params',

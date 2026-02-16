@@ -433,7 +433,7 @@ class TestPageTransition(BaseStockTestUtils):
     'purchased-stock-list-page',
     'snapshot-list-page',
     'periodic-task-for-snapshot-list-page',
-    'pstock-upload-page',
+    'purchased-stock-upload-page',
     'snapshot-upload-jsonformat-page',
     'list-stock-page',
   ])
@@ -1280,8 +1280,8 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
       'csv_file': ('test-file.csv', bytes('\n'.join(data) + '\n', encoding=encoding)), # For django-webtest format
     }
     exacts = [
-      (codes[0], '2024-09-17T00:00:00+00:00', 2000.00, 100),
-      (codes[1], '2023-09-03T00:00:00+00:00', 1000.00, 200),
+      (stocks[0].code, '2024-09-17T00:00:00+00:00', 2000.00, 100),
+      (stocks[1].code, '2023-09-03T00:00:00+00:00', 1000.00, 200),
     ]
 
     return params, exacts
