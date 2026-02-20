@@ -555,7 +555,8 @@ class TestPurchasedStockViews(SharedFixture):
 
   @pytest.fixture(params=[
     'form-invalid',
-    'invalid-bulk-create',
+    'invalid-bulk-create-with-integrity-err',
+    'unexpected-error-occurred',
     'invalid-header-input',
   ])
   def invalid_form_data_in_uploadview(self, request, mocker, get_single_csvfile_form_data):
@@ -566,11 +567,15 @@ class TestPurchasedStockViews(SharedFixture):
     if key == 'form-invalid':
       mocker.patch('stock.forms.UploadPurchasedStockForm.clean', side_effect=ValidationError('invalid-inputs'))
       err_msg = 'invalid-inputs'
-    elif key == 'invalid-bulk-create':
+    elif key == 'invalid-bulk-create-with-integrity-err':
       mocker.patch('stock.forms.UploadPurchasedStockForm.clean', return_value=None)
       mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=[])
       mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=IntegrityError('invalid'))
       err_msg = 'Include invalid records. Please check the detail: invalid.'
+    elif key == 'unexpected-error-occurred':
+      mocker.patch('stock.forms.UploadPurchasedStockForm.clean', return_value=None)
+      mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', side_effect=Exception('Err'))
+      err_msg = 'Unexpected error occurred: Err.'
     elif key == 'invalid-header-input':
       has_header = False
       err_msg = 'Raise exception:'

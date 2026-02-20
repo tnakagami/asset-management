@@ -5,6 +5,7 @@ import urllib.parse
 from io import StringIO
 from webtest.app import AppError
 from django.contrib.auth import get_user_model
+from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy
 from django.urls import reverse
 from decimal import Decimal
@@ -1333,6 +1334,29 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
     # Send request
     app, users = init_webtest
     owner = users['owner']
+    forms = app.get(self.pstock_upload_url, user=owner).forms
+    form = forms['purchased-stock-upload-form']
+    for key, val in params.items():
+      form[key] = val
+    response = form.submit()
+    errors = response.context['form'].errors
+
+    assert response.status_code == status.HTTP_200_OK
+    assert err_msg in str(errors)
+
+  @pytest.mark.parametrize([
+    'exception_class',
+    'err_msg',
+  ], [
+    (IntegrityError, 'Include invalid records. Please check the detail:'),
+    (Exception, 'Unexpected error occurred:'),
+  ], ids=['integrity-err', 'unexpected-err'])
+  def test_exception_has_occurred_in_upload_page(self, mocker, get_valid_form_param_of_csvfile, init_webtest, exception_class, err_msg):
+    mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=exception_class('error'))
+    params, _ = get_valid_form_param_of_csvfile
+    app, users = init_webtest
+    owner = users['owner']
+    # Send request
     forms = app.get(self.pstock_upload_url, user=owner).forms
     form = forms['purchased-stock-upload-form']
     for key, val in params.items():

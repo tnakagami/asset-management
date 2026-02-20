@@ -639,18 +639,24 @@ class TestUploadPurchasedStockForm:
     assert abs(float(pstock.price) - float(expected_price)) < 1e-2
     assert pstock.count == int(expected_count)
 
-  def test_raise_exception_in_bulk_create(self, mocker, get_single_csvfile_form_data):
+  @pytest.mark.parametrize([
+    'exception_class',
+    'err_msg',
+  ], [
+    (IntegrityError, 'Include invalid records. Please check the detail:'),
+    (Exception, 'Unexpected error occurred:'),
+  ], ids=['has-integrity-error', 'has-exception'])
+  def test_raise_exception_in_bulk_create(self, mocker, get_single_csvfile_form_data, exception_class, err_msg):
     mocker.patch('stock.forms.UploadPurchasedStockForm.validate_csv_file', return_value=None)
     mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=[1])
     mocker.patch('stock.models.PurchasedStock.from_list', return_value=[2])
-    mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=IntegrityError('Invalid data'))
+    mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=exception_class('Invalid data'))
     # Create form
     user = factories.UserFactory()
     params, files = get_single_csvfile_form_data
     form = forms.UploadPurchasedStockForm(data=params, files=files)
     is_valid = form.is_valid()
     instances = form.register(user)
-    err_msg = 'Include invalid records. Please check the detail:'
 
     assert is_valid
     assert form.has_error(NON_FIELD_ERRORS)

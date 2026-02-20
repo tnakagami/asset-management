@@ -262,6 +262,13 @@ class UploadPurchasedStockForm(forms.Form):
         params={'ex': str(ex)},
       )
       self.add_error(None, error)
+    except Exception as ex:
+      error = forms.ValidationError(
+        gettext_lazy('Unexpected error occurred: %(ex)s.'),
+        code='unexpected_err',
+        params={'ex': str(ex)},
+      )
+      self.add_error(None, error)
 
     return instances
 
