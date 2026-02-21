@@ -374,7 +374,17 @@
 <script>
 (function () {
   const createChartData = (data, sortCallback, collectType) => {
-    const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
+    const _getTrend = (isDefensive) => {
+      const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
+      const trendIdx = isDefensive ? 0 : 1;
+      const out = {
+        isDefensive: isDefensive,
+        idx: trendIdx,
+        name: trendNameList[trendIdx],
+      };
+
+      return out;
+    };
     const _getValArr = (arr) => arr.map((item) => {
       const patterns = {
         pValue: item.value,
@@ -410,8 +420,7 @@
       const _scaler = (val) => val * record.count;
       const _stock = record.stock;
       const diff = _scaler(_stock.price) - _scaler(record.price);
-      const isDefensive = _stock.industry.is_defensive;
-      const trendIdx = (isDefensive) ? 0 : 1;
+      const trendStat = _getTrend(_stock.industry.is_defensive);
 
       return {
         name: _getName(_stock),
@@ -419,8 +428,8 @@
         industry: _getName(_stock.industry),
         dividend: _stock.dividend,
         realDividend: _scaler(_stock.dividend),
-        isDefensive: isDefensive,
-        trend: trendNameList[trendIdx],
+        isDefensive: trendStat.isDefensive,
+        trend: trendStat.name,
         price: record.price,
         count: record.count,
         diff: diff,
@@ -489,15 +498,13 @@
     const sectorList = (() => {
       const configs = stocks.reduce((pairs, item) => {
         const industry = item.industry;
-        const isDefensive = item.isDefensive;
-        const trendIdx = isDefensive ? 0 : 1;
-        const trendType = trendNameList[trendIdx];
+        const trendStat = _getTrend(item.isDefensive);
         pairs[industry] = {
           industry: industry,
-          isDefensive: isDefensive,
-          trendIdx: trendIdx,
-          trendType: trendType,
-          displayName: `${industry}(${trendType})`,
+          isDefensive: trendStat.isDefensive,
+          trendIdx: trendStat.idx,
+          trendType: trendStat.name,
+          displayName: `${industry}(${trendStat.name})`,
         };
 
         return pairs;
@@ -540,10 +547,16 @@
 
       return out;
     })();
-    const trendColorDict = {
-      [trendNameList[0]]: 'rgba(136, 200, 244, 0.9)',
-      [trendNameList[1]]: 'rgba(243, 136, 158, 0.9)',
-    };
+    const trendColorDict = (() => {
+      const defStat = _getTrend(true);
+      const notDefStat = _getTrend(false);
+      const out = {
+        [defStat.name]: 'rgba(136, 200, 244, 0.9)',
+        [notDefStat.name]: 'rgba(243, 136, 158, 0.9)',
+      };
+
+      return out;
+    })();
     const diffColorDict = stockNameList.slice(1).reduce((pairs, name) => {
       pairs[name] = 'rgba(136, 200, 244, 0.9)';
 
@@ -607,7 +620,7 @@
       },
       trendDividendData: {
         title: '{% trans "Economic trend (dividend)" %}',
-        labels: trendNameList,
+        labels: Object.keys(trendColorDict),
         colors: trendColorDict,
         datasets: [{
           label: '{% trans "Dividend" %}',
@@ -621,7 +634,7 @@
       },
       trendPriceData: {
         title: '{% trans "Economic trend (price)" %}',
-        labels: trendNameList,
+        labels: Object.keys(trendColorDict),
         colors: trendColorDict,
         datasets: [{
           label: '{% trans "Price" %}',
@@ -918,7 +931,7 @@
               autoSkip: false,
               maxTicksLimit: asset.labels.length,
               callback: function(value, index, ticks) {
-                const maxDisplayLen = 3;
+                const maxDisplayLen = 5;
                 const label = this.getLabelForValue(value);
                 const condition = judgement && (label.length > maxDisplayLen);
                 const out = condition ? `${label.slice(0, maxDisplayLen)}...` : label;
@@ -939,7 +952,11 @@
           tooltip: {
             callbacks: {
               label: function (tooltipItem) {
-                return `${tooltipItem.dataset.label}: ${tooltipItem.formattedValue}`;
+                const label = tooltipItem.dataset.label;
+                const val = tooltipItem.formattedValue;
+                const out = `${label}: ${val}`;
+
+                return out;
               },
             },
           },
@@ -960,7 +977,7 @@
       const sign = types[sortType];
       // lv: left-value, rv: right-value
       if (sign === 0) {
-        return (lv, rv) => 0;
+        return ((lv, rv) => 0);
       }
       else {
         return ((lv, rv) => (lv > rv) ? sign : ((lv < rv) ? (-sign) : 0));
