@@ -272,6 +272,28 @@ class UploadCsvPurchasedStockForm(forms.Form):
 
     return instances
 
+class DownloadCsvPurchasedStockForm(forms.Form):
+  template_name = 'renderer/custom_form.html'
+
+  filename = forms.CharField(
+    label=gettext_lazy('CSV filename'),
+    max_length=128,
+    required=False,
+    widget=forms.TextInput(attrs={
+      'class': 'form-control',
+      'id': 'download-filename',
+      'autofocus': True,
+    }),
+    help_text=gettext_lazy('You don’t have to enter the extention.'),
+  )
+
+  def create_response_kwargs(self, user):
+    filename = self.cleaned_data.get('filename', '').replace('.csv', '')
+    # Create response kwargs
+    kwargs = models.PurchasedStock.create_response_kwargs(filename, user)
+
+    return kwargs
+
 class SnapshotForm(_BaseModelFormWithCSS):
   class Meta:
     model = models.Snapshot
@@ -1026,7 +1048,7 @@ class StockDownloadForm(forms.Form):
       qs_order = [order for order in ordering.split(',') if order in valid_orders]
     if not qs_order:
       qs_order = ['code']
-    # Get response kwargs
-    kwargs = models.Stock.get_response_kwargs(filename, tree, qs_order)
+    # Create response kwargs
+    kwargs = models.Stock.create_response_kwargs(filename, tree, qs_order)
 
     return kwargs

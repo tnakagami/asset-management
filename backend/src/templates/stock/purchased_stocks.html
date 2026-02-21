@@ -32,18 +32,22 @@
           <div class="col">
             <a
               href="{% url 'stock:upload_purchased_stock_csv' %}"
+              id="upload-purchased-stock"
               class="btn btn-outline-primary w-100 custom-boxshadow"
             >
-              {% trans "Upload purchased stocks as CSV" %}
+              {% trans "Upload purchased stocks as CSV (Shift + u)" %}
             </a>
           </div>
           <div class="col">
-            <a
-              href="{% url 'stock:download_purchased_stock_csv' %}"
-              class="btn btn-outline-success w-100 custom-boxshadow"
+            <button
+              type="button"
+              id="download-purchased-stock"
+              class="btn btn-primary w-100 custom-boxshadow"
+              data-bs-toggle="modal"
+              data-bs-target="#download-purchased-stock-modal"
             >
-              {% trans "Download purchased stocks as CSV" %}
-            </a>
+              {% trans "Download purchased stock as CSV (Shift + s)" %}
+            </button>
           </div>
         </div>
       </div>
@@ -340,6 +344,49 @@
     </div>
   </div>
 </div>
+
+{# Download purchased stock modal #}
+<div class="modal fade" id="download-purchased-stock-modal" tabindex="-1" aria-labelledby="download-purchased-stock-label" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title h3" id="download-purchased-stock-label">{% trans "Download purchased stock" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{% url 'stock:download_purchased_stock_csv' %}" id="download-purchased-stock-form">
+          {% csrf_token %}
+
+          {{ download_form }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <div class="mt-1 row row-cols-1 row-cols-md-2 g-2 w-100">
+          <div class="col">
+            <button
+              type="submit"
+              id="download-purchased-stock-btn"
+              form="download-purchased-stock-form"
+              class="btn btn-primary w-100 custom-boxshadow"
+            >
+              {% trans "Download" %}
+            </button>
+          </div>
+          <div class="col">
+            <button
+              id="close-download-purchased-stock-modal"
+              type="button"
+              class="btn btn-secondary w-100 custom-boxshadow"
+              data-bs-dismiss="modal"
+            >
+              {% trans "Close" %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block bodyjs %}
@@ -377,8 +424,8 @@
       const dataType = selectedOption.dataset.type;
       // Get valid options
       const validOptions = Array.from(defaultOperator.options).filter((option) => {
-        const _type = option.dataset.type;
-        const ret = (_type === 'both') || (_type === dataType);
+        const optType = option.dataset.type;
+        const ret = (optType === 'both') || (optType === dataType);
 
         return ret;
       });
@@ -405,11 +452,9 @@
     // Add focus event
     let picker = null;
     inputData.addEventListener('focusin', (event) => {
-      const selectedOption = targetColumn.options[targetColumn.selectedIndex];
-      const variableName = targetColumn.value;
-      const dataType = selectedOption.dataset.type;
+      const name = targetColumn.value;
 
-      if (variableName === 'purchase_date') {
+      if (name === 'purchase_date') {
         if (!picker) {
           picker = helper.setupPicker(event.target);
           picker.updateOptions({
@@ -428,20 +473,22 @@
           picker.dispose();
           picker = null;
         }
+        const opt = targetColumn.options[targetColumn.selectedIndex];
+        const dataType = opt.dataset.type;
         event.target.type = (dataType === 'number') ? 'number' : 'text';
       }
     });
     // Add click event
     addCmd.addEventListener('click', () => {
-      const _variableName = targetColumn.value;
-      const _compOp = compOperator.value;
-      const _inputVal = inputData.value;
+      const name = targetColumn.value;
+      const op = compOperator.value;
+      const data = inputData.value;
 
-      if (_variableName && _compOp && _inputVal) {
+      if (name && op && data) {
         const selectedOption = targetColumn.options[targetColumn.selectedIndex];
         const dataType = selectedOption.dataset.type;
-        const value = ((dataType === 'str') || (_variableName === 'purchase_date')) ? `"${_inputVal}"` : _inputVal;
-        const command = `${_variableName} ${_compOp} ${value}`;
+        const value = ((dataType === 'str') || (name === 'purchase_date')) ? `"${data}"` : data;
+        const command = `${name} ${op} ${value}`;
         condition.value += command;
       }
     });
@@ -496,10 +543,32 @@
       });
     }
   };
-
+  // Setup download form
+  const setupDownloadForm = (helper) => {
+    const downloadForm = document.getElementById('download-purchased-stock-form');
+    const filenameField = document.getElementById('download-filename');
+    // Add keyup event
+    filenameField.addEventListener('keyup', (event) => {
+      if (!event.ctrlKey && (event.key === 'Enter')) {
+        downloadForm.submit();
+      }
+    });
+    // Add submit event
+    downloadForm.addEventListener('submit', (event) => {
+      const execDownload = document.getElementById('download-purchased-stock-btn');
+      execDownload.disabled = true;
+      // Setup timer
+      helper.setupDownloadStatus('purchased_stock_download_status', '{{ is_secure }}', () => {
+        execDownload.disabled = false;
+        const element = document.getElementById('close-download-purchased-stock-modal');
+        element.click();
+      });
+    });
+  };
   // Define initialization function
   const init = () => {
     const helper = new HelperMethods();
+    const filteringBtn = document.getElementById('record-filtering');
     // Register delete modal event
     helper.registerDeleteModalEvent({
       targetCSS: 'delete-target-record',
@@ -507,18 +576,39 @@
       modalID: 'delete-modal',
     });
     // Setup filtering form
-    const filteringBtn = document.getElementById('record-filtering');
     setupFilteringForm(helper);
     setupClickLinkEvent();
+    // Setup download form
+    setupDownloadForm(helper);
 
     // Add key event
     document.addEventListener('keyup', (event) => {
-      if (event.key === 'F') { /* F := Shift + f */
-        filteringBtn.click();
-      }
-      else if (event.ctrlKey && (event.key === 'Enter')) {
-        const filteringForm = document.getElementById('record-filtering-form');
-        filteringForm.submit();
+      switch (event.key) {
+        case 'F': /* F := Shift + f */
+          {
+            filteringBtn.click();
+          }
+          break;
+        case 'Enter':
+          if (event.ctrlKey) {
+            const filteringForm = document.getElementById('record-filtering-form');
+            filteringForm.submit();
+          }
+          break;
+        case 'S': /* S := Shift + s */
+          {
+            const downloadBtn = document.getElementById('download-purchased-stock');
+            downloadBtn.click();
+          }
+          break;
+        case 'U': /* U := Shift + u */
+          {
+            const uploadLink = document.getElementById('upload-purchased-stock');
+            uploadLink.click();
+          }
+          break;
+        default:
+          break;
       }
     });
     {% if form.errors %}

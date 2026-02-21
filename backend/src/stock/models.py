@@ -419,7 +419,7 @@ class Stock(models.Model):
     return str(self.locals.get_local() or '')
 
   @classmethod
-  def get_response_kwargs(cls, filename, tree, ordering):
+  def create_response_kwargs(cls, filename, tree, ordering):
     if not filename:
       filename = generate_default_filename()
     name = urllib.parse.quote(filename.encode('utf-8'))
@@ -673,22 +673,23 @@ class PurchasedStock(models.Model):
     return instance
 
   @classmethod
-  def create_response_kwargs(cls, user):
-    filename = generate_default_filename()
+  def create_response_kwargs(cls, filename, user):
+    if not filename:
+      filename = generate_default_filename()
     name = urllib.parse.quote(filename.encode('utf-8'))
     queryset = cls.objects.filter(user=user).selected_range()
     rows = (
       [
         obj.stock.code,
         convert_timezone(obj.purchase_date, is_string=True, strformat='%Y-%m-%d'),
-        '{:.2f}'.format(float(obj.price)),
-        '{}'.format(obj.count),
+        str(obj.price),
+        str(obj.count),
       ] for obj in queryset.iterator(chunk_size=512)
     )
     kwargs = {
       'rows': rows,
       'header': ['Code', 'Date', 'Price', 'Count'],
-      'filename': f'purchased-stock-{name}.csv',
+      'filename': f'pstock-{name}.csv',
     }
 
     return kwargs

@@ -762,7 +762,7 @@ class TestStock(SharedFixtures):
     'same-values-exist',
     'use-multi-byte-string-in-filename',
   ])
-  def test_get_response_kwargs(self, mocker, pseudo_stock_data, filename, condition, ordering, total, start_idx, end_idx):
+  def test_create_response_kwargs(self, mocker, pseudo_stock_data, filename, condition, ordering, total, start_idx, end_idx):
     default_fname = '20010917-213456'
     stocks = pseudo_stock_data
     queryset = models.Stock.objects.filter(pk__in=self.get_pks(stocks))
@@ -770,7 +770,7 @@ class TestStock(SharedFixtures):
     mocker.patch('stock.models.generate_default_filename', return_value=default_fname)
     tree = ast.parse(condition, mode='eval') if condition else None
     # Call target function
-    kwargs = models.Stock.get_response_kwargs(filename, tree, ordering.split(','))
+    kwargs = models.Stock.create_response_kwargs(filename, tree, ordering.split(','))
     # Create expected values
     first_obj = stocks[start_idx]
     last_obj = stocks[end_idx]
@@ -795,8 +795,8 @@ class TestStock(SharedFixtures):
     assert all([str(est) == exact for est, exact in zip(kwargs['header'], expected_header)])
     assert kwargs['filename'] == f'stock-{expected_name}.csv'
 
-  def test_get_response_kwargs_with_no_data(self):
-    kwargs = models.Stock.get_response_kwargs('', None, ['code'])
+  def test_create_response_kwargs_with_no_data(self):
+    kwargs = models.Stock.create_response_kwargs('', None, ['code'])
     queryset = models.Stock.objects.select_targets().order_by('code')
 
     assert len(list(kwargs['rows'])) == len(queryset)
@@ -1265,12 +1265,22 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
     assert queryset.count() == 1
     assert the1st_instance.pk == pstocks[1].pk
 
-  def test_create_response_kwargs(self, mocker, get_dummy_pstocks):
+  @pytest.mark.parametrize([
+    'fname',
+    'exact',
+  ], [
+    ('hogehoge', 'hogehoge'),
+    ('', '20190513-012643'),
+  ], ids=[
+    'valid-filename',
+    'empty-filename'
+  ])
+  def test_create_response_kwargs(self, mocker, get_dummy_pstocks, fname, exact):
     def get_record(obj):
       code = obj.stock.code
       date = models.convert_timezone(obj.purchase_date, is_string=True, strformat='%Y-%m-%d')
-      price = '{:.2f}'.format(float(obj.price))
-      count = '{}'.format(obj.count)
+      price = str(obj.price)
+      count = str(obj.count)
       out = [code, date, price, count]
 
       return out
@@ -1281,9 +1291,8 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
     queryset = models.PurchasedStock.objects.filter(pk__in=self.get_pks(purchased_stocks)).order_by('-purchase_date')
     expected_2nd = get_record(queryset[2])
     expected_last = get_record(queryset.last())
-    fname = '20190513-012643'
-    expected_fname = 'purchased-stock-{}.csv'.format(urllib.parse.quote(fname.encode('utf-8')))
-    params = models.PurchasedStock.create_response_kwargs(user)
+    expected_fname = 'pstock-{}.csv'.format(urllib.parse.quote(exact.encode('utf-8')))
+    params = models.PurchasedStock.create_response_kwargs(fname, user)
     records = list(params['rows'])
 
     assert params['filename'] == expected_fname

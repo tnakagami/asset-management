@@ -90,6 +90,7 @@
           this.getCookie = this.getCookie.bind(this);
           this.registerDeleteModalEvent = this.registerDeleteModalEvent.bind(this);
           this.setupPicker = this.setupPicker.bind(this);
+          this.setupDownloadStatus = this.setupDownloadStatus.bind(this);
         }
         getCookie(name) {
           let cookieValue = null;
@@ -177,6 +178,20 @@
           });
 
           return picker;
+        }
+        setupDownloadStatus(key, option, callback) {
+          // Setup timer
+          const timerId = window.setInterval(() => {
+            // Check whether targetCookieValue exists or not
+            const target = `${key}=completed`;
+
+            if (document.cookie.includes(target)) {
+              window.clearInterval(timerId);
+              callback();
+              // Execute post-process
+              document.cookie = `${key}=; max-age=0; path=/; ${option}`;
+            }
+          }, 1000);
         }
       }
     </script>

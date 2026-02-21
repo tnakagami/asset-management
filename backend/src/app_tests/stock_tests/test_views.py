@@ -602,21 +602,18 @@ class TestPurchasedStockViews(SharedFixture):
   # ============
   # DownloadView
   # ============
-  def test_access_to_downloadview_without_authentication(self, client):
-    url = self.download_url
-    response = client.get(url)
-    expected = '{}?next={}'.format(self.login_url, url)
+  def test_access_to_download_csv_purchased_stock_without_authentication(self, client):
+    response = client.get(self.download_url)
 
-    assert response.status_code == status.HTTP_302_FOUND
-    assert response['Location'] == expected
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
-  def test_post_access_in_downloadview(self, wrap_login):
+  def test_invalid_request_to_download_csv_purchased_stock(self, wrap_login):
     client, _ = wrap_login
-    response = client.post(self.download_url)
+    response = client.get(self.download_url)
 
     assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
-  def test_get_request_to_downloadview(self, mocker, login_process):
+  def test_post_request_to_downloadview(self, mocker, login_process):
     output = {
       'rows': [['0001','2020-01-02', '123.45', '100'], ['0102', '2021-10-12', '500.01', '200']],
       'header': ['Code', 'Date', 'Price', 'Count'],
@@ -624,14 +621,19 @@ class TestPurchasedStockViews(SharedFixture):
     }
     expected = bytes('Code,Date,Price,Count\n0001,2020-01-02,123.45,100\n0102,2021-10-12,500.01,200\n', 'utf-8')
     mocker.patch('stock.models.PurchasedStock.create_response_kwargs', return_value=output)
-    # Get access
+    # Post access
+    params = {
+      'filename': 'test',
+    }
     client, user = login_process(user=factories.UserFactory())
-    response = client.get(self.download_url)
+    response = client.post(self.download_url, data=params)
+    cookie = response.cookies.get('purchased_stock_download_status')
     attachment = response.get('content-disposition')
     stream = response.getvalue()
 
     assert response.has_header('content-disposition')
     assert output['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
+    assert cookie.value == 'completed'
     assert expected in stream
 
 # =============

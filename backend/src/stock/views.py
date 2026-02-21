@@ -124,8 +124,11 @@ class ListPurchasedStock(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
     return queryset
 
   def get_context_data(self, **kwargs):
+    is_secure = getattr(settings, 'IS_SECURE_COOKIE', True)
     context = super().get_context_data(**kwargs)
     context['form'] = self.form
+    context['download_form'] = forms.DownloadCsvPurchasedStockForm()
+    context['is_secure'] = 'Secure' if is_secure else ''
 
     return context
 
@@ -182,17 +185,28 @@ class UploadCsvPurchasedStock(LoginRequiredMixin, FormView, DjangoBreadcrumbsMix
 
     return response
 
-class DownloadCsvPurchasedStock(LoginRequiredMixin, View):
-  http_method_names = ['get']
+class DownloadCsvPurchasedStock(LoginRequiredMixin, FormView):
+  raise_exception = True
+  http_method_names = ['post']
+  form_class = forms.DownloadCsvPurchasedStockForm
 
-  def get(self, request, *args, **kwargs):
-    params = models.PurchasedStock.create_response_kwargs(request.user)
+  def form_valid(self, form):
+    user = self.request.user
+    kwargs = form.create_response_kwargs(user)
     # Create response
-    filename = params['filename']
+    max_age = getattr(settings, 'CSV_DOWNLOAD_MAX_AGE', 5 * 60)
+    is_secure = getattr(settings, 'IS_SECURE_COOKIE', True)
+    filename = kwargs['filename']
     response = StreamingHttpResponse(
-      streaming_csv_file(params['rows'], header=params['header']),
+      streaming_csv_file(kwargs['rows'], header=kwargs['header']),
       content_type='text/csv;charset=UTF-8',
       headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+    response.set_cookie(
+      'purchased_stock_download_status',
+      value='completed',
+      max_age=max_age,
+      secure=is_secure,
     )
 
     return response
@@ -431,7 +445,7 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
 
     return context
 
-class DownloadStockPage(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
+class DownloadStockPage(LoginRequiredMixin, FormView):
   raise_exception = True
   http_method_names = ['post']
   form_class = forms.StockDownloadForm
