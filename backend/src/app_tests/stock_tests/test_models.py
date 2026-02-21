@@ -1265,6 +1265,32 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
     assert queryset.count() == 1
     assert the1st_instance.pk == pstocks[1].pk
 
+  def test_create_response_kwargs(self, mocker, get_dummy_pstocks):
+    def get_record(obj):
+      code = obj.stock.code
+      date = models.convert_timezone(obj.purchase_date, is_string=True, strformat='%Y-%m-%d')
+      price = '{:.2f}'.format(float(obj.price))
+      count = '{}'.format(obj.count)
+      out = [code, date, price, count]
+
+      return out
+    # Mock
+    mocker.patch('stock.models.generate_default_filename', return_value='20190513-012643')
+    # Get records
+    user, _, purchased_stocks, _ = get_dummy_pstocks
+    queryset = models.PurchasedStock.objects.filter(pk__in=self.get_pks(purchased_stocks)).order_by('-purchase_date')
+    expected_2nd = get_record(queryset[2])
+    expected_last = get_record(queryset.last())
+    fname = '20190513-012643'
+    expected_fname = 'purchased-stock-{}.csv'.format(urllib.parse.quote(fname.encode('utf-8')))
+    params = models.PurchasedStock.create_response_kwargs(user)
+    records = list(params['rows'])
+
+    assert params['filename'] == expected_fname
+    assert params['header'] == ['Code', 'Date', 'Price', 'Count']
+    assert records[2] == expected_2nd
+    assert records[-1] == expected_last
+
 # ==============
 # SnapshotRecord
 # ==============

@@ -9,31 +9,43 @@
   <div class="col">
     <div class="row row-cols-1 g-2">
       <div class="col">
-        <a
-          href="{% url 'stock:register_purchased_stock' %}"
-          class="btn btn-primary w-100 custom-boxshadow"
-        >
-          {% trans "Register purchsed stock" %}
-        </a>
-      </div>
-      <div class="col">
-        <a
-          href="{% url 'stock:upload_purchased_stock' %}"
-          class="btn btn-warning w-100 custom-boxshadow"
-        >
-          {% trans "Upload purchsed stocks using csv file" %}
-        </a>
-      </div>
-      <div class="col">
-        <button
-          type="button"
-          id="record-filtering"
-          class="btn btn-success w-100 custom-boxshadow"
-          data-bs-toggle="modal"
-          data-bs-target="#record-filtering-modal"
-        >
-          {% trans "Search purchased stock (Shift + f)" %}
-        </button>
+        <div class="row row-cols-1 row-cols-md-2 g-2">
+          <div class="col">
+            <a
+              href="{% url 'stock:register_purchased_stock' %}"
+              class="btn btn-primary w-100 custom-boxshadow"
+            >
+              {% trans "Register purchased stock" %}
+            </a>
+          </div>
+          <div class="col">
+            <button
+              type="button"
+              id="record-filtering"
+              class="btn btn-success w-100 custom-boxshadow"
+              data-bs-toggle="modal"
+              data-bs-target="#record-filtering-modal"
+            >
+              {% trans "Search purchased stock (Shift + f)" %}
+            </button>
+          </div>
+          <div class="col">
+            <a
+              href="{% url 'stock:upload_purchased_stock_csv' %}"
+              class="btn btn-outline-primary w-100 custom-boxshadow"
+            >
+              {% trans "Upload purchased stocks using csv file" %}
+            </a>
+          </div>
+          <div class="col">
+            <a
+              href="{% url 'stock:download_purchased_stock_csv' %}"
+              class="btn btn-outline-success w-100 custom-boxshadow"
+            >
+              {% trans "Download purchased stocks as CSV" %}
+            </a>
+          </div>
+        </div>
       </div>
       <div class="col">
         {% if pstocks %}

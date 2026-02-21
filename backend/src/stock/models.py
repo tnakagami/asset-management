@@ -672,6 +672,27 @@ class PurchasedStock(models.Model):
 
     return instance
 
+  @classmethod
+  def create_response_kwargs(cls, user):
+    filename = generate_default_filename()
+    name = urllib.parse.quote(filename.encode('utf-8'))
+    queryset = cls.objects.filter(user=user).selected_range()
+    rows = (
+      [
+        obj.stock.code,
+        convert_timezone(obj.purchase_date, is_string=True, strformat='%Y-%m-%d'),
+        '{:.2f}'.format(float(obj.price)),
+        '{}'.format(obj.count),
+      ] for obj in queryset.iterator(chunk_size=512)
+    )
+    kwargs = {
+      'rows': rows,
+      'header': ['Code', 'Date', 'Price', 'Count'],
+      'filename': f'purchased-stock-{name}.csv',
+    }
+
+    return kwargs
+
   def __str__(self):
     target_time = convert_timezone(self.purchase_date, is_string=True)
     out = f'{self.stock.get_name()}({target_time},{self.count})'

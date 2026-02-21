@@ -560,23 +560,23 @@ class TestPurchasedStockForm:
 
     assert 'matching query does not exist' in str(ex.value)
 
-# ========================
-# UploadPurchasedStockForm
-# ========================
+# ===========================
+# UploadCsvPurchasedStockForm
+# ===========================
 @pytest.mark.stock
 @pytest.mark.form
 @pytest.mark.django_db
-class TestUploadPurchasedStockForm:
+class TestUploadCsvPurchasedStockForm:
   def test_check_filtering(self):
     data = ['a', '', 'c', '3']
-    form = forms.UploadPurchasedStockForm()
+    form = forms.UploadCsvPurchasedStockForm()
     row = form.filtering(data)
 
     assert row == ['a', 'c', '3']
 
   def test_valid_form_input(self, mocker, get_csvfile_form_param):
     params, files = get_csvfile_form_param
-    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    form = forms.UploadCsvPurchasedStockForm(data=params, files=files)
     mocker.patch.object(form, 'length_checker', return_value=True)
     mocker.patch.object(form, 'extractor', side_effect=lambda rows: rows)
     mocker.patch.object(form, 'record_checker', return_value=None)
@@ -587,7 +587,7 @@ class TestUploadPurchasedStockForm:
 
   def test_invalid_form_input(self, mocker, get_err_form_param_with_csvfile):
     params, files, configs, err_msg = get_err_form_param_with_csvfile
-    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    form = forms.UploadCsvPurchasedStockForm(data=params, files=files)
     # Mock specific object
     for target, kwargs in configs.items():
       mocker.patch.object(form, target, **kwargs)
@@ -602,14 +602,14 @@ class TestUploadPurchasedStockForm:
     err_msg = 'Failed to decode in line 0 (Encoding: cp932).'
     # Create form
     params, files = get_single_csvfile_form_data
-    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    form = forms.UploadCsvPurchasedStockForm(data=params, files=files)
     is_valid = form.is_valid()
 
     assert not is_valid
     assert err_msg in str(form.errors)
 
   def test_default_valid_data(self):
-    form = forms.UploadPurchasedStockForm()
+    form = forms.UploadCsvPurchasedStockForm()
     data = form.get_data()
 
     assert data is None
@@ -620,12 +620,12 @@ class TestUploadPurchasedStockForm:
       (stocks[0].code, '2020-01-02 00:00:00+00:00', '1100.3', '100'),
       (stocks[1].code, '2020-01-03 00:00:00+00:00', '1101.3', '200'),
     ]
-    mocker.patch('stock.forms.UploadPurchasedStockForm.validate_csv_file', return_value=None)
-    mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=records)
+    mocker.patch('stock.forms.UploadCsvPurchasedStockForm.validate_csv_file', return_value=None)
+    mocker.patch('stock.forms.UploadCsvPurchasedStockForm.get_data', return_value=records)
     # Create form
     user = factories.UserFactory()
     params, files = get_single_csvfile_form_data
-    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    form = forms.UploadCsvPurchasedStockForm(data=params, files=files)
     is_valid = form.is_valid()
     instances = form.register(user)
     qs = user.purchased_stocks.all()
@@ -639,18 +639,24 @@ class TestUploadPurchasedStockForm:
     assert abs(float(pstock.price) - float(expected_price)) < 1e-2
     assert pstock.count == int(expected_count)
 
-  def test_raise_exception_in_bulk_create(self, mocker, get_single_csvfile_form_data):
-    mocker.patch('stock.forms.UploadPurchasedStockForm.validate_csv_file', return_value=None)
-    mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=[1])
+  @pytest.mark.parametrize([
+    'exception_class',
+    'err_msg',
+  ], [
+    (IntegrityError, 'Include invalid records. Please check the detail:'),
+    (Exception, 'Unexpected error occurred:'),
+  ], ids=['has-integrity-error', 'has-exception'])
+  def test_raise_exception_in_bulk_create(self, mocker, get_single_csvfile_form_data, exception_class, err_msg):
+    mocker.patch('stock.forms.UploadCsvPurchasedStockForm.validate_csv_file', return_value=None)
+    mocker.patch('stock.forms.UploadCsvPurchasedStockForm.get_data', return_value=[1])
     mocker.patch('stock.models.PurchasedStock.from_list', return_value=[2])
-    mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=IntegrityError('Invalid data'))
+    mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=exception_class('Invalid data'))
     # Create form
     user = factories.UserFactory()
     params, files = get_single_csvfile_form_data
-    form = forms.UploadPurchasedStockForm(data=params, files=files)
+    form = forms.UploadCsvPurchasedStockForm(data=params, files=files)
     is_valid = form.is_valid()
     instances = form.register(user)
-    err_msg = 'Include invalid records. Please check the detail:'
 
     assert is_valid
     assert form.has_error(NON_FIELD_ERRORS)

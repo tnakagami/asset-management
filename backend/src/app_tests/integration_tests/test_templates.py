@@ -5,6 +5,7 @@ import urllib.parse
 from io import StringIO
 from webtest.app import AppError
 from django.contrib.auth import get_user_model
+from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy
 from django.urls import reverse
 from decimal import Decimal
@@ -211,7 +212,8 @@ class BaseStockTestUtils(SharedFixture):
   pstock_create_url = reverse('stock:register_purchased_stock')
   pstock_update_url = lambda _self, pk: reverse('stock:update_purchased_stock', kwargs={'pk': pk})
   pstock_delete_url = lambda _self, pk: reverse('stock:delete_purchased_stock', kwargs={'pk': pk})
-  pstock_upload_url = reverse('stock:upload_purchased_stock')
+  pstock_upload_url = reverse('stock:upload_purchased_stock_csv')
+  pstock_download_url = reverse('stock:download_purchased_stock_csv')
   # Snapshot
   snapshot_list_url = reverse('stock:list_snapshot')
   snapshot_create_url = reverse('stock:register_snapshot')
@@ -276,7 +278,7 @@ class TestPageTransition(BaseStockTestUtils):
     ('dashboard_url', 'Register snapshot', 'snapshot_create_url'),
     ('history_url', 'Register snapshot', 'snapshot_create_url'),
     ('cash_list_url', 'Register cash', 'cash_create_url'),
-    ('pstock_list_url', 'Register purchsed stock', 'pstock_create_url'),
+    ('pstock_list_url', 'Register purchased stock', 'pstock_create_url'),
     ('snapshot_list_url', 'Register snapshot', 'snapshot_create_url'),
     # from create page to list page
     ('cash_create_url', 'Cancel', 'cash_list_url'),
@@ -1241,7 +1243,7 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
     app, users = init_webtest
     owner = users['owner']
     page = app.get(self.pstock_list_url, user=owner)
-    response = page.click('Upload purchsed stocks using csv file')
+    response = page.click('Upload purchased stocks using csv file')
 
     assert response.status_code == status.HTTP_200_OK
     assert get_current_path(response) == self.pstock_upload_url
@@ -1342,6 +1344,87 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
 
     assert response.status_code == status.HTTP_200_OK
     assert err_msg in str(errors)
+
+  @pytest.mark.parametrize([
+    'exception_class',
+    'err_msg',
+  ], [
+    (IntegrityError, 'Include invalid records. Please check the detail:'),
+    (Exception, 'Unexpected error occurred:'),
+  ], ids=['integrity-err', 'unexpected-err'])
+  def test_exception_has_occurred_in_upload_page(self, mocker, get_valid_form_param_of_csvfile, init_webtest, exception_class, err_msg):
+    mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=exception_class('error'))
+    params, _ = get_valid_form_param_of_csvfile
+    app, users = init_webtest
+    owner = users['owner']
+    # Send request
+    forms = app.get(self.pstock_upload_url, user=owner).forms
+    form = forms['purchased-stock-upload-form']
+    for key, val in params.items():
+      form[key] = val
+    response = form.submit()
+    errors = response.context['form'].errors
+
+    assert response.status_code == status.HTTP_200_OK
+    assert err_msg in str(errors)
+
+  # ===========================================
+  # Download purchased stocks by using csv file
+  # ===========================================
+  def test_check_download_pstock_for_csv_format(self, mocker, get_sample_data_for_stock_search, csrf_exempt_django_app):
+    def get_data(obj):
+      code = obj.stock.code
+      date = models.convert_timezone(obj.purchase_date, is_string=True, strformat='%Y-%m-%d')
+      price = '{:.2f}'.format(float(obj.price))
+      count = '{}'.format(obj.count)
+      out = [code, date, price, count]
+
+      return out
+    # Create expected data
+    user = factories.UserFactory()
+    stocks = get_sample_data_for_stock_search
+    purchased_stocks = [
+      factories.PurchasedStockFactory(
+        user=user, stock=stocks[0], price=Decimal('123.41'),
+        count=100, purchase_date=get_date((2022, 3, 4)),
+      ),
+      factories.PurchasedStockFactory(
+        user=user, stock=stocks[2], price=Decimal('1000.00'),
+        count=100, purchase_date=get_date((2021, 2, 1)),
+      ),
+      factories.PurchasedStockFactory(
+        user=user, stock=stocks[1], price=512,
+        count=300, purchase_date=get_date((2023, 5, 5)),
+      ),
+      factories.PurchasedStockFactory(
+        user=user, stock=stocks[4], price=Decimal('512.01'),
+        count=150, purchase_date=get_date((2022,10,15)),
+      ),
+    ]
+    qs = models.PurchasedStock.objects.filter(pk__in=self.get_pks(purchased_stocks))
+    # Mock
+    mocker.patch('stock.models.generate_default_filename', return_value='20190124-120749')
+    # Create expected data
+    lines = '\n'.join([
+      ','.join(get_data(obj))
+      for obj in qs.order_by('-purchase_date')
+    ])
+    expected = {
+      'rows': bytes(lines, 'utf-8'),
+      'header': bytes('Code,Date,Price,Count', 'utf-8'),
+      'filename': 'purchased-stock-20190124-120749.csv',
+    }
+    # Execution
+    app = csrf_exempt_django_app
+    page = app.get(self.pstock_list_url, user=user)
+    response = page.click('Download purchased stocks as CSV')
+    # Collect results
+    attachment = response['content-disposition']
+    stream = response.content
+
+    assert expected['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
+    assert expected['header'] in stream
+    assert expected['rows'] in stream
 
   # ===========================
   # Upload JSON format snapshot
@@ -1910,7 +1993,7 @@ class TestWholeTimeSeriesProcessing(BaseStockTestUtils):
     ]
     # Execute form process
     for params in options:
-      res = app.get(next_link).click('Register purchsed stock')
+      res = app.get(next_link).click('Register purchased stock')
       status_codes.append(res.status_code)
       next_link = get_current_path(res)
       form = app.get(next_link).forms['purchased-stock-form']
@@ -1995,7 +2078,7 @@ class TestWholeTimeSeriesProcessing(BaseStockTestUtils):
     assert chk_ss(lambda target: target[1]['cash']['registered_date'] == '2021-09-10T00:00:00+09:00')
     assert chk_ss(lambda target: target[0]['cash']['balance'] == 77516)
     assert chk_ss(lambda target: target[0]['cash']['registered_date'] == '2022-02-02T00:00:00+09:00')
-    # Check purchsed stock
+    # Check purchased stock
     assert chk_ss(lambda target: calc_pstock_sum(target[2]['purchased_stocks']) == 0)
     assert chk_ss(lambda target: calc_pstock_sum(target[1]['purchased_stocks']) == 627212)
     assert chk_ss(lambda target: calc_pstock_sum(target[0]['purchased_stocks']) == 922485)

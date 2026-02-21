@@ -196,11 +196,11 @@
                   <tfoot class="table-group-divider text-left" id="asset-totals">
                     <tr>
                       <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
-                      <th><span name="total-dividend"></span></th>
-                      <th><span name="average-yield"></span>&#37;</th>
-                      <th><span name="total-value"></span></th>
-                      <th><span name="total-count"></span></th>
-                      <th><span name="total-diff"></span></th>
+                      <th><span name="total-asset-dividend"></span></th>
+                      <th><span name="average-asset-yield"></span>&#37;</th>
+                      <th><span name="total-asset-value"></span></th>
+                      <th><span name="total-asset-count"></span></th>
+                      <th><span name="total-asset-diff"></span></th>
                     </tr>
                   </tfoot>
                 </table>
@@ -222,6 +222,15 @@
                   </thead>
                   <tbody id="all-sectors-list" class="table-group-divider">
                   </tbody>
+                  <tfoot class="table-group-divider text-left" id="sector-totals">
+                    <tr>
+                      <th scope="row" colspan="3" class="text-center">{% trans "Total" %}</th>
+                      <th><span name="total-sector-count"></span></th>
+                      <th><span name="total-sector-dividend"></span></th>
+                      <th><span name="total-sector-value"></span></th>
+                      <th><span name="total-sector-diff"></span></th>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -735,7 +744,7 @@
         diff: 0,
       };
       tbody.innerHTML = '';
-
+      // Set each record
       records.forEach((item, idx) => {
         const clone = template.content.cloneNode(true);
 
@@ -761,7 +770,7 @@
       totals.value -= records[0].value;
       // Set total value
       ['dividend', 'value', 'count', 'diff'].forEach((key) => {
-        const element = tfoot.querySelector(`th > span[name="total-${key}"]`);
+        const element = tfoot.querySelector(`th > span[name="total-asset-${key}"]`);
         const val = totals[key];
         element.textContent = val.toLocaleString();
 
@@ -773,15 +782,16 @@
         }
       });
       // Calculate average dividend yield and reflect it to footer
-      const element = tfoot.querySelector('th > span[name="average-yield"]');
-      const val = totals.dividend / totals.value * 100.0;
-      element.textContent = val.toFixed(2);
+      const yieldEl = tfoot.querySelector('th > span[name="average-asset-yield"]');
+      const yieldVal = totals.dividend / totals.value * 100.0;
+      yieldEl.textContent = yieldVal.toFixed(2);
     })();
     //
     // Update sector table
     //
     (() => {
       const tbody = document.getElementById('all-sectors-list');
+      const tfoot = document.getElementById('sector-totals');
       const template = document.getElementById('sector-tbody-template');
       const nodeList = {
         'idx': (_, idx) => idx + 1,
@@ -792,8 +802,14 @@
         'value': (val, _) => val.toLocaleString(),
         'diff': (val, _) => val.toLocaleString(),
       };
+      const totals = {
+        count: 0,
+        dividend: 0,
+        value: 0,
+        diff: 0,
+      };
       tbody.innerHTML = '';
-
+      // Set each sector
       sectors.forEach((item, idx) => {
         const clone = template.content.cloneNode(true);
 
@@ -806,7 +822,24 @@
             element.classList.add('text-danger');
           }
         }
+        totals.count += item.count;
+        totals.dividend += item.dividend;
+        totals.value += item.value;
+        totals.diff += item.diff;
         tbody.appendChild(clone);
+      });
+      // Set total value
+      ['count', 'dividend', 'value', 'diff'].forEach((key) => {
+        const element = tfoot.querySelector(`th > span[name="total-sector-${key}"]`);
+        const val = totals[key];
+        element.textContent = val.toLocaleString();
+
+        if ((key === 'diff') && (val < 0)) {
+          element.classList.add('text-danger');
+        }
+        else {
+          element.classList.remove('text-danger');
+        }
       });
     })();
   };

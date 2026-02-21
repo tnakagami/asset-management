@@ -111,7 +111,7 @@ class ListPurchasedStock(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
   context_object_name = 'pstocks'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:list_purchased_stock',
-    title=gettext_lazy('Purchsed stock list'),
+    title=gettext_lazy('purchased stock list'),
     parent_view_class=Index,
   )
 
@@ -136,7 +136,7 @@ class RegisterPurchasedStock(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
   success_url = reverse_lazy('stock:list_purchased_stock')
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:register_purchased_stock',
-    title=gettext_lazy('Register purchsed stock'),
+    title=gettext_lazy('Register purchased stock'),
     parent_view_class=ListPurchasedStock,
   )
 
@@ -147,7 +147,7 @@ class UpdatePurchasedStock(UpdateViewBasedOnUser, DjangoBreadcrumbsMixin):
   success_url = reverse_lazy('stock:list_purchased_stock')
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:update_purchased_stock',
-    title=gettext_lazy('Update purchsed stock'),
+    title=gettext_lazy('Update purchased stock'),
     parent_view_class=ListPurchasedStock,
     url_keys=['pk'],
   )
@@ -162,12 +162,12 @@ class DeletePurchasedStock(CustomDeleteView, DjangoBreadcrumbsMixin):
   model = models.PurchasedStock
   success_url = reverse_lazy('stock:list_purchased_stock')
 
-class UploadPurchasedStock(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
-  form_class = forms.UploadPurchasedStockForm
+class UploadCsvPurchasedStock(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
+  form_class = forms.UploadCsvPurchasedStockForm
   template_name = 'stock/upload_purchased_stock_with_csvformat.html'
   success_url = reverse_lazy('stock:list_purchased_stock')
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
-    url_name='stock:upload_purchased_stock',
+    url_name='stock:upload_purchased_stock_csv',
     title=gettext_lazy('Upload purchased stock (CSV format)'),
     parent_view_class=ListPurchasedStock,
   )
@@ -179,6 +179,21 @@ class UploadPurchasedStock(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin)
       response = super().form_valid(form)
     else:
       response = super().form_invalid(form)
+
+    return response
+
+class DownloadCsvPurchasedStock(LoginRequiredMixin, View):
+  http_method_names = ['get']
+
+  def get(self, request, *args, **kwargs):
+    params = models.PurchasedStock.create_response_kwargs(request.user)
+    # Create response
+    filename = params['filename']
+    response = StreamingHttpResponse(
+      streaming_csv_file(params['rows'], header=params['header']),
+      content_type='text/csv;charset=UTF-8',
+      headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
     return response
 

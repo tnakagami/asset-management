@@ -130,7 +130,7 @@ class PurchasedStockForm(BaseModelDatalistForm, _BaseModelFormWithCSS):
     self.fields['stock'].queryset = queryset
 
 
-class UploadPurchasedStockForm(forms.Form):
+class UploadCsvPurchasedStockForm(forms.Form):
   template_name = 'renderer/custom_form.html'
 
   encoding = forms.ChoiceField(
@@ -259,6 +259,13 @@ class UploadPurchasedStockForm(forms.Form):
       error = forms.ValidationError(
         gettext_lazy('Include invalid records. Please check the detail: %(ex)s.'),
         code='invalid_records',
+        params={'ex': str(ex)},
+      )
+      self.add_error(None, error)
+    except Exception as ex:
+      error = forms.ValidationError(
+        gettext_lazy('Unexpected error occurred: %(ex)s.'),
+        code='unexpected_err',
         params={'ex': str(ex)},
       )
       self.add_error(None, error)
