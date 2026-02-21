@@ -32,21 +32,19 @@
           <div class="col">
             <a
               href="{% url 'stock:upload_purchased_stock_csv' %}"
-              id="upload-purchased-stock"
-              class="btn btn-outline-primary w-100 custom-boxshadow"
+              class="btn btn-outline-primary w-100 custom-boxshadow px-0 text-nowrap"
             >
-              {% trans "Upload purchased stocks as CSV (Shift + u)" %}
+              {% trans "Upload purchased stocks as CSV" %}
             </a>
           </div>
           <div class="col">
             <button
               type="button"
-              id="download-purchased-stock"
-              class="btn btn-primary w-100 custom-boxshadow"
+              class="btn btn-outline-success w-100 custom-boxshadow px-0 text-nowrap"
               data-bs-toggle="modal"
               data-bs-target="#download-purchased-stock-modal"
             >
-              {% trans "Download purchased stock as CSV (Shift + s)" %}
+              {% trans "Download purchased stock as CSV" %}
             </button>
           </div>
         </div>
@@ -583,32 +581,12 @@
 
     // Add key event
     document.addEventListener('keyup', (event) => {
-      switch (event.key) {
-        case 'F': /* F := Shift + f */
-          {
-            filteringBtn.click();
-          }
-          break;
-        case 'Enter':
-          if (event.ctrlKey) {
-            const filteringForm = document.getElementById('record-filtering-form');
-            filteringForm.submit();
-          }
-          break;
-        case 'S': /* S := Shift + s */
-          {
-            const downloadBtn = document.getElementById('download-purchased-stock');
-            downloadBtn.click();
-          }
-          break;
-        case 'U': /* U := Shift + u */
-          {
-            const uploadLink = document.getElementById('upload-purchased-stock');
-            uploadLink.click();
-          }
-          break;
-        default:
-          break;
+      if (event.key === 'F') { /* F := Shift + f */
+        filteringBtn.click();
+      }
+      else if (event.ctrlKey && (event.key === 'Enter')) {
+        const filteringForm = document.getElementById('record-filtering-form');
+        filteringForm.submit();
       }
     });
     {% if form.errors %}
