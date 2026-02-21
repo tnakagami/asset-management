@@ -244,11 +244,14 @@
       executor(totals[key]);
     }
   };
+  // Define initialization function
   const init = () => {
     setupLinkEvent();
     calcTotals();
   };
+  //
   // Add DOM event
+  //
   document.addEventListener('DOMContentLoaded', init);
 })();
 </script>

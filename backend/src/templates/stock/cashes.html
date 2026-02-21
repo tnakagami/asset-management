@@ -73,12 +73,19 @@
 {{ block.super }}
 <script>
 (function () {
-  const helper = new HelperMethods();
-  helper.registerDeleteModalEvent({
-    targetCSS: 'delete-target-record',
-    formID: 'delete-form',
-    modalID: 'delete-modal',
-  });
+  // Define initialization function
+  const init = () => {
+    const helper = new HelperMethods();
+    helper.registerDeleteModalEvent({
+      targetCSS: 'delete-target-record',
+      formID: 'delete-form',
+      modalID: 'delete-modal',
+    });
+  };
+  //
+  // Add DOM event
+  //
+  document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
 {% endblock %}

@@ -146,6 +146,7 @@
 {{ block.super }}
 <script>
 (function () {
+  // Define initialization function
   const init = () => {
     const helper = new HelperMethods();
     // Register delete modal event
@@ -181,7 +182,9 @@
     });
     {% endcomment %}
   };
+  //
   // Add DOM event
+  //
   document.addEventListener('DOMContentLoaded', init);
 })();
 </script>

@@ -175,6 +175,7 @@
         >
           <div class="row row-cols-1 g-2">
             <div class="col">
+              <h3 class="mt-2">{% trans "Purchased stocks distribution" %}</h3>
               <div class="table-responsive">
                 <table class="table table-hover">
                   <thead>
@@ -207,6 +208,7 @@
               </div>
             </div>
             <div class="col">
+              <h3>{% trans "Owned sectors distribution" %}</h3>
               <div class="table-responsive">
                 <table class="table table-hover">
                   <thead>
@@ -947,7 +949,7 @@
 
     return chart;
   };
-
+  // Define initialization function
   const init = () => {
     const _sortAlgorithm = (sortType) => {
       const types = {
@@ -990,16 +992,20 @@
       trendDividendChart = drawPieChart(trendDividendChart, 'trend-dividend-chart', output.trendDividendData);
       assetDiffChart = drawBarChart(assetDiffChart, 'asset-diff-chart', output.assetDiffData);
     };
-    // Get element
+    // Add event for each element
     const snapshot = document.getElementById('all-snapshots');
     const sortType = document.getElementById('sort-type');
     const collectionType = document.getElementById('collection-type');
     snapshot.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     sortType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     collectionType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
+    window.addEventListener('resize', () => snapshot.dispatchEvent(new Event('change')));
+    // Call initial event
     snapshot.dispatchEvent(new Event('change'));
   };
+  //
   // Add DOM event
+  //
   document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
