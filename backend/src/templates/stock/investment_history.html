@@ -57,7 +57,7 @@
     transition: background-color 0.2s ease;
 
     &.dual-listbox__item--selected {
-        background-color: #63ccfdb3;
+      background-color: #63ccfdb3;
     }
   }
   .dual-listbox .dragging {
@@ -443,10 +443,9 @@
       yield: histories.yield,
       cash: histories.cash,
     };
-    const len = histories.ssName.length;
     tbody.innerHTML = '';
 
-    for (let idx = 0; idx < len; idx++) {
+    histories.ssName.forEach((_, idx) => {
       const clone = template.content.cloneNode(true);
 
       for (const [key, arr] of Object.entries(nodeList)) {
@@ -459,7 +458,7 @@
         }
       }
       tbody.appendChild(clone);
-    }
+    });
   };
 
   //
