@@ -130,7 +130,7 @@ class PurchasedStockForm(BaseModelDatalistForm, _BaseModelFormWithCSS):
     self.fields['stock'].queryset = queryset
 
 
-class UploadPurchasedStockForm(forms.Form):
+class UploadCsvPurchasedStockForm(forms.Form):
   template_name = 'renderer/custom_form.html'
 
   encoding = forms.ChoiceField(

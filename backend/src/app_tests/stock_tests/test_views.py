@@ -314,7 +314,8 @@ class TestPurchasedStockViews(SharedFixture):
   create_url = reverse('stock:register_purchased_stock')
   update_url = lambda _self, pk: reverse('stock:update_purchased_stock', kwargs={'pk': pk})
   delete_url = lambda _self, pk: reverse('stock:delete_purchased_stock', kwargs={'pk': pk})
-  upload_url = reverse('stock:upload_purchased_stock')
+  upload_url = reverse('stock:upload_purchased_stock_csv')
+  download_url = reverse('stock:download_purchased_stock_csv')
 
   @property
   def form_data(self):
@@ -529,7 +530,7 @@ class TestPurchasedStockViews(SharedFixture):
       (stocks[1].code, '2024-01-02T00:00:00+00:00', 1001.12, 100),
       (stocks[2].code, '1990-03-02T00:00:00+00:00', 1031.00, 200),
     ]
-    mocker.patch('stock.forms.UploadPurchasedStockForm.filtering', side_effect=csv_data)
+    mocker.patch('stock.forms.UploadCsvPurchasedStockForm.filtering', side_effect=csv_data)
     # Send request
     client, user = login_process(user=factories.UserFactory())
     response = client.post(self.upload_url, data=data)
@@ -565,16 +566,16 @@ class TestPurchasedStockViews(SharedFixture):
     key = request.param
 
     if key == 'form-invalid':
-      mocker.patch('stock.forms.UploadPurchasedStockForm.clean', side_effect=ValidationError('invalid-inputs'))
+      mocker.patch('stock.forms.UploadCsvPurchasedStockForm.clean', side_effect=ValidationError('invalid-inputs'))
       err_msg = 'invalid-inputs'
     elif key == 'invalid-bulk-create-with-integrity-err':
-      mocker.patch('stock.forms.UploadPurchasedStockForm.clean', return_value=None)
-      mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', return_value=[])
+      mocker.patch('stock.forms.UploadCsvPurchasedStockForm.clean', return_value=None)
+      mocker.patch('stock.forms.UploadCsvPurchasedStockForm.get_data', return_value=[])
       mocker.patch('stock.models.PurchasedStock.objects.bulk_create', side_effect=IntegrityError('invalid'))
       err_msg = 'Include invalid records. Please check the detail: invalid.'
     elif key == 'unexpected-error-occurred':
-      mocker.patch('stock.forms.UploadPurchasedStockForm.clean', return_value=None)
-      mocker.patch('stock.forms.UploadPurchasedStockForm.get_data', side_effect=Exception('Err'))
+      mocker.patch('stock.forms.UploadCsvPurchasedStockForm.clean', return_value=None)
+      mocker.patch('stock.forms.UploadCsvPurchasedStockForm.get_data', side_effect=Exception('Err'))
       err_msg = 'Unexpected error occurred: Err.'
     elif key == 'invalid-header-input':
       has_header = False
@@ -597,6 +598,41 @@ class TestPurchasedStockViews(SharedFixture):
 
     assert response.status_code == status.HTTP_200_OK
     assert err_msg in str(errors)
+
+  # ============
+  # DownloadView
+  # ============
+  def test_access_to_downloadview_without_authentication(self, client):
+    url = self.download_url
+    response = client.get(url)
+    expected = '{}?next={}'.format(self.login_url, url)
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == expected
+
+  def test_post_access_in_downloadview(self, wrap_login):
+    client, _ = wrap_login
+    response = client.post(self.download_url)
+
+    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+  def test_get_request_to_downloadview(self, mocker, login_process):
+    output = {
+      'rows': [['0001','2020-01-02', '123.45', '100'], ['0102', '2021-10-12', '500.01', '200']],
+      'header': ['Code', 'Date', 'Price', 'Count'],
+      'filename': 'pstock-test.csv',
+    }
+    expected = bytes('Code,Date,Price,Count\n0001,2020-01-02,123.45,100\n0102,2021-10-12,500.01,200\n', 'utf-8')
+    mocker.patch('stock.models.PurchasedStock.create_response_kwargs', return_value=output)
+    # Get access
+    client, user = login_process(user=factories.UserFactory())
+    response = client.get(self.download_url)
+    attachment = response.get('content-disposition')
+    stream = response.getvalue()
+
+    assert response.has_header('content-disposition')
+    assert output['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
+    assert expected in stream
 
 # =============
 # SnapshotViews
