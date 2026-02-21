@@ -6,9 +6,12 @@ import sys
 from functools import wraps
 from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
 from django.db.utils import IntegrityError
+from django.contrib.auth import get_user_model
 from django_celery_beat.models import PeriodicTask
 from stock import forms, models
 from app_tests import factories, get_date, BaseTestUtils
+
+UserModel = get_user_model()
 
 @pytest.fixture(scope='module')
 def get_sample_stocks(django_db_blocker):
@@ -663,6 +666,66 @@ class TestUploadCsvPurchasedStockForm:
     assert err_msg in str(form.non_field_errors())
     assert len(instances) == 0
 
+# =============================
+# DownloadCsvPurchasedStockForm
+# =============================
+@pytest.mark.stock
+@pytest.mark.form
+class TestDownloadCsvPurchasedStockForm:
+  @pytest.mark.parametrize([
+    'params',
+  ], [
+    ({}, ),
+    ({'filename': '',}, ),
+    ({'filename': 'hoge'}, ),
+    ({'filename': '日本語'}, ),
+  ], ids=[
+    'no-inputs',
+    'empty-data',
+    'valid-data',
+    'use-multi-byte-filename',
+  ])
+  def test_check_validation(self, params):
+    form = forms.DownloadCsvPurchasedStockForm(data=params)
+
+    assert form.is_valid()
+
+  @pytest.mark.parametrize([
+    'params',
+  ], [
+    ({'filename': '1'*129,}, ),
+  ], ids=[
+    'filename-is-too-long',
+  ])
+  def test_check_invalid_pattern(self, params):
+    form = forms.DownloadCsvPurchasedStockForm(data=params)
+
+    assert not form.is_valid()
+
+  @pytest.mark.parametrize([
+    'params',
+    'arg_fname',
+  ], [
+    ({'filename': 'hoge'}, 'hoge'),
+    ({'filename': '.csv'}, ''),
+    ({'filename': 'hoge.csv'}, 'hoge'),
+  ], ids=[
+    'valid-pattern',
+    'valid-only-extension-pattern',
+    'include-extension',
+  ])
+  def test_check_create_response_kwargs(self, mocker, params, arg_fname):
+    kwargs_mock = mocker.patch('stock.models.PurchasedStock.create_response_kwargs', return_value={})
+    mock_user = mocker.Mock(spec=UserModel)
+    form = forms.DownloadCsvPurchasedStockForm(data=params)
+    is_valid = form.is_valid()
+    _ = form.create_response_kwargs(mock_user)
+    args, _ = kwargs_mock.call_args
+    fname, _ = args
+
+    assert is_valid
+    assert fname == arg_fname
+
 # ========================
 # CustomModelDatalistField
 # ========================
@@ -723,7 +786,7 @@ class TestCustomModelDatalistField:
     _vals = [
       [2],
       -1,
-      stocks[-1].pk + 1,
+      0,
     ]
     field = forms.CustomModelDatalistField(queryset=models.Stock.objects.all())
 
@@ -1535,7 +1598,7 @@ class TestStockDownloadForm:
     'invalid-all-orderings',
   ])
   def test_check_create_response_kwargs(self, mocker, params, arg_fname, arg_tree, arg_order):
-    kwargs_mock = mocker.patch('stock.models.Stock.get_response_kwargs', return_value={})
+    kwargs_mock = mocker.patch('stock.models.Stock.create_response_kwargs', return_value={})
     form = forms.StockDownloadForm(data=params)
     is_valid = form.is_valid()
     _ = form.create_response_kwargs()
@@ -1559,7 +1622,7 @@ class TestStockDownloadForm:
     'empty-params',
   ])
   def test_specific_patterns_in_create_response_kwargs(self, mocker, params, expected_fname):
-    kwargs_mock = mocker.patch('stock.models.Stock.get_response_kwargs', return_value={})
+    kwargs_mock = mocker.patch('stock.models.Stock.create_response_kwargs', return_value={})
     form = forms.StockDownloadForm(data=params)
     is_valid = form.is_valid()
     _ = form.create_response_kwargs()

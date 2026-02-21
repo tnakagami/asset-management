@@ -65,7 +65,7 @@
                   <a
                     href="{% url 'stock:download_csv_snapshot' pk=instance.pk %}"
                     class="btn btn-link px-1 py-0 text-primary link-underline link-underline-opacity-0"
-                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Download as CSV"
+                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{% trans 'Download as CSV' %}"
                   >
                     <i class="fas fa-file-csv fa-lg"></i>
                   </a>
@@ -74,7 +74,7 @@
                   <a
                     href="{% url 'stock:download_json_snapshot' pk=instance.pk %}"
                     class="btn btn-link px-1 py-0 text-warning link-underline link-underline-opacity-0"
-                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Download as JSON"
+                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{% trans 'Download as JSON' %}"
                   >
                     <i class="fas fa-file-code fa-lg"></i>
                   </a>
@@ -146,6 +146,7 @@
 {{ block.super }}
 <script>
 (function () {
+  // Define initialization function
   const init = () => {
     const helper = new HelperMethods();
     // Register delete modal event
@@ -181,7 +182,9 @@
     });
     {% endcomment %}
   };
+  //
   // Add DOM event
+  //
   document.addEventListener('DOMContentLoaded', init);
 })();
 </script>

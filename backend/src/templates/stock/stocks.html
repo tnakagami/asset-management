@@ -24,12 +24,11 @@
           <div class="col">
             <button
               type="button"
-              id="download-stock"
-              class="btn btn-primary w-100 custom-boxshadow"
+              class="btn btn-primary w-100 custom-boxshadow px-0 text-nowrap"
               data-bs-toggle="modal"
               data-bs-target="#download-stock-modal"
             >
-              {% trans "Download stock (Shift + s)" %}
+              {% trans "Download stock" %}
             </button>
           </div>
         </div>
@@ -285,6 +284,7 @@
 {% endblock %}
 
 {% block bodyjs %}
+{{ block.super }}
 <script>
 (function () {
   const callbackOrdering = (isDisabled) => {
@@ -387,7 +387,7 @@
     targetColumn.dispatchEvent(new Event('change'));
   };
   // Setup download form
-  const setupDownloadForm = () => {
+  const setupDownloadForm = (helper) => {
     const downloadForm = document.getElementById('download-stock-form');
     const filenameField = document.getElementById('download-filename');
     // Add keyup event
@@ -410,31 +410,22 @@
       callbackOrdering(true);
       execDownload.disabled = true;
       // Setup timer
-      const timerId = window.setInterval(() => {
-        // Check whether targetCookieValue exists or not
-        const key = 'stock_download_status';
-        const target = `${key}=completed`;
-
-        if (document.cookie.includes(target)) {
-          window.clearInterval(timerId);
-          execDownload.disabled = false;
-          const element = document.getElementById('close-download-stock-modal');
-          element.click();
-          // Execute post-process
-          document.cookie = `${key}=; max-age=0; path=/; {{ is_secure }}`;
-        }
-      }, 1000);
+      helper.setupDownloadStatus('stock_download_status', '{{ is_secure }}', () => {
+        execDownload.disabled = false;
+        const element = document.getElementById('close-download-stock-modal');
+        element.click();
+      });
     });
   };
   // Define initialization function
   const init = () => {
-    // Setup search form
+    const helper = new HelperMethods();
     const searchBtn = document.getElementById('stock-search');
     const searchForm = document.getElementById('stock-search-form');
+    // Setup search form
     setupSearchForm();
-
     // Setup download form
-    setupDownloadForm();
+    setupDownloadForm(helper);
 
     // Add submit event
     searchForm.addEventListener('submit', (event) => {
@@ -445,10 +436,6 @@
       if (event.key === 'F') { /* F := Shift + f */
         searchBtn.click();
       }
-      else if (event.key === 'S') { /* S := Shift + s */
-        const downloadBtn = document.getElementById('download-stock');
-        downloadBtn.click();
-      }
       else if (event.ctrlKey && (event.key === 'Enter')) {
         searchForm.submit();
       }
@@ -457,7 +444,9 @@
     searchBtn.click();
     {% endif %}
   };
+  //
   // Add DOM event
+  //
   document.addEventListener('DOMContentLoaded', init);
 })();
 </script>

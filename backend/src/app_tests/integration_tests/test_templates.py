@@ -213,7 +213,6 @@ class BaseStockTestUtils(SharedFixture):
   pstock_update_url = lambda _self, pk: reverse('stock:update_purchased_stock', kwargs={'pk': pk})
   pstock_delete_url = lambda _self, pk: reverse('stock:delete_purchased_stock', kwargs={'pk': pk})
   pstock_upload_url = reverse('stock:upload_purchased_stock_csv')
-  pstock_download_url = reverse('stock:download_purchased_stock_csv')
   # Snapshot
   snapshot_list_url = reverse('stock:list_snapshot')
   snapshot_create_url = reverse('stock:register_snapshot')
@@ -230,7 +229,6 @@ class BaseStockTestUtils(SharedFixture):
   ptask_snapshot_delete_url = lambda _self, pk: reverse('stock:delete_snapshot_task', kwargs={'pk': pk})
   # Stock
   list_stock_url = reverse('stock:list_stock')
-  download_stock_url = reverse('stock:download_stock')
   # Explanation
   explanation_url = reverse('stock:explanation')
 
@@ -1371,60 +1369,85 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
   # ===========================================
   # Download purchased stocks by using csv file
   # ===========================================
-  def test_check_download_pstock_for_csv_format(self, mocker, get_sample_data_for_stock_search, csrf_exempt_django_app):
+  @pytest.fixture
+  def get_target_pstock_to_download(self, get_sample_data_for_stock_search, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      stocks = get_sample_data_for_stock_search
+      tmp_pstocks = [
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[0], price=Decimal('123.41'),
+          count=100, purchase_date=get_date((2022, 3, 4)),
+        ),
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[2], price=Decimal('1000.00'),
+          count=100, purchase_date=get_date((2021, 2, 1)),
+        ),
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[1], price=512,
+          count=300, purchase_date=get_date((2023, 5, 5)),
+        ),
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[4], price=Decimal('512.01'),
+          count=150, purchase_date=get_date((2022,10,15)),
+        ),
+      ]
+      purchased_stocks = [
+        tmp_pstocks[2],
+        tmp_pstocks[3],
+        tmp_pstocks[0],
+        tmp_pstocks[1],
+      ]
+
+    return user, purchased_stocks
+
+  @pytest.mark.parametrize([
+    'params',
+    'exact_fname',
+  ], [
+    ({'filename': 'foo'}, 'pstock-foo.csv'),
+    ({'filename': 'hogehoge.csv'}, 'pstock-hogehoge.csv'),
+    ({'filename': '.csv'}, 'pstock-20110105-082107.csv'),
+  ], ids=[
+    'normal-filename',
+    'filename-with-extension',
+    'only-extension',
+  ])
+  def test_check_download_pstock_for_csv_format(self, mocker, get_target_pstock_to_download, csrf_exempt_django_app, params, exact_fname):
     def get_data(obj):
       code = obj.stock.code
       date = models.convert_timezone(obj.purchase_date, is_string=True, strformat='%Y-%m-%d')
-      price = '{:.2f}'.format(float(obj.price))
-      count = '{}'.format(obj.count)
+      price = '{:.2f}'.format(obj.price)
+      count = str(obj.count)
       out = [code, date, price, count]
 
       return out
-    # Create expected data
-    user = factories.UserFactory()
-    stocks = get_sample_data_for_stock_search
-    purchased_stocks = [
-      factories.PurchasedStockFactory(
-        user=user, stock=stocks[0], price=Decimal('123.41'),
-        count=100, purchase_date=get_date((2022, 3, 4)),
-      ),
-      factories.PurchasedStockFactory(
-        user=user, stock=stocks[2], price=Decimal('1000.00'),
-        count=100, purchase_date=get_date((2021, 2, 1)),
-      ),
-      factories.PurchasedStockFactory(
-        user=user, stock=stocks[1], price=512,
-        count=300, purchase_date=get_date((2023, 5, 5)),
-      ),
-      factories.PurchasedStockFactory(
-        user=user, stock=stocks[4], price=Decimal('512.01'),
-        count=150, purchase_date=get_date((2022,10,15)),
-      ),
-    ]
-    qs = models.PurchasedStock.objects.filter(pk__in=self.get_pks(purchased_stocks))
-    # Mock
-    mocker.patch('stock.models.generate_default_filename', return_value='20190124-120749')
-    # Create expected data
-    lines = '\n'.join([
-      ','.join(get_data(obj))
-      for obj in qs.order_by('-purchase_date')
-    ])
+    # Define dataset
+    user, all_pstocks = get_target_pstock_to_download
+    all_queryset = models.PurchasedStock.objects.filter(pk__in=self.get_pks(all_pstocks))
+    mocker.patch('stock.models.generate_default_filename', return_value='20110105-082107')
+    # Create expected values
+    header = ','.join(['Code', 'Date', 'Price', 'Count'])
+    lines = '\n'.join([','.join(get_data(obj)) for obj in all_pstocks]) + '\n'
     expected = {
-      'rows': bytes(lines, 'utf-8'),
-      'header': bytes('Code,Date,Price,Count', 'utf-8'),
-      'filename': 'purchased-stock-20190124-120749.csv',
+      'data': bytes(f'{header}\n' + lines, 'utf-8'),
+      'filename': exact_fname,
     }
-    # Execution
+    # Execute process
     app = csrf_exempt_django_app
-    page = app.get(self.pstock_list_url, user=user)
-    response = page.click('Download purchased stocks as CSV')
-    # Collect results
+    forms = app.get(self.pstock_list_url, user=user).forms
+    form = forms['download-purchased-stock-form']
+    for key, val in params.items():
+      form[key] = val
+    # Send post request
+    response = form.submit()
+    cookie = response.client.cookies.get('purchased_stock_download_status')
     attachment = response['content-disposition']
     stream = response.content
 
     assert expected['filename'] == urllib.parse.unquote(attachment.split('=')[1].replace('"', ''))
-    assert expected['header'] in stream
-    assert expected['rows'] in stream
+    assert cookie.value == 'completed'
+    assert expected['data'] in stream
 
   # ===========================
   # Upload JSON format snapshot

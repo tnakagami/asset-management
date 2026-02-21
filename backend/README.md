@@ -92,3 +92,10 @@ Run the following command to execute pytest in your pc.
 # In the host environment
 ./wrapper.sh test
 ```
+
+### Test result
+After executing test, you can get a test report in `htmlcov`.
+
+In this report, the following result is reflected.
+* Summary report (`report.md`)
+* Coverage report for files, functions, and classes (`index.html`)

@@ -595,6 +595,7 @@
 
       event.target.disabled = false;
     });
+    window.addEventListener('resize', () => updateGraph.dispatchEvent(new Event('click')));
   };
   //
   // Add DOM event
