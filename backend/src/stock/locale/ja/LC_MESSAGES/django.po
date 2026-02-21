@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-17 00:39+0900\n"
+"POT-Creation-Date: 2026-02-21 10:46+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: stock/admin.py:32 stock/admin.py:55 stock/models.py:788
+#: stock/admin.py:32 stock/admin.py:55 stock/models.py:809
 msgid "Name"
 msgstr "名称"
 
@@ -42,11 +42,11 @@ msgstr "保有中"
 msgid "Describes whether this purchased stock has been sold or not."
 msgstr "購入済み株式が売却済みかどうかを示す"
 
-#: stock/forms.py:137 stock/forms.py:311
+#: stock/forms.py:137 stock/forms.py:318
 msgid "Encoding"
 msgstr "エンコーディング"
 
-#: stock/forms.py:149 stock/forms.py:323
+#: stock/forms.py:149 stock/forms.py:330
 msgid ""
 "In general, please select \"Shift-JIS\" in Windows OS, \"UTF-8\" in Linux "
 "like OS."
@@ -54,7 +54,7 @@ msgstr ""
 "一般に、Windows OSの場合は\"Shift-JIS\"を、Linuxの場合は\"UTF-8\"を選択してく"
 "ださい。"
 
-#: stock/forms.py:153 stock/forms.py:966
+#: stock/forms.py:153 stock/forms.py:973
 msgid "CSV filename"
 msgstr "CSVファイル名"
 
@@ -102,352 +102,357 @@ msgstr "例外発生：%(ex)s"
 msgid "Include invalid records. Please check the detail: %(ex)s."
 msgstr "無効なレコードが含まれます。詳細を確認してください：%(ex)s"
 
-#: stock/forms.py:284
+#: stock/forms.py:267
+#, python-format
+msgid "Unexpected error occurred: %(ex)s."
+msgstr "意図しないエラーが発生：%(ex)s"
+
+#: stock/forms.py:291
 msgid "Force update/Nothing"
 msgstr "強制的に更新/何もしない"
 
-#: stock/forms.py:290
+#: stock/forms.py:297
 msgid "Force update"
 msgstr "強制的に更新"
 
-#: stock/forms.py:291
+#: stock/forms.py:298
 msgid "Nothing"
 msgstr "何もしない"
 
-#: stock/forms.py:293
+#: stock/forms.py:300
 msgid "Describes whether this record is forced update or not."
 msgstr "該当データを強制的に更新するかどうかを示す"
 
-#: stock/forms.py:327
+#: stock/forms.py:334
 msgid "JSON filename"
 msgstr "JSONファイル名"
 
-#: stock/forms.py:336
+#: stock/forms.py:343
 msgid "The extention has to be \".json\"."
 msgstr "拡張子を\".json\"にしてください。"
 
-#: stock/forms.py:339
+#: stock/forms.py:346
 msgid "The extention is \".json\" only."
 msgstr "拡張子は、\".json\"のみ有効"
 
-#: stock/forms.py:357
+#: stock/forms.py:364
 #, python-format
 msgid "Cannot load json file: %(ex)s"
 msgstr "JSONファイルをロードできませんでした： %(ex)s"
 
-#: stock/forms.py:383
+#: stock/forms.py:390
 msgid "Task name"
 msgstr "タスク名"
 
-#: stock/forms.py:390
+#: stock/forms.py:397
 msgid "Enabled/Disabled"
 msgstr "有効/無効"
 
-#: stock/forms.py:395
+#: stock/forms.py:402
 msgid "Enabled"
 msgstr "有効"
 
-#: stock/forms.py:396
+#: stock/forms.py:403
 msgid "Disabled"
 msgstr "無効"
 
-#: stock/forms.py:401
+#: stock/forms.py:408
 msgid "Describes whether this record is enabled or not."
 msgstr "該当データを有効化するかどうかを示す"
 
-#: stock/forms.py:404
+#: stock/forms.py:411
 msgid "Snapshot"
 msgstr "スナップショット"
 
-#: stock/forms.py:410
+#: stock/forms.py:417
 msgid "Select a snapshot to update."
 msgstr "更新対象のスナップショットを選択"
 
-#: stock/forms.py:413
+#: stock/forms.py:420
 msgid "Schedule type"
 msgstr "タスクの実行形式"
 
-#: stock/forms.py:416
+#: stock/forms.py:423
 msgid "Every day"
 msgstr "毎日"
 
-#: stock/forms.py:417
+#: stock/forms.py:424
 msgid "Every week"
 msgstr "毎週"
 
-#: stock/forms.py:418
+#: stock/forms.py:425
 msgid "Every month"
 msgstr "毎月"
 
-#: stock/forms.py:424
+#: stock/forms.py:431
 msgid "Select a schedule type."
 msgstr "タスクの実行形式を選択"
 
-#: stock/forms.py:476
+#: stock/forms.py:483
 #, python-format
 msgid "Required keys: %(key)s"
 msgstr "設定必須項目：%(key)s"
 
-#: stock/forms.py:488
+#: stock/forms.py:495
 #, python-format
 msgid "Invalid crontab config: %(err)s"
 msgstr "無効なスケジュール情報：%(err)s"
 
-#: stock/forms.py:541
+#: stock/forms.py:548
 #, python-format
 msgid "%(key)s does not exist"
 msgstr "%(key)s は存在しません"
 
-#: stock/forms.py:548
+#: stock/forms.py:555
 #, python-format
 msgid "Invalid data (%(key)s, %(value)s): %(ex)s"
 msgstr "無効なデータ（%(key)s, %(value)s）：%(ex)s"
 
-#: stock/forms.py:555
+#: stock/forms.py:562
 #, python-format
 msgid "Invalid operator between %(key)s and %(value)s"
 msgstr "%(key)s と %(value)s の間の演算子は無効です"
 
-#: stock/forms.py:564
+#: stock/forms.py:571
 #, python-format
 msgid "cannot use %(name)s in this application"
 msgstr "このアプリでは、%(name)s は使えません"
 
-#: stock/forms.py:619
+#: stock/forms.py:626
 #, python-format
 msgid "Invalid syntax: %(ex)s"
 msgstr "入力された式は無効です：%(ex)s"
 
-#: stock/forms.py:625
+#: stock/forms.py:632
 #, python-format
 msgid "Invalid variable: %(ex)s"
 msgstr "無効な変数：%(ex)s"
 
-#: stock/forms.py:673 stock/forms.py:861
+#: stock/forms.py:680 stock/forms.py:868
 msgid "Target column name"
 msgstr "対象のカラム名"
 
-#: stock/forms.py:675 stock/forms.py:863 stock/models.py:323
-#: stock/models.py:435 stock/models.py:787
+#: stock/forms.py:682 stock/forms.py:870 stock/models.py:323
+#: stock/models.py:435 stock/models.py:808
 msgid "Stock code"
 msgstr "株式コード"
 
-#: stock/forms.py:676 stock/forms.py:864 stock/models.py:436
+#: stock/forms.py:683 stock/forms.py:871 stock/models.py:436
 msgid "Stock name"
 msgstr "株式会社名"
 
-#: stock/forms.py:677 stock/forms.py:865 stock/models.py:330
-#: stock/models.py:437 stock/models.py:789
+#: stock/forms.py:684 stock/forms.py:872 stock/models.py:330
+#: stock/models.py:437 stock/models.py:810
 msgid "Stock industry"
 msgstr "株式会社の業種"
 
-#: stock/forms.py:678 stock/models.py:337 stock/models.py:438
-#: stock/models.py:796
+#: stock/forms.py:685 stock/models.py:337 stock/models.py:438
+#: stock/models.py:817
 msgid "Stock price"
 msgstr "株価"
 
-#: stock/forms.py:679 stock/models.py:343 stock/models.py:439
-#: stock/models.py:791
+#: stock/forms.py:686 stock/models.py:343 stock/models.py:439
+#: stock/models.py:812
 msgid "Dividend"
 msgstr "配当金"
 
-#: stock/forms.py:680 stock/models.py:440 stock/models.py:792
+#: stock/forms.py:687 stock/models.py:440 stock/models.py:813
 msgid "Dividend yield"
 msgstr "配当利回り"
 
-#: stock/forms.py:681 stock/models.py:350
+#: stock/forms.py:688 stock/models.py:350
 msgid "Price Earnings Ratio"
 msgstr "株価収益率（PER）"
 
-#: stock/forms.py:682 stock/models.py:357
+#: stock/forms.py:689 stock/models.py:357
 msgid "Price Book-value Ratio"
 msgstr "株価純資産倍率（PBR）"
 
-#: stock/forms.py:684 stock/models.py:364
+#: stock/forms.py:691 stock/models.py:364
 msgid "Earnings Per Share"
 msgstr "1株当たり純利益（EPS）"
 
-#: stock/forms.py:685 stock/models.py:371
+#: stock/forms.py:692 stock/models.py:371
 msgid "Book value Per Share"
 msgstr "1株当たりの純資産（BPS）"
 
-#: stock/forms.py:686 stock/models.py:378
+#: stock/forms.py:693 stock/models.py:378
 msgid "Return On Equity"
 msgstr "自己資本利益率（ROE）"
 
-#: stock/forms.py:687 stock/models.py:385
+#: stock/forms.py:694 stock/models.py:385
 msgid "Equity Ratio"
 msgstr "自己資本比率"
 
-#: stock/forms.py:712 stock/forms.py:888
+#: stock/forms.py:719 stock/forms.py:895
 msgid "Comparison operator"
 msgstr "比較演算子"
 
-#: stock/forms.py:714 stock/forms.py:890
+#: stock/forms.py:721 stock/forms.py:897
 msgid "Equal to"
 msgstr "次の値に等しい"
 
-#: stock/forms.py:715 stock/forms.py:891
+#: stock/forms.py:722 stock/forms.py:898
 msgid "Not equal to"
 msgstr "次の値に等しくない"
 
-#: stock/forms.py:716 stock/forms.py:892
+#: stock/forms.py:723 stock/forms.py:899
 msgid "Geater than"
 msgstr "次の値より大きい"
 
-#: stock/forms.py:717 stock/forms.py:893
+#: stock/forms.py:724 stock/forms.py:900
 msgid "Geater than or equal to"
 msgstr "次の値以上"
 
-#: stock/forms.py:718 stock/forms.py:894
+#: stock/forms.py:725 stock/forms.py:901
 msgid "Less than"
 msgstr "次の値より小さい"
 
-#: stock/forms.py:719 stock/forms.py:895
+#: stock/forms.py:726 stock/forms.py:902
 msgid "Less than or equal to"
 msgstr "次の値以下"
 
-#: stock/forms.py:720 stock/forms.py:896
+#: stock/forms.py:727 stock/forms.py:903
 msgid "Include"
 msgstr "次の値を含む"
 
-#: stock/forms.py:721 stock/forms.py:897
+#: stock/forms.py:728 stock/forms.py:904
 msgid "Not include"
 msgstr "次の値を含まない"
 
-#: stock/forms.py:741 stock/forms.py:917
+#: stock/forms.py:748 stock/forms.py:924
 msgid "Input data"
 msgstr "入力データ"
 
-#: stock/forms.py:750 stock/forms.py:926 stock/forms.py:977
+#: stock/forms.py:757 stock/forms.py:933 stock/forms.py:984
 msgid "Condition"
 msgstr "条件"
 
-#: stock/forms.py:765 stock/forms.py:986
+#: stock/forms.py:772 stock/forms.py:993
 msgid "Ordering"
 msgstr "並び順"
 
-#: stock/forms.py:767
+#: stock/forms.py:774
 msgid "Stock code (ASC)"
 msgstr "株式コード（昇順）"
 
-#: stock/forms.py:768
+#: stock/forms.py:775
 msgid "Stock code (DESC)"
 msgstr "株式コード（降順）"
 
-#: stock/forms.py:769
+#: stock/forms.py:776
 msgid "Stock name (ASC)"
 msgstr "株式会社名（昇順）"
 
-#: stock/forms.py:770
+#: stock/forms.py:777
 msgid "Stock name (DESC)"
 msgstr "株式会社名（降順）"
 
-#: stock/forms.py:771
+#: stock/forms.py:778
 msgid "Stock industry (ASC)"
 msgstr "株式会社の業種（昇順）"
 
-#: stock/forms.py:772
+#: stock/forms.py:779
 msgid "Stock industry (DESC)"
 msgstr "株式会社の業種（降順）"
 
-#: stock/forms.py:773
+#: stock/forms.py:780
 msgid "Stock price (ASC)"
 msgstr "株価（昇順）"
 
-#: stock/forms.py:774
+#: stock/forms.py:781
 msgid "Stock price (DESC)"
 msgstr "株価（降順）"
 
-#: stock/forms.py:775
+#: stock/forms.py:782
 msgid "Dividend (ASC)"
 msgstr "配当金（昇順）"
 
-#: stock/forms.py:776
+#: stock/forms.py:783
 msgid "Dividend (DESC)"
 msgstr "配当金（降順）"
 
-#: stock/forms.py:777
+#: stock/forms.py:784
 msgid "Dividend yield (ASC)"
 msgstr "配当利回り（昇順）"
 
-#: stock/forms.py:778
+#: stock/forms.py:785
 msgid "Dividend yield (DESC)"
 msgstr "配当利回り（降順）"
 
-#: stock/forms.py:779
+#: stock/forms.py:786
 msgid "Price Earnings Ratio (ASC)"
 msgstr "株価収益率（昇順）"
 
-#: stock/forms.py:780
+#: stock/forms.py:787
 msgid "Price Earnings Ratio (DESC)"
 msgstr "株価収益率（降順）"
 
-#: stock/forms.py:781
+#: stock/forms.py:788
 msgid "Price Book-value Ratio (ASC)"
 msgstr "株価純資産倍率（昇順）"
 
-#: stock/forms.py:782
+#: stock/forms.py:789
 msgid "Price Book-value Ratio (DESC)"
 msgstr "株価純資産倍率（降順）"
 
-#: stock/forms.py:783
+#: stock/forms.py:790
 msgid " (ASC)"
 msgstr "（昇順）"
 
-#: stock/forms.py:784
+#: stock/forms.py:791
 msgid " (DESC)"
 msgstr "（降順）"
 
-#: stock/forms.py:785
+#: stock/forms.py:792
 msgid "Earnings Per Share (ASC)"
 msgstr "1株当たり純利益（昇順）"
 
-#: stock/forms.py:786
+#: stock/forms.py:793
 msgid "Earnings Per Share (DESC)"
 msgstr "1株当たり純利益（降順）"
 
-#: stock/forms.py:787
+#: stock/forms.py:794
 msgid "Book value Per Share (ASC)"
 msgstr "1株当たりの純資産（昇順）"
 
-#: stock/forms.py:788
+#: stock/forms.py:795
 msgid "Book value Per Share (DESC)"
 msgstr "1株当たりの純資産（降順）"
 
-#: stock/forms.py:789
+#: stock/forms.py:796
 msgid "Return On Equity (ASC)"
 msgstr "自己資本利益率（昇順）"
 
-#: stock/forms.py:790
+#: stock/forms.py:797
 msgid "Return On Equity (DESC)"
 msgstr "自己資本利益率（降順）"
 
-#: stock/forms.py:791
+#: stock/forms.py:798
 msgid "Equity Ratio (ASC)"
 msgstr "自己資本比率（昇順）"
 
-#: stock/forms.py:792
+#: stock/forms.py:799
 msgid "Equity Ratio (DESC)"
 msgstr "自己資本比率（降順）"
 
-#: stock/forms.py:866 stock/models.py:583
+#: stock/forms.py:873 stock/models.py:583
 msgid "Average trade price"
 msgstr "平均取引価格"
 
-#: stock/forms.py:867 stock/models.py:587
+#: stock/forms.py:874 stock/models.py:587
 msgid "Purchased date"
 msgstr "購入日"
 
-#: stock/forms.py:868 stock/models.py:590
+#: stock/forms.py:875 stock/models.py:590
 msgid "The number of purchased stocks"
 msgstr "購入株式数"
 
-#: stock/forms.py:869
+#: stock/forms.py:876
 msgid "Difference"
 msgstr "差分"
 
-#: stock/forms.py:974
+#: stock/forms.py:981
 msgid "You don’t have to enter the extention."
 msgstr "拡張子を指定する必要はありません。"
 
@@ -513,11 +518,11 @@ msgstr "ER"
 msgid "Skip executing user task"
 msgstr "ユーザタスクの実行をスキップする"
 
-#: stock/models.py:441 stock/models.py:797
+#: stock/models.py:441 stock/models.py:818
 msgid "Price Earnings Ratio (PER)"
 msgstr "株価収益率（PER）"
 
-#: stock/models.py:442 stock/models.py:798
+#: stock/models.py:442 stock/models.py:819
 msgid "Price Book-value Ratio (PBR)"
 msgstr "株価純資産倍率（PBR）"
 
@@ -525,23 +530,23 @@ msgstr "株価純資産倍率（PBR）"
 msgid "PER x PBR"
 msgstr "PER x PBR"
 
-#: stock/models.py:444 stock/models.py:799
+#: stock/models.py:444 stock/models.py:820
 msgid "Earnings Per Share (EPS)"
 msgstr "1株当たり純利益（EPS）"
 
-#: stock/models.py:445 stock/models.py:800
+#: stock/models.py:445 stock/models.py:821
 msgid "Book value Per Share (BPS)"
 msgstr "1株当たりの純資産（BPS）"
 
-#: stock/models.py:446 stock/models.py:801
+#: stock/models.py:446 stock/models.py:822
 msgid "Return On Equity (ROE)"
 msgstr "自己資本利益率（ROE）"
 
-#: stock/models.py:447 stock/models.py:802
+#: stock/models.py:447 stock/models.py:823
 msgid "Equity Ratio (ER)"
 msgstr "自己資本比率（ER）"
 
-#: stock/models.py:481 stock/models.py:570 stock/models.py:818
+#: stock/models.py:481 stock/models.py:570 stock/models.py:839
 msgid "Owner"
 msgstr "所有者"
 
@@ -566,70 +571,72 @@ msgid "Its stock has been sold or not"
 msgstr "この株式が売却済みかどうか"
 
 #: stock/models.py:645
+#, python-format
 msgid "%(name)s does not exist."
 msgstr "%(name)s は存在しません"
 
 #: stock/models.py:655
+#, python-format
 msgid "Invalid data (%(value)s): %(ex)s"
 msgstr "無効なデータ（%(value)s）：%(ex)s"
 
-#: stock/models.py:700
+#: stock/models.py:721
 msgid "Defensive"
 msgstr "ディフェンシブ株"
 
-#: stock/models.py:701
+#: stock/models.py:722
 msgid "Economically sensitive"
 msgstr "景気敏感株"
 
-#: stock/models.py:790
+#: stock/models.py:811
 msgid "Economic trend"
 msgstr "経済動向"
 
-#: stock/models.py:793
+#: stock/models.py:814
 msgid "Purchased value"
 msgstr "購入価格"
 
-#: stock/models.py:794
+#: stock/models.py:815
 msgid "Number of stocks"
 msgstr "所有株式数"
 
-#: stock/models.py:795
+#: stock/models.py:816
 msgid "Diff"
 msgstr "差分"
 
-#: stock/models.py:825
+#: stock/models.py:846
 msgid "Title"
 msgstr "タイトル"
 
-#: stock/models.py:826
+#: stock/models.py:847
 msgid "Max length of this field is 255."
 msgstr "このフィールドの最大長は255文字です。"
 
-#: stock/models.py:829
+#: stock/models.py:850
 msgid "Relevant assets"
 msgstr "関連資産"
 
-#: stock/models.py:830
+#: stock/models.py:851
 msgid "Relevant asset list as of created time (json format)."
 msgstr "作成時点での関連資産（JSON形式）"
 
-#: stock/models.py:834
+#: stock/models.py:855
 msgid "Priority to show the snapshot"
 msgstr "スナップショット表示時の優先度"
 
-#: stock/models.py:839
+#: stock/models.py:860
 msgid "Start date"
 msgstr "集計開始日"
 
-#: stock/models.py:843
+#: stock/models.py:864
 msgid "End date"
 msgstr "集計終了日"
 
-#: stock/models.py:847
+#: stock/models.py:868
 msgid "Creation time"
 msgstr "作成日"
 
-#: stock/models.py:907
+#: stock/models.py:928
 msgid "Cash"
 msgstr "現金"
 
@@ -659,53 +666,53 @@ msgid "Update cash"
 msgstr "口座残高の更新"
 
 #: stock/views.py:114
-msgid "Purchsed stock list"
+msgid "purchased stock list"
 msgstr "購入済み株式一覧"
 
 #: stock/views.py:139
-msgid "Register purchsed stock"
+msgid "Register purchased stock"
 msgstr "購入済み株式の登録"
 
 #: stock/views.py:150
-msgid "Update purchsed stock"
+msgid "Update purchased stock"
 msgstr "購入済み株式の更新"
 
 #: stock/views.py:171
 msgid "Upload purchased stock (CSV format)"
 msgstr "購入済み株式のアップロード（CSV形式）"
 
-#: stock/views.py:192
+#: stock/views.py:207
 msgid "Snapshot list"
 msgstr "スナップショット一覧"
 
-#: stock/views.py:209
+#: stock/views.py:224
 msgid "Register snapshot"
 msgstr "スナップショットの登録"
 
-#: stock/views.py:220
+#: stock/views.py:235
 msgid "Update snapshot"
 msgstr "スナップショットの更新"
 
-#: stock/views.py:277
+#: stock/views.py:292
 msgid "Upload snapshot (JSON format)"
 msgstr "スナップショットのアップロード（JSON形式）"
 
-#: stock/views.py:344
+#: stock/views.py:359
 msgid "Periodic task list for snapshot"
 msgstr "スナップショットに対する定期実行タスク一覧"
 
-#: stock/views.py:361
+#: stock/views.py:376
 msgid "Register periodic task for snapshot"
 msgstr "スナップショットに対する定期実行タスクの登録"
 
-#: stock/views.py:372
+#: stock/views.py:387
 msgid "Update periodic task for snapshot"
 msgstr "スナップショットに対する定期実行タスクの更新"
 
-#: stock/views.py:398
+#: stock/views.py:413
 msgid "Stock list"
 msgstr "株価一覧"
 
-#: stock/views.py:455
+#: stock/views.py:470
 msgid "Explanation"
 msgstr "用語説明"

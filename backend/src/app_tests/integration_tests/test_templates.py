@@ -1236,14 +1236,14 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
 
     return all_stocks
 
-  # =========================================
-  # Upload purchased stocks by using csv file
-  # =========================================
+  # ==============================
+  # Upload purchased stocks as CSV
+  # ==============================
   def test_move_to_pstock_csvfile_upload_page(self, init_webtest):
     app, users = init_webtest
     owner = users['owner']
     page = app.get(self.pstock_list_url, user=owner)
-    response = page.click('Upload purchased stocks using csv file')
+    response = page.click('Upload purchased stocks as CSV')
 
     assert response.status_code == status.HTTP_200_OK
     assert get_current_path(response) == self.pstock_upload_url
