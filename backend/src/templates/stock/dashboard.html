@@ -502,8 +502,8 @@
         pairs[industry] = {
           industry: industry,
           isDefensive: trendStat.isDefensive,
-          trendIdx: trendStat.idx,
-          trendType: trendStat.name,
+          idx: trendStat.idx,
+          trend: trendStat.name,
           displayName: `${industry}(${trendStat.name})`,
         };
 
@@ -514,7 +514,7 @@
         // re: right element
         const sign = 1; // ASC
         const compare = ((val) => (val > 0) ? sign : ((val < 0) ? (-sign) : 0));
-        const indexOrder = compare(le.trendIdx - re.trendIdx);
+        const indexOrder = compare(le.idx - re.idx);
         const out = (indexOrder !== 0) ? indexOrder : compare(le.industry.localeCompare(re.industry));
 
         return out;
@@ -572,7 +572,7 @@
       const out = {
         industry: industry,
         isDefensive: config.isDefensive,
-        trend: config.trendType,
+        trend: config.trend,
         value: totalPrice,
         count: targets.length,
         dividend: totalDividend,
@@ -968,7 +968,7 @@
   };
   // Define initialization function
   const init = () => {
-    const _sortAlgorithm = (sortType) => {
+    const getSortAlgorithm = (sortType) => {
       const types = {
         none: 0,
         asc: 1,
@@ -995,7 +995,7 @@
     const _callback = (snapshot, sortType, collectionType) => {
       const uuid = snapshot.value;
       const data = JSON.parse(document.getElementById(uuid).textContent);
-      const sortFunction = _sortAlgorithm(sortType.value);
+      const sortFunction = getSortAlgorithm(sortType.value);
       // Create relevant data
       const output = createChartData(data, sortFunction, collectionType.value);
       // Update table

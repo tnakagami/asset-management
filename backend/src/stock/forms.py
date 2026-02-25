@@ -1036,7 +1036,7 @@ class StockDownloadForm(forms.Form):
 
     try:
       # Check condition
-      validate_filtering_condition(data)
+      validate_search_condition(data)
       condition = ' '.join(data.splitlines())
       tree = ast.parse(condition, mode='eval') if condition else None
     except forms.ValidationError:
