@@ -366,6 +366,7 @@
 {% endblock %}
 
 {% block bodyjs %}
+{{ block.super }}
 {% for instance in snapshots %}
   {{ instance.get_jsonfield }}{% endfor %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
@@ -983,6 +984,8 @@
         return ((lv, rv) => (lv > rv) ? sign : ((lv < rv) ? (-sign) : 0));
       }
     };
+    // Create helper method's instance
+    const helper = new HelperMethods();
     // Define chart's variables
     let stockPortfolioChart = null;
     let dividendPortfolioChart = null;
@@ -1016,7 +1019,7 @@
     snapshot.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     sortType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     collectionType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
-    window.addEventListener('resize', () => snapshot.dispatchEvent(new Event('change')));
+    window.addEventListener('resize', helper.createThrottle(() => snapshot.dispatchEvent(new Event('change'))));
     // Call initial event
     snapshot.dispatchEvent(new Event('change'));
   };

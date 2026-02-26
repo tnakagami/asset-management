@@ -209,6 +209,7 @@
 {% endblock %}
 
 {% block bodyjs %}
+{{ block.super }}
 {% for instance in snapshots %}
   {{ instance.get_jsonfield }}{% endfor %}
 <script src="https://cdn.jsdelivr.net/npm/dual-listbox/dist/dual-listbox.min.js"></script>
@@ -528,6 +529,8 @@
   // Initialization
   //
   const init = () => {
+    // Create helper method's instance
+    const helper = new HelperMethods();
     // Initialize select DOM element
     const options = [{% for instance in snapshots %}
       {
@@ -594,7 +597,7 @@
 
       event.target.disabled = false;
     });
-    window.addEventListener('resize', () => updateGraph.dispatchEvent(new Event('click')));
+    window.addEventListener('resize', helper.createThrottle(() => updateGraph.dispatchEvent(new Event('click'))));
   };
   //
   // Add DOM event
