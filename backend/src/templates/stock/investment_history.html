@@ -597,7 +597,7 @@
 
       event.target.disabled = false;
     });
-    window.addEventListener('resize', helper.createThrottle(() => updateGraph.dispatchEvent(new Event('click'))));
+    window.addEventListener('resize', helper.createDebounce(() => updateGraph.dispatchEvent(new Event('click'))));
   };
   //
   // Add DOM event

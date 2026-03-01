@@ -496,35 +496,46 @@
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
-    const sectorList = (() => {
+    const sectors = (() => {
       const configs = stocks.reduce((pairs, item) => {
         const industry = item.industry;
         const trendStat = _getTrend(item.isDefensive);
-        pairs[industry] = {
-          industry: industry,
-          isDefensive: trendStat.isDefensive,
-          idx: trendStat.idx,
-          trend: trendStat.name,
-          displayName: `${industry}(${trendStat.name})`,
-        };
+        // Check key
+        if (!Object.hasOwn(pairs, industry)) {
+          const targets = stocks.filter((obj) => obj.industry === industry);
+          const totalDividend = _dividendValSum(targets);
+          const totalPrice = _stockValSum(targets);
+          const totalDiff = _calcTotal(_getDiffArr(targets));
+          // Set items
+          pairs[industry] = {
+            industry: industry,
+            isDefensive: trendStat.isDefensive,
+            idx: trendStat.idx,
+            trend: trendStat.name,
+            value: totalPrice,
+            count: targets.length,
+            dividend: totalDividend,
+            diff: totalDiff,
+            displayName: `${industry}(${trendStat.name})`,
+          };
+        }
 
         return pairs;
       }, {});
       const arr = Object.values(configs).sort((le, re) => {
         // le: left element
         // re: right element
-        const sign = 1; // ASC
-        const compare = ((val) => (val > 0) ? sign : ((val < 0) ? (-sign) : 0));
-        const indexOrder = compare(le.idx - re.idx);
-        const out = (indexOrder !== 0) ? indexOrder : compare(le.industry.localeCompare(re.industry));
+        // sign: 1 <-> ASC, -1 <-> DESC
+        const compare = ((val, sign) => (val > 0) ? sign : ((val < 0) ? (-sign) : 0));
+        const indexOrder = compare(le.idx - re.idx, 1);
+        const out = (indexOrder !== 0) ? indexOrder : compare(le.value - re.value, -1);
 
         return out;
       });
 
       return arr;
     })();
-
-    const sectorNameList = sectorList.map((item) => item.displayName);
+    const sectorNameList = sectors.map((item) => item.displayName);
     // Define color dictionaries
     const stockColorDict = (() => {
       const arr = stockNameList.slice(1);
@@ -564,24 +575,6 @@
       return pairs;
     }, {});
     // Define chart data
-    const sectors = sectorList.map((config) => {
-      const industry = config.industry;
-      const targets = records.filter((item) => item.industry === industry);
-      const totalDividend = _dividendValSum(targets);
-      const totalPrice = _stockValSum(targets);
-      const totalDiff = _calcTotal(_getDiffArr(targets));
-      const out = {
-        industry: industry,
-        isDefensive: config.isDefensive,
-        trend: config.trend,
-        value: totalPrice,
-        count: targets.length,
-        dividend: totalDividend,
-        diff: totalDiff,
-      };
-
-      return out;
-    });
     const pairs = {
       dividendPortfolioData: {
         title: '{% trans "Portfolio (dividend)" %}',
@@ -1019,7 +1012,7 @@
     snapshot.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     sortType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     collectionType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
-    window.addEventListener('resize', helper.createThrottle(() => snapshot.dispatchEvent(new Event('change'))));
+    window.addEventListener('resize', helper.createDebounce(() => snapshot.dispatchEvent(new Event('change'))));
     // Call initial event
     snapshot.dispatchEvent(new Event('change'));
   };

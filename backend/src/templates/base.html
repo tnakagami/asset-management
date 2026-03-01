@@ -91,7 +91,7 @@
           this.registerDeleteModalEvent = this.registerDeleteModalEvent.bind(this);
           this.setupPicker = this.setupPicker.bind(this);
           this.setupDownloadStatus = this.setupDownloadStatus.bind(this);
-          this.createThrottle = this.createThrottle.bind(this);
+          this.createDebounce = this.createDebounce.bind(this);
         }
         getCookie(name) {
           let cookieValue = null;
@@ -194,24 +194,19 @@
             }
           }, 1000);
         }
-        createThrottle(callback, delay=100) {
-          let lastExecTime = 0;
+        createDebounce(callback, delay=100) {
           let timeoutId = null;
+          let width = window.innerWidth;
 
           const wrapper = function (...args) {
-            const currentTime = Date.now();
-            const diffTime = currentTime - lastExecTime;
-
-            if (diffTime > delay) {
-              callback.apply(this, args);
-              lastExecTime = currentTime;
-            }
-            else {
+            const currentWidth = window.innerWidth;
+            // Check current window width
+            if (width !== currentWidth) {
+              // Update current width
+              width = currentWidth;
+              // Reset timeout event
               clearTimeout(timeoutId);
-              timeoutId = setTimeout(() => {
-                callback.apply(this, args);
-                lastExecTime = Date.now();
-              }, delay - diffTime);
+              timeoutId = setTimeout(() => callback.apply(this, args), delay);
             }
           };
 
