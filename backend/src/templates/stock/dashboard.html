@@ -372,8 +372,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
         integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"
+        integrity="sha512-JPcRR8yFa8mmCsfrw4TNte1ZvF1e3+1SdGMslZvmrzDYxS69J7J49vkFL8u6u8PlPJK+H3voElBtUCzaXj+6ig=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 (function () {
+  const calcTotal = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
+  // Define chart data
   const createChartData = (data, sortCallback, collectType) => {
     const _getTrend = (isDefensive) => {
       const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
@@ -397,9 +402,8 @@
     });
     const _getDiffArr = (arr) => arr.map((item) => item.diff);
     const _getDividendArr = (arr) => arr.map((item) => item.realDividend);
-    const _calcTotal = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
-    const _stockValSum = (arr, initVal=0.0) => _calcTotal(_getValArr(arr), initVal);
-    const _dividendValSum = (arr, initVal=0.0) => _calcTotal(_getDividendArr(arr), initVal);
+    const _stockValSum = (arr, initVal=0.0) => calcTotal(_getValArr(arr), initVal);
+    const _dividendValSum = (arr, initVal=0.0) => calcTotal(_getDividendArr(arr), initVal);
     const _generateColorPalette = (len, offset=180) => {
       const hueArray = (() => {
         const scaler = (len > 360) ? 1.0 : 360.0 / len;
@@ -505,7 +509,7 @@
           const targets = stocks.filter((obj) => obj.industry === industry);
           const totalDividend = _dividendValSum(targets);
           const totalPrice = _stockValSum(targets);
-          const totalDiff = _calcTotal(_getDiffArr(targets));
+          const totalDiff = calcTotal(_getDiffArr(targets));
           // Set items
           pairs[industry] = {
             industry: industry,
@@ -620,7 +624,7 @@
           label: '{% trans "Dividend" %}',
           data: [true, false].map((isDefensive) => {
             const targets = sectors.filter((item) => item.isDefensive === isDefensive);
-            const total = _calcTotal(targets.map((item) => item.dividend));
+            const total = calcTotal(targets.map((item) => item.dividend));
 
             return total;
           }),
@@ -634,7 +638,7 @@
           label: '{% trans "Price" %}',
           data: [true, false].map((isDefensive) => {
             const targets = sectors.filter((item) => item.isDefensive === isDefensive);
-            const total = _calcTotal(targets.map((item) => item.value));
+            const total = calcTotal(targets.map((item) => item.value));
 
             return total;
           }),
@@ -882,7 +886,7 @@
                                       .filter(([key, value]) => value)
                                       .map(([idx, _]) => Number(idx));
                 const targets = tooltipItem.dataset.data.filter((_, idx) => !hiddens.includes(idx));
-                const total = targets.reduce((acc, val) => acc + val, 0.0);
+                const total = calcTotal(targets);
                 const ratio = (tooltipItem.raw + 0.0) / total * 100.0;
                 const score = `${tooltipItem.formattedValue}(${ratio.toFixed(2)}%)`;
                 const out = `${tooltipItem.dataset.label}: ${score}`;
@@ -912,6 +916,7 @@
         labels: asset.labels,
         datasets: asset.datasets,
       },
+      plugins: [ChartDataLabels],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -952,6 +957,24 @@
 
                 return out;
               },
+            },
+          },
+          datalabels: {
+            align: 'end',
+            anchor: 'end',
+            offset: 4,
+            backgroundColor: '#787878',
+            color: 'white',
+            borderColor: 'white',
+            borderRadius: 5,
+            borderWidth: 2,
+            padding: 2,
+            font: {
+              size: 10,
+            },
+            display: 'auto',
+            formatter: function(value, context) {
+              return value.toLocaleString();
             },
           },
         },
