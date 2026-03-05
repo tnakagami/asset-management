@@ -3,6 +3,14 @@
 {% load i18n %}
 {% load humanize %}
 
+{% block header %}
+<style>
+  .hidden-column {
+    display: none;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 {% include 'breadcrumbs.html' with title=_("Stocks") %}
 <div class="row justify-content-center">
@@ -34,25 +42,36 @@
         </div>
       </div>
       <div class="col">
+        <p class="fs-4">{% trans "Target headers" %}</p>
+        <select
+          name="headers"
+          id="headers"
+          data-available="{% trans 'All headers' %}"
+          data-selected="{% trans 'Selected headers' %}"
+          data-uptxt="{% trans 'Move selected item up' %}"
+          data-downtxt="{% trans 'Move selected item down' %}"
+        ></select>
+      </div>
+      <div class="col">
         {% if stocks %}
         <div class="table-responsive">
-          <table class="table table-hover">
+          <table class="table table-hover" id="stock-table">
             <thead>
               <tr>
-                <th scope="col">{% trans "No." %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Code" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Stock price" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Price Earnings Ratio" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Price Book-value Ratio" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "PER &times; PBR" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Earnings Per Share" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Book value Per Share" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Return On Equity" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Equity Ratio" %}</th>
+                <th scope="col" data-name="no">{% trans "No." %}</th>
+                <th scope="col" class="text-nowrap" data-name="code">{% trans "Code" %}</th>
+                <th scope="col" class="text-nowrap" data-name="stock">{% trans "Stock name" %}</th>
+                <th scope="col" class="text-nowrap" data-name="industry">{% trans "Industry" %}</th>
+                <th scope="col" class="text-nowrap" data-name="price">{% trans "Stock price" %}</th>
+                <th scope="col" class="text-nowrap" data-name="dividend">{% trans "Dividend" %}</th>
+                <th scope="col" class="text-nowrap" data-name="yield">{% trans "Dividend yield" %}</th>
+                <th scope="col" class="text-nowrap" data-name="per">{% trans "Price Earnings Ratio" %}</th>
+                <th scope="col" class="text-nowrap" data-name="pbr">{% trans "Price Book-value Ratio" %}</th>
+                <th scope="col" class="text-nowrap" data-name="multpp">{% trans "PER &times; PBR" %}</th>
+                <th scope="col" class="text-nowrap" data-name="eps">{% trans "Earnings Per Share" %}</th>
+                <th scope="col" class="text-nowrap" data-name="bps">{% trans "Book value Per Share" %}</th>
+                <th scope="col" class="text-nowrap" data-name="roe">{% trans "Return On Equity" %}</th>
+                <th scope="col" class="text-nowrap" data-name="er">{% trans "Equity Ratio" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -291,7 +310,53 @@
     const ordering = document.getElementById('column-ordering');
     ordering.disabled = isDisabled;
   };
+  const setupDualListbox = (helper) => {
+    const updateTableHeaders = (defaultIDs) => {
+      const table = document.getElementById('stock-table');
+      const itemStats = (() => {
+        const columns = Array.from(table.rows[0].cells);
+        const elements = document.querySelectorAll('.dual-listbox__selected > li');
+        const ids = defaultIDs.concat(Array.from(elements).map((elem) => elem.dataset.id));
+        const out = columns.map((col) => ids.includes(col.dataset.name));
 
+        return out;
+      })();
+      for (const row of table.rows) {
+        itemStats.forEach((selected, idx) => {
+          const cell = row.cells[idx];
+          // Update classList
+          if (selected) {
+            cell.classList.remove('hidden-column');
+          }
+          else {
+            cell.classList.add('hidden-column');
+          }
+        });
+      }
+    };
+    // Define options
+    const defaultIDs = ['no', 'code', 'stock'];
+    const options = [
+      {text: '{% trans "Industry" %}',               value: 'industry', order:  1, selected: false},
+      {text: '{% trans "Stock price" %}',            value: 'price',    order:  2, selected: false},
+      {text: '{% trans "Dividend" %}',               value: 'dividend', order:  3, selected: false},
+      {text: '{% trans "Dividend yield" %}',         value: 'yield',    order:  4, selected: false},
+      {text: '{% trans "Price Earnings Ratio" %}',   value: 'per',      order:  5, selected: false},
+      {text: '{% trans "Price Book-value Ratio" %}', value: 'pbr',      order:  6, selected: false},
+      {text: '{% trans "PER &times; PBR" %}',        value: 'multpp',   order:  7, selected: false},
+      {text: '{% trans "Earnings Per Share" %}',     value: 'eps',      order:  8, selected: false},
+      {text: '{% trans "Book value Per Share" %}',   value: 'bps',      order:  9, selected: false},
+      {text: '{% trans "Return On Equity" %}',       value: 'roe',      order: 10, selected: false},
+      {text: '{% trans "Equity Ratio" %}',           value: 'er',       order: 11, selected: false},
+    ];
+    const dualListbox = helper.createDualListbox('headers', options);
+    const callback = () => updateTableHeaders(defaultIDs);
+    dualListbox.addEventListener('added', callback);
+    dualListbox.addEventListener('removed', callback);
+    dualListbox.add_all_button.addEventListener('click', callback);
+    dualListbox.remove_all_button.addEventListener('click', callback);
+    dualListbox.add_all_button.click();
+  };
   const setupSearchForm = () => {
     const removeAllAttrs = (element, ...attrs) => attrs.forEach((_attr) => element.removeAttribute(_attr));
     const targetColumn = document.getElementById('target-column-name');
@@ -426,6 +491,8 @@
     setupSearchForm();
     // Setup download form
     setupDownloadForm(helper);
+    // Setup dual listbox
+    setupDualListbox(helper);
 
     // Add submit event
     searchForm.addEventListener('submit', (event) => {

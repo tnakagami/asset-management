@@ -366,13 +366,19 @@
 {% endblock %}
 
 {% block bodyjs %}
+{{ block.super }}
 {% for instance in snapshots %}
   {{ instance.get_jsonfield }}{% endfor %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
         integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"
+        integrity="sha512-JPcRR8yFa8mmCsfrw4TNte1ZvF1e3+1SdGMslZvmrzDYxS69J7J49vkFL8u6u8PlPJK+H3voElBtUCzaXj+6ig=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 (function () {
+  const calcTotal = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
+  // Define chart data
   const createChartData = (data, sortCallback, collectType) => {
     const _getTrend = (isDefensive) => {
       const trendNameList = ['{% trans "Defensive" %}', '{% trans "Economically sensitive" %}'];
@@ -396,9 +402,8 @@
     });
     const _getDiffArr = (arr) => arr.map((item) => item.diff);
     const _getDividendArr = (arr) => arr.map((item) => item.realDividend);
-    const _calcTotal = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
-    const _stockValSum = (arr, initVal=0.0) => _calcTotal(_getValArr(arr), initVal);
-    const _dividendValSum = (arr, initVal=0.0) => _calcTotal(_getDividendArr(arr), initVal);
+    const _stockValSum = (arr, initVal=0.0) => calcTotal(_getValArr(arr), initVal);
+    const _dividendValSum = (arr, initVal=0.0) => calcTotal(_getDividendArr(arr), initVal);
     const _generateColorPalette = (len, offset=180) => {
       const hueArray = (() => {
         const scaler = (len > 360) ? 1.0 : 360.0 / len;
@@ -495,35 +500,46 @@
     }].concat(stocks);
     // Define name lists
     const stockNameList = [records[0].name].concat(stocks.map((item) => `${item.name}(${item.code})`));
-    const sectorList = (() => {
+    const sectors = (() => {
       const configs = stocks.reduce((pairs, item) => {
         const industry = item.industry;
         const trendStat = _getTrend(item.isDefensive);
-        pairs[industry] = {
-          industry: industry,
-          isDefensive: trendStat.isDefensive,
-          idx: trendStat.idx,
-          trend: trendStat.name,
-          displayName: `${industry}(${trendStat.name})`,
-        };
+        // Check key
+        if (!Object.hasOwn(pairs, industry)) {
+          const targets = stocks.filter((obj) => obj.industry === industry);
+          const totalDividend = _dividendValSum(targets);
+          const totalPrice = _stockValSum(targets);
+          const totalDiff = calcTotal(_getDiffArr(targets));
+          // Set items
+          pairs[industry] = {
+            industry: industry,
+            isDefensive: trendStat.isDefensive,
+            idx: trendStat.idx,
+            trend: trendStat.name,
+            value: totalPrice,
+            count: targets.length,
+            dividend: totalDividend,
+            diff: totalDiff,
+            displayName: `${industry}(${trendStat.name})`,
+          };
+        }
 
         return pairs;
       }, {});
       const arr = Object.values(configs).sort((le, re) => {
         // le: left element
         // re: right element
-        const sign = 1; // ASC
-        const compare = ((val) => (val > 0) ? sign : ((val < 0) ? (-sign) : 0));
-        const indexOrder = compare(le.idx - re.idx);
-        const out = (indexOrder !== 0) ? indexOrder : compare(le.industry.localeCompare(re.industry));
+        // sign: 1 <-> ASC, -1 <-> DESC
+        const compare = ((val, sign) => (val > 0) ? sign : ((val < 0) ? (-sign) : 0));
+        const indexOrder = compare(le.idx - re.idx, 1);
+        const out = (indexOrder !== 0) ? indexOrder : compare(le.value - re.value, -1);
 
         return out;
       });
 
       return arr;
     })();
-
-    const sectorNameList = sectorList.map((item) => item.displayName);
+    const sectorNameList = sectors.map((item) => item.displayName);
     // Define color dictionaries
     const stockColorDict = (() => {
       const arr = stockNameList.slice(1);
@@ -563,24 +579,6 @@
       return pairs;
     }, {});
     // Define chart data
-    const sectors = sectorList.map((config) => {
-      const industry = config.industry;
-      const targets = records.filter((item) => item.industry === industry);
-      const totalDividend = _dividendValSum(targets);
-      const totalPrice = _stockValSum(targets);
-      const totalDiff = _calcTotal(_getDiffArr(targets));
-      const out = {
-        industry: industry,
-        isDefensive: config.isDefensive,
-        trend: config.trend,
-        value: totalPrice,
-        count: targets.length,
-        dividend: totalDividend,
-        diff: totalDiff,
-      };
-
-      return out;
-    });
     const pairs = {
       dividendPortfolioData: {
         title: '{% trans "Portfolio (dividend)" %}',
@@ -626,7 +624,7 @@
           label: '{% trans "Dividend" %}',
           data: [true, false].map((isDefensive) => {
             const targets = sectors.filter((item) => item.isDefensive === isDefensive);
-            const total = _calcTotal(targets.map((item) => item.dividend));
+            const total = calcTotal(targets.map((item) => item.dividend));
 
             return total;
           }),
@@ -640,7 +638,7 @@
           label: '{% trans "Price" %}',
           data: [true, false].map((isDefensive) => {
             const targets = sectors.filter((item) => item.isDefensive === isDefensive);
-            const total = _calcTotal(targets.map((item) => item.value));
+            const total = calcTotal(targets.map((item) => item.value));
 
             return total;
           }),
@@ -888,7 +886,7 @@
                                       .filter(([key, value]) => value)
                                       .map(([idx, _]) => Number(idx));
                 const targets = tooltipItem.dataset.data.filter((_, idx) => !hiddens.includes(idx));
-                const total = targets.reduce((acc, val) => acc + val, 0.0);
+                const total = calcTotal(targets);
                 const ratio = (tooltipItem.raw + 0.0) / total * 100.0;
                 const score = `${tooltipItem.formattedValue}(${ratio.toFixed(2)}%)`;
                 const out = `${tooltipItem.dataset.label}: ${score}`;
@@ -918,6 +916,7 @@
         labels: asset.labels,
         datasets: asset.datasets,
       },
+      plugins: [ChartDataLabels],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -960,6 +959,24 @@
               },
             },
           },
+          datalabels: {
+            align: 'end',
+            anchor: 'end',
+            offset: 4,
+            backgroundColor: '#787878',
+            color: 'white',
+            borderColor: 'white',
+            borderRadius: 5,
+            borderWidth: 2,
+            padding: 2,
+            font: {
+              size: 10,
+            },
+            display: 'auto',
+            formatter: function(value, context) {
+              return value.toLocaleString();
+            },
+          },
         },
       },
     });
@@ -983,6 +1000,8 @@
         return ((lv, rv) => (lv > rv) ? sign : ((lv < rv) ? (-sign) : 0));
       }
     };
+    // Create helper method's instance
+    const helper = new HelperMethods();
     // Define chart's variables
     let stockPortfolioChart = null;
     let dividendPortfolioChart = null;
@@ -1016,7 +1035,7 @@
     snapshot.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     sortType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
     collectionType.addEventListener('change', () => _callback(snapshot, sortType, collectionType));
-    window.addEventListener('resize', () => snapshot.dispatchEvent(new Event('change')));
+    window.addEventListener('resize', helper.createDebounce(() => snapshot.dispatchEvent(new Event('change'))));
     // Call initial event
     snapshot.dispatchEvent(new Event('change'));
   };
