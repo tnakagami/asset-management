@@ -1057,4 +1057,4 @@ class Snapshot(models.Model):
       instance.update_record()
       records += [instance]
     # Update relevant fields
-    cls.objects.bulk_update(records, fields=['detail'])
+    #cls.objects.bulk_update(records, fields=['detail'])
