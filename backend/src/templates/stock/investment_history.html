@@ -163,13 +163,13 @@
       };
       const output = [{
         dividend: 0,
-        price: data.cash.balance,
+        price: (data.cash.balance || 0),
         diff: 0,
         count: 0,
       }].concat(Object.values(purchasedPairs));
 
       return output;
-    }
+    };
     const getTotal = (arr, callback) => arr.reduce((acc, item) => acc + callback(item), 0);
     // Load relevant data
     const records = indices.map((idx) => options[idx].value)
@@ -357,20 +357,17 @@
         const key = sortType.value;
         const orderingType = sortType.selectedOptions[0].dataset.type.toLowerCase();
         const sign = (orderingType === 'asc') ? 1 : (-1);
-        const compare = (lv, rv) => ((lv > rv) ? sign : ((lv < rv) ? (-sign) : 0));
-        //
+        const compare = (val) => ((val > 0) ? sign : ((val < 0) ? (-sign) : 0));
         // le: left element, re: right element
-        // lv: left value,   rv: right value
-        //
         if (key === 'none') {
           return (le, re) => 0;
         }
         else if (key === 'priority') {
-          return (le, re) => compare(le.priority, re.priority);
+          return (le, re) => compare(le.priority - re.priority);
         }
         // In the case of startDate or endDate
         else {
-          return (le, re) => compare(le[key].getTime(), re[key].getTime());
+          return (le, re) => compare(le[key].getTime() - re[key].getTime());
         }
       })();
       // Get selected options and sorted ones
