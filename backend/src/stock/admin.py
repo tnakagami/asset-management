@@ -26,7 +26,7 @@ class IndustryAdmin(admin.ModelAdmin):
   readonly_fields = ['localized_name']
   list_display = ('localized_name', 'is_defensive')
   list_filter = ('is_defensive',)
-  search_fields = ('localized_name', 'is_defensive')
+  search_fields = ('is_defensive', 'locals__name')
   ordering = ('pk',)
 
   @admin.display(description=gettext_lazy('Name'))
@@ -45,11 +45,11 @@ class LocalizedStockAdmin(admin.ModelAdmin):
 @admin.register(Stock)
 class StockAdmin(admin.ModelAdmin):
   model = Stock
-  fields = ['code', 'industry', 'price', 'dividend', 'per', 'pbr', 'eps', 'bps', 'roe', 'er']
+  fields = ['code', 'industry', 'price', 'dividend', 'per', 'pbr', 'eps', 'bps', 'roe', 'er', 'skip_task']
   readonly_fields = ['localized_name']
   list_display = ('code', 'localized_name', 'industry', 'price', 'dividend')
   list_filter = ('industry', 'dividend')
-  search_fields = ('code', 'localized_name', 'industry')
+  search_fields = ('code', 'locals__name', 'industry__locals__name')
   ordering = ('code',)
 
   @admin.display(description=gettext_lazy('Name'))
