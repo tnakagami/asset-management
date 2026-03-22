@@ -17,7 +17,7 @@ class LocalizedIndustryAdmin(admin.ModelAdmin):
   list_display = ('name', 'language_code')
   list_filter = ('language_code',)
   search_fields = ('name', 'language_code')
-  ordering = ('pk',)
+  ordering = ('pk', 'language_code', 'name')
 
 @admin.register(Industry)
 class IndustryAdmin(admin.ModelAdmin):
@@ -40,7 +40,7 @@ class LocalizedStockAdmin(admin.ModelAdmin):
   list_display = ('name', 'language_code', 'stock')
   list_filter = ('language_code',)
   search_fields = ('name', 'language_code')
-  ordering = ('pk',)
+  ordering = ('pk', 'language_code', 'name')
 
 @admin.register(Stock)
 class StockAdmin(admin.ModelAdmin):
@@ -48,9 +48,9 @@ class StockAdmin(admin.ModelAdmin):
   fields = ['code', 'industry', 'price', 'dividend', 'per', 'pbr', 'eps', 'bps', 'roe', 'er', 'skip_task']
   readonly_fields = ['localized_name']
   list_display = ('code', 'localized_name', 'industry', 'price', 'dividend')
-  list_filter = ('industry', 'dividend')
+  list_filter = ('industry', 'skip_task')
   search_fields = ('code', 'locals__name', 'industry__locals__name')
-  ordering = ('code',)
+  ordering = ('code', 'price', 'dividend')
 
   @admin.display(description=gettext_lazy('Name'))
   def localized_name(self, instance):
