@@ -337,17 +337,17 @@
     // Define options
     const defaultIDs = ['no', 'code', 'stock'];
     const options = [
-      {text: '{% trans "Industry" %}',               value: 'industry', order:  1, selected: false},
-      {text: '{% trans "Stock price" %}',            value: 'price',    order:  2, selected: false},
-      {text: '{% trans "Dividend" %}',               value: 'dividend', order:  3, selected: false},
-      {text: '{% trans "Dividend yield" %}',         value: 'yield',    order:  4, selected: false},
-      {text: '{% trans "Price Earnings Ratio" %}',   value: 'per',      order:  5, selected: false},
-      {text: '{% trans "Price Book-value Ratio" %}', value: 'pbr',      order:  6, selected: false},
-      {text: '{% trans "PER &times; PBR" %}',        value: 'multpp',   order:  7, selected: false},
-      {text: '{% trans "Earnings Per Share" %}',     value: 'eps',      order:  8, selected: false},
-      {text: '{% trans "Book value Per Share" %}',   value: 'bps',      order:  9, selected: false},
-      {text: '{% trans "Return On Equity" %}',       value: 'roe',      order: 10, selected: false},
-      {text: '{% trans "Equity Ratio" %}',           value: 'er',       order: 11, selected: false},
+      {value: 'industry', order:  1, selected: false, text: '{% trans "Industry" %}'},
+      {value: 'price',    order:  2, selected: false, text: '{% trans "Stock price" %}'},
+      {value: 'dividend', order:  3, selected: false, text: '{% trans "Dividend" %}'},
+      {value: 'yield',    order:  4, selected: false, text: '{% trans "Dividend yield" %}'},
+      {value: 'per',      order:  5, selected: false, text: '{% trans "Price Earnings Ratio" %}'},
+      {value: 'pbr',      order:  6, selected: false, text: '{% trans "Price Book-value Ratio" %}'},
+      {value: 'multpp',   order:  7, selected: false, text: '{% trans "PER &times; PBR" %}'},
+      {value: 'eps',      order:  8, selected: false, text: '{% trans "Earnings Per Share" %}'},
+      {value: 'bps',      order:  9, selected: false, text: '{% trans "Book value Per Share" %}'},
+      {value: 'roe',      order: 10, selected: false, text: '{% trans "Return On Equity" %}'},
+      {value: 'er',       order: 11, selected: false, text: '{% trans "Equity Ratio" %}'},
     ];
     const dualListbox = helper.createDualListbox('headers', options);
     const callback = () => updateTableHeaders(defaultIDs);
