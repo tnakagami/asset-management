@@ -43,6 +43,16 @@
         </a>
       </div>
       <div class="col">
+        <a href="{% url 'stock:compare_snapshot' %}" class="link-underline link-underline-opacity-0">
+          <div class="card h-100 custom-boxshadow">
+            <div class="card-body">
+              <p class="card-title h3">{% trans "Compare specific snapshot pair" %}</p>
+              <p class="card-text">{% trans "Compare snapshot pair selected by user" %}</p>
+            </div>
+          </div>
+        </a>
+      </div>
+      <div class="col">
         <a href="{% url 'stock:list_cash' %}" class="link-underline link-underline-opacity-0">
           <div class="card h-100 custom-boxshadow">
             <div class="card-body">

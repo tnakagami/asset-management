@@ -297,6 +297,22 @@ class DetailSnapshot(LoginRequiredMixin, IsSnapshotOwner, DetailView, DjangoBrea
 
     return context
 
+class CompareSnapshot(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = models.Snapshot
+  template_name = 'stock/compare_snapshots.html'
+  context_object_name = 'snapshots'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:compare_snapshot',
+    title=gettext_lazy('Compare specific snapshot pair'),
+    parent_view_class=Index,
+  )
+
+  def get_queryset(self):
+    user = self.request.user
+    queryset = user.snapshots.all()
+
+    return queryset
+
 class UploadJsonFormatSnapshot(LoginRequiredMixin, FormView, DjangoBreadcrumbsMixin):
   form_class = forms.UploadJsonFormatSnapshotForm
   template_name = 'stock/upload_jsonformat_snapshot.html'

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-21 16:49+0900\n"
+"POT-Creation-Date: 2026-04-14 20:31+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -593,7 +593,7 @@ msgid "Economic trend"
 msgstr "経済動向"
 
 #: stock/models.py:815
-msgid "Purchased value"
+msgid "Purchased price"
 msgstr "購入価格"
 
 #: stock/models.py:816
@@ -694,25 +694,29 @@ msgid "Update snapshot"
 msgstr "スナップショットの更新"
 
 #: stock/views.py:306
+msgid "Compare specific snapshot pair"
+msgstr "特定のスナップショットペアの比較"
+
+#: stock/views.py:322
 msgid "Upload snapshot (JSON format)"
 msgstr "スナップショットのアップロード（JSON形式）"
 
-#: stock/views.py:373
+#: stock/views.py:389
 msgid "Periodic task list for snapshot"
 msgstr "スナップショットに対する定期実行タスク一覧"
 
-#: stock/views.py:390
+#: stock/views.py:406
 msgid "Register periodic task for snapshot"
 msgstr "スナップショットに対する定期実行タスクの登録"
 
-#: stock/views.py:401
+#: stock/views.py:417
 msgid "Update periodic task for snapshot"
 msgstr "スナップショットに対する定期実行タスクの更新"
 
-#: stock/views.py:427
+#: stock/views.py:443
 msgid "Stock list"
 msgstr "株価一覧"
 
-#: stock/views.py:484
+#: stock/views.py:500
 msgid "Explanation"
 msgstr "用語説明"

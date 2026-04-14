@@ -26,6 +26,7 @@ urlpatterns = [
   path('delete/snapshot/<int:pk>', views.DeleteSnapshot.as_view(), name='delete_snapshot'),
   path('update/all-snapshots', views.AjaxUpdateAllSnapshots.as_view(), name='update_all_snapshots'),
   path('detail/snapshot/<int:pk>', views.DetailSnapshot.as_view(), name='detail_snapshot'),
+  path('compare/snapshot', views.CompareSnapshot.as_view(), name='compare_snapshot'),
   path('upload/snapshot/json', views.UploadJsonFormatSnapshot.as_view(), name='upload_jsonformat_snapshot'),
   path('download/snapshot/csv/<int:pk>', views.DownloadCsvSnapshot.as_view(), name='download_csv_snapshot'),
   path('download/snapshot/json/<int:pk>', views.DownloadJsonSnapshot.as_view(), name='download_json_snapshot'),

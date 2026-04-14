@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% load utils_extras %}
+{% load i18n %}
+{% load humanize %}
+
+{% block header %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Compare specific snapshot pair") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="row row-cols-1 g-2">
+      {% if snapshots %}
+      {% with instance=snapshots|first %}
+      <div class="col">
+        <div class="input-group">
+          <div class="form-floating">
+            <input type="text" id="reference-snapshot" value="" data-pk="{{ instance.pk }}" class="form-control" readonly>
+            <label for="reference-snapshot" class="form-label">{% trans "Reference snapshot" %}</label>
+          </div>
+          <button type="button" id="set-reference-snapshot" class="btn btn-outline-secondary">{% trans "Select" %}</button>
+        </div>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <div class="form-floating">
+            <input type="text" id="comparison-snapshot" value="" data-pk="{{ instance.pk }}" class="form-control" readonly>
+            <label for="comparison-snapshot" class="form-label">{% trans "Comparison snapshot" %}</label>
+          </div>
+          <button type="button" id="set-comparison-snapshot" class="btn btn-outline-secondary">{% trans "Select" %}</button>
+        </div>
+      </div>
+      {% endwith %}
+      <div class="col">
+        <button type="button" id="exec-comparison" class="btn btn-primary w-100 custom-boxshadow">{% trans "Compare" %}</button>
+      </div>
+      <div class="col">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">{% trans "No." %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Code" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Diff (Count)" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Diff (Purchased price)" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Diff (Current price)" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Diff (Dividend)" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider" id="all-records"></tbody>
+            <tfoot class="table-group-divider text-left" id="record-totals">
+              <tr>
+                <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
+                <th><span name="total-record-count"></span></th>
+                <th><span name="total-record-value"></span></th>
+                <th><span name="total-record-stock"></span></th>
+                <th><span name="total-record-dividend"></span></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="col">
+        <a
+          href="{% url 'stock:register_snapshot' %}"
+          class="btn btn-primary w-100 custom-boxshadow"
+        >
+          {% trans "Register snapshot" %}
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<template id="record-template">
+<tr>
+  <td scope="row"><span class="record-idx"></span></td>
+  <td><span class="record-code"></span></td>
+  <td><span class="record-name" tabindex="0"></span></td>
+  <td><span class="record-industry"></span></td>
+  <td><span class="record-trend"></span></td>
+  <td><span class="record-count"></span></td>
+  <td><span class="record-value"></span></td>
+  <td><span class="record-stock"></span></td>
+  <td><span class="record-dividend"></span></td>
+</tr>
+</template>
+
+<div class="modal" id="stock-detail-modal" tabindex="-1" aria-labelledby="stock-detail-label" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title fs-5" id="stock-detail-label">{% trans "Detail of target stock" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row row-cols-1 g-1">
+          <div class="col">
+            <div class="input-group">
+              <span class="input-group-text fw-bold">{% trans "Code" %}</span>
+              <input type="text" value="" data-type="code" class="form-control" readonly>
+            </div>
+          </div>
+          <div class="col">
+            <div class="input-group">
+              <span class="input-group-text fw-bold">{% trans "Stock name" %}</span>
+              <input type="text" value="" data-type="name" class="form-control" readonly>
+            </div>
+          </div>
+          <div class="col">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th scope="col" class="text-nowrap fw-bold">{% trans "Element" %}</th>
+                    <th scope="col" class="text-nowrap">{% trans "Reference" %}</th>
+                    <th scope="col" class="text-nowrap">{% trans "Comparison" %}</th>
+                  </tr>
+                </thead>
+                <tbody class="table-group-divider">
+                  <tr>
+                    <td scope="row" class="text-nowrap fw-bold">{% trans "Count" %}</td>
+                    <td class="text-nowrap"><span data-type="refCount"></span></td>
+                    <td class="text-nowrap"><span data-type="compCount"></span></td>
+                  </tr>
+                  <tr>
+                    <td scope="row" class="text-nowrap fw-bold">{% trans "Purchased price" %}</td>
+                    <td class="text-nowrap"><span data-type="refValue"></span></td>
+                    <td class="text-nowrap"><span data-type="compValue"></span></td>
+                  </tr>
+                  <tr>
+                    <td scope="row" class="text-nowrap fw-bold">{% trans "Current price" %}</td>
+                    <td class="text-nowrap"><span data-type="refStock"></span></td>
+                    <td class="text-nowrap"><span data-type="compStock"></span></td>
+                  </tr>
+                  <tr>
+                    <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend" %}</td>
+                    <td class="text-nowrap"><span data-type="refDividend"></span></td>
+                    <td class="text-nowrap"><span data-type="compDividend"></span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="row w-100">
+          <div class="col">
+            <button type="button" class="btn btn-secondary w-100 custom-boxshadow" data-bs-dismiss="modal">
+              {% trans "Close" %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="snapshots-modal" tabindex="-1" aria-labelledby="snapshots-modal" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title h3" id="snapshots-modal">{% trans "Snapshot list" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <select name="snapshot-list" id="snapshot-list" class="form-control"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">{% trans "Close" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block bodyjs %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+<script>
+(function () {
+  // Define global variables
+  const snapshots = Object.freeze({{% for instance in snapshots %}
+    {{ instance.pk }}: {
+      title: '{{ instance.title }}',
+      endDate: new Date('{{ instance.end_date|date:"c" }}'),
+      records: {{% for record in instance.get_each_record %}
+        {% if forloop.first %}'0000'{% else %}'{{ record.code }}'{% endif %}: {code: '{{ record.code }}', name: '{{ record.name }}', industry: '{{ record.industry }}', trend: '{{ record.trend }}', count: {{ record.count }}, value: {{ record.purchased_value|floatformat:-1 }}, stock: {{ record.price|floatformat:2 }} * {{ record.count }}, dividend: {{ record.real_div|floatformat:0 }}},{% endfor %}
+      },
+    },{% endfor %}
+  });
+  const ssModal = new bootstrap.Modal('#snapshots-modal');
+
+  // Define setup method of snapshot field
+  const setupSnapshotField = (instance) => {
+    const options = Object.keys(snapshots).sort((baseKey, targetKey) => {
+      const baseEndDate = snapshots[baseKey].endDate;
+      const targetEndDate = snapshots[targetKey].endDate;
+      const diff = baseEndDate.getTime() - targetEndDate.getTime();
+      const sign = ((diff > 0) ? (-1) : ((diff < 0) ? 1 : 0));
+
+      return sign;
+    }).map((key) => {
+      const item = {pk: key, label: snapshots[key].title};
+
+      return item;
+    });
+    // Create controller instance
+    const controller = new TomSelect(document.getElementById('snapshot-list'), {
+      allowEmptyOption: false,
+      closeAfterSelect: true,
+      create: false,
+      maxItems: 1,
+      maxOptions: null,
+      onFocus: function () {
+        this.clear();
+      },
+      onChange: function (value) {
+        if (value) {
+          instance.callback(value);
+        }
+      },
+      onDropdownClose: function (dropdown) {
+        this.clear();
+        ssModal.hide();
+      },
+      valueField: 'pk',
+      labelField: 'label',
+      searchField: 'label',
+      options: options,
+    });
+  };
+  // Define update-table method
+  const updateTableData = (refRecs, compRecs) => {
+    const getVal = (item, key) => ((item) ? item[key] : null);
+    const wrapper = (ref, comp, key) => {
+      const num = getVal(ref, key);
+      const out = (num === null) ? getVal(comp, key) : num;
+
+      return out;
+    };
+    const convertor = (val) => (val !== null) ? val.toLocaleString() : '-';
+    const updateNodeStatus = (ref, comp, element) => {
+      // Add dataset attribute
+      element.dataset.code         = wrapper(ref, comp, 'code');
+      element.dataset.name         = wrapper(ref, comp, 'name');
+      element.dataset.refCount     = convertor(getVal(ref, 'count'));
+      element.dataset.compCount    = convertor(getVal(comp, 'count'));
+      element.dataset.refValue     = convertor(getVal(ref, 'value'));
+      element.dataset.compValue    = convertor(getVal(comp, 'value'));
+      element.dataset.refStock     = convertor(getVal(ref, 'stock'));
+      element.dataset.compStock    = convertor(getVal(comp, 'stock'));
+      element.dataset.refDividend  = convertor(getVal(ref, 'dividend'));
+      element.dataset.compDividend = convertor(getVal(comp, 'dividend'));
+      element.classList.add('text-decoration-underline', 'text-primary');
+      // Add click event
+      element.addEventListener('click', (event) => {
+        const columns = Object.freeze([
+          'refCount', 'compCount', 'refValue', 'compValue',
+          'refStock', 'compStock', 'refDividend', 'compDividend',
+        ]);
+        // Update modal data and show modal
+        for (const key of columns) {
+          const node = document.querySelector(`[data-type="${key}"]`);
+          node.textContent = event.target.dataset[key];
+        }
+        document.querySelector('[data-type="code"]').value = event.target.dataset.code;
+        document.querySelector('[data-type="name"]').value = event.target.dataset.name;
+        // Show modal
+        const stockModal = new bootstrap.Modal('#stock-detail-modal');
+        stockModal.show();
+      });
+      // Add key press event
+      element.addEventListener('keyup', (event) => {
+        if (event.key === 'Enter') {
+          element.click();
+        }
+      });
+    };
+    const compare = (ref, comp) => convertor((ref && comp) ? (ref - comp) : null);
+    const codes = (() => {
+      const data = {};
+      [refRecs, compRecs].forEach((records) => {
+        Object.keys(records).map((key) => { data[key] = null; });
+      });
+      const out = Object.keys(data).sort((baseVal, targetVal) => {
+        const base = baseVal.padStart(6, '0');
+        const target = targetVal.padStart(6, '0');
+        const sign = base.localeCompare(target); // ASC
+
+        return sign;
+      });
+
+      return out;
+    })();
+    const isNegative = (val) => /^-[0-9,]+.?[0-9]+$/.test(val);
+    const tbody = document.getElementById('all-records');
+    const tfoot = document.getElementById('record-totals');
+    const template = document.getElementById('record-template');
+    const nodeList = {
+      idx:      (ref, comp, _, idx) => idx,
+      code:     (ref, comp, key, _) => wrapper(ref, comp, key),
+      name:     (ref, comp, key, _) => wrapper(ref, comp, key),
+      industry: (ref, comp, key, _) => wrapper(ref, comp, key),
+      trend:    (ref, comp, key, _) => wrapper(ref, comp, key),
+      count:    (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
+      value:    (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
+      stock:    (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
+      dividend: (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
+    };
+    const diffItems = ['count', 'value', 'stock', 'dividend'];
+    const totals = Object.fromEntries(diffItems.map((key) => [key, 0]));
+    tbody.innerHTML = '';
+    // Set each record
+    codes.forEach((code, idx) => {
+      const clone = template.content.cloneNode(true);
+      const ref = refRecs[code];
+      const comp = compRecs[code];
+
+      for (const [key, callback] of Object.entries(nodeList)) {
+        const element = clone.querySelector(`.record-${key}`);
+        const diff = callback(ref, comp, key, idx)
+        element.textContent = diff;
+
+        if (diffItems.includes(key)) {
+          if (isNegative(diff)) {
+            element.classList.add('text-danger');
+          }
+          totals[key] += (((idx > 0) && (diff !== '-')) ? Number(diff.replace(',', '')) : 0);
+        }
+      }
+      updateNodeStatus(ref, comp, clone.querySelector('.record-name'));
+      // Add clone node to table body
+      tbody.appendChild(clone);
+    });
+    diffItems.forEach((key) => {
+      const element = tfoot.querySelector(`[name="total-record-${key}"]`);
+      const val = convertor(totals[key]);
+      element.textContent = val;
+
+      if (isNegative(val)) {
+        element.classList.add('text-danger');
+      }
+      else {
+        element.classList.remove('text-danger');
+      }
+    });
+  };
+
+  // Define initialization
+  const init = () => {
+    class BtnWrapper {
+      constructor() {
+        this.field = null;
+        this.setField = this.setField.bind(this);
+        this.callback = this.callback.bind(this);
+      }
+      setField(field) {
+        this.field = field;
+      }
+      callback(value) {
+        this.field.dataset.pk = value;
+        this.field.value = snapshots[value].title;
+      }
+    }
+    // Init and add events
+    const instance = new BtnWrapper()
+    const btnPair = {
+      reference:   {name: 'set-reference-snapshot', field: 'reference-snapshot'},
+      comparison: {name: 'set-comparison-snapshot', field: 'comparison-snapshot'},
+    };
+    // Setup snapshot field
+    setupSnapshotField(instance);
+    // Add click event
+    for (const item of Object.values(btnPair)) {
+      const btn = document.getElementById(item.name);
+      btn.addEventListener('click', (event) => {
+        instance.setField(document.getElementById(item.field));
+        ssModal.show();
+      });
+    }
+    const execBtn = document.getElementById('exec-comparison');
+    execBtn.addEventListener('click', () => {
+      const refElem = document.getElementById(btnPair.reference.field);
+      const compElem = document.getElementById(btnPair.comparison.field);
+      const refKey = refElem.dataset.pk;
+      const compKey = compElem.dataset.pk;
+
+      if (refKey && compKey) {
+        const refRecs = snapshots[refKey].records;
+        const compRecs = snapshots[compKey].records;
+        updateTableData(refRecs, compRecs);
+      }
+    });
+  };
+  //
+  // Add DOM event
+  //
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+{% endblock %}
