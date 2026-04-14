@@ -210,21 +210,18 @@
     },{% endfor %}
   });
   const ssModal = new bootstrap.Modal('#snapshots-modal');
+  const sortSnapshotKey = (baseKey, targetKey) => {
+    const baseEndDate = snapshots[baseKey].endDate;
+    const targetEndDate = snapshots[targetKey].endDate;
+    const diff = baseEndDate.getTime() - targetEndDate.getTime();
+    const sign = ((diff > 0) ? (-1) : ((diff < 0) ? 1 : 0));
+
+    return sign;
+  };
 
   // Define setup method of snapshot field
   const setupSnapshotField = (instance) => {
-    const options = Object.keys(snapshots).sort((baseKey, targetKey) => {
-      const baseEndDate = snapshots[baseKey].endDate;
-      const targetEndDate = snapshots[targetKey].endDate;
-      const diff = baseEndDate.getTime() - targetEndDate.getTime();
-      const sign = ((diff > 0) ? (-1) : ((diff < 0) ? 1 : 0));
-
-      return sign;
-    }).map((key) => {
-      const item = {pk: key, label: snapshots[key].title};
-
-      return item;
-    });
+    const options = Object.keys(snapshots).sort(sortSnapshotKey).map((key) => { return {pk: key, label: snapshots[key].title}; });
     // Create controller instance
     const controller = new TomSelect(document.getElementById('snapshot-list'), {
       allowEmptyOption: false,
@@ -412,6 +409,14 @@
         updateTableData(refRecs, compRecs);
       }
     });
+    setTimeout(() => {
+      const arr = Object.keys(snapshots).sort(sortSnapshotKey).slice(0, 2);
+      Object.values(btnPair).forEach((item, idx) => {
+        instance.setField(document.getElementById(item.field));
+        instance.callback(arr[idx]);
+      });
+      execBtn.click();
+    }, 120);
   };
   //
   // Add DOM event
