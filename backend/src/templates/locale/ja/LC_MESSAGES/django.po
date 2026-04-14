@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-14 21:03+0900\n"
+"POT-Creation-Date: 2026-04-14 23:17+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -74,7 +74,7 @@ msgstr "投資実績"
 msgid "Show your investment history."
 msgstr "投資実績を表示する"
 
-#: templates/account/index.html:39 templates/stock/compare_snapshots.html:154
+#: templates/account/index.html:39 templates/stock/compare_snapshots.html:180
 msgid "Snapshot list"
 msgstr "スナップショット一覧"
 
@@ -166,8 +166,8 @@ msgid "User profile"
 msgstr "ユーザプロフィール"
 
 #: templates/account/user_profile.html:14
-#: templates/stock/compare_snapshots.html:99 templates/stock/dashboard.html:270
-#: templates/stock/purchased_stocks.html:144
+#: templates/stock/compare_snapshots.html:131
+#: templates/stock/dashboard.html:270 templates/stock/purchased_stocks.html:144
 #: templates/stock/specific_snapshot.html:86
 msgid "Element"
 msgstr "項目"
@@ -207,8 +207,8 @@ msgid "Accept"
 msgstr "許可"
 
 #: templates/delete_modal_form.html:25
-#: templates/stock/compare_snapshots.html:141
-#: templates/stock/compare_snapshots.html:161
+#: templates/stock/compare_snapshots.html:167
+#: templates/stock/compare_snapshots.html:187
 #: templates/stock/dashboard.html:331
 #: templates/stock/purchased_stock_form.html:70
 #: templates/stock/purchased_stocks.html:209
@@ -259,7 +259,7 @@ msgstr "口座残高"
 msgid "Register cash"
 msgstr "口座残高の登録"
 
-#: templates/stock/cashes.html:24 templates/stock/compare_snapshots.html:44
+#: templates/stock/cashes.html:24 templates/stock/compare_snapshots.html:53
 #: templates/stock/dashboard.html:183 templates/stock/dashboard.html:216
 #: templates/stock/periodic_tasks_for_snapshot.html:36
 #: templates/stock/purchased_stocks.html:58 templates/stock/snapshots.html:44
@@ -302,8 +302,34 @@ msgstr "比較先スナップショット"
 msgid "Compare"
 msgstr "比較"
 
-#: templates/stock/compare_snapshots.html:45
-#: templates/stock/compare_snapshots.html:106
+#: templates/stock/compare_snapshots.html:41
+msgid "Note"
+msgstr "メモ"
+
+#: templates/stock/compare_snapshots.html:43
+msgid ""
+"If the difference between element values for reference and comparison "
+"snapshot is positive, then its element value of reference snapshot is "
+"greater than that one."
+msgstr ""
+"もし、比較元スナップショットと比較先スナップショットの要素値の差が正だった場"
+"合、比較元スナップショットの要素値は、比較先スナップショットの要素値よりも大"
+"きい。"
+
+#: templates/stock/compare_snapshots.html:44
+msgid ""
+"For example, let $r_{p}$ be purchased price of reference snapshot, $c_{p}$ "
+"be same element of comarison one. In this case, the above sentence means $"
+"\\Delta > 0 \\Rightarrow r_{p} > c_{p}$, where $\\Delta$ is the difference "
+"between element values for reference and comparison snapshot."
+msgstr ""
+"例えば、$r_{p}$ を比較元スナップショットの購入価格、$c_{p}$ を比較先スナップ"
+"ショットの購入価格とする。この時、上記は、$\\Delta > 0 \\Rightarrow r_{p} > "
+"c_{p}$ を意味する。ここで、$\\Delta$ は比較元スナップショットと比較先スナップ"
+"ショットの要素値の差を表す。"
+
+#: templates/stock/compare_snapshots.html:54
+#: templates/stock/compare_snapshots.html:116
 #: templates/stock/dashboard.html:184 templates/stock/dashboard.html:276
 #: templates/stock/purchased_stocks.html:59
 #: templates/stock/purchased_stocks.html:150
@@ -312,8 +338,8 @@ msgstr "比較"
 msgid "Code"
 msgstr "株式コード"
 
-#: templates/stock/compare_snapshots.html:46
-#: templates/stock/compare_snapshots.html:110
+#: templates/stock/compare_snapshots.html:55
+#: templates/stock/compare_snapshots.html:122
 #: templates/stock/dashboard.html:185 templates/stock/dashboard.html:280
 #: templates/stock/purchased_stocks.html:60
 #: templates/stock/purchased_stocks.html:154
@@ -322,7 +348,7 @@ msgstr "株式コード"
 msgid "Stock name"
 msgstr "株式会社名"
 
-#: templates/stock/compare_snapshots.html:47 templates/stock/dashboard.html:186
+#: templates/stock/compare_snapshots.html:56 templates/stock/dashboard.html:186
 #: templates/stock/dashboard.html:217 templates/stock/dashboard.html:284
 #: templates/stock/purchased_stocks.html:61
 #: templates/stock/purchased_stocks.html:158
@@ -332,56 +358,61 @@ msgstr "株式会社名"
 msgid "Industry"
 msgstr "株式会社の業種"
 
-#: templates/stock/compare_snapshots.html:48 templates/stock/dashboard.html:79
+#: templates/stock/compare_snapshots.html:57 templates/stock/dashboard.html:79
 #: templates/stock/dashboard.html:187 templates/stock/dashboard.html:218
 #: templates/stock/specific_snapshot.html:20
 msgid "Economic trend"
 msgstr "経済動向"
 
-#: templates/stock/compare_snapshots.html:49
+#: templates/stock/compare_snapshots.html:58
 msgid "Diff (Count)"
 msgstr "差分（株式数）"
 
-#: templates/stock/compare_snapshots.html:50
+#: templates/stock/compare_snapshots.html:59
 msgid "Diff (Purchased price)"
 msgstr "差分（購入価格）"
 
-#: templates/stock/compare_snapshots.html:51
+#: templates/stock/compare_snapshots.html:60
 msgid "Diff (Current price)"
 msgstr "差分（時価）"
 
-#: templates/stock/compare_snapshots.html:52
+#: templates/stock/compare_snapshots.html:61
 msgid "Diff (Dividend)"
 msgstr "差分（配当金）"
 
-#: templates/stock/compare_snapshots.html:65 templates/stock/dashboard.html:251
+#: templates/stock/compare_snapshots.html:67 templates/stock/dashboard.html:199
+#: templates/stock/specific_snapshot.html:59
+msgid "Total except cash"
+msgstr "現金を除く合計値"
+
+#: templates/stock/compare_snapshots.html:83 templates/stock/dashboard.html:251
 #: templates/stock/investment_history.html:92
 #: templates/stock/periodic_tasks_for_snapshot.html:26
 #: templates/stock/snapshots.html:15
 msgid "Register snapshot"
 msgstr "スナップショットの登録"
 
-#: templates/stock/compare_snapshots.html:91 templates/stock/dashboard.html:262
-#: templates/stock/purchased_stocks.html:136
+#: templates/stock/compare_snapshots.html:109
+#: templates/stock/dashboard.html:262 templates/stock/purchased_stocks.html:136
 #: templates/stock/specific_snapshot.html:78
 msgid "Detail of target stock"
 msgstr "対象銘柄の詳細"
 
-#: templates/stock/compare_snapshots.html:100
+#: templates/stock/compare_snapshots.html:132
 msgid "Reference"
 msgstr "比較元（基準）"
 
-#: templates/stock/compare_snapshots.html:101
+#: templates/stock/compare_snapshots.html:133
 msgid "Comparison"
 msgstr "比較先"
 
-#: templates/stock/compare_snapshots.html:114
+#: templates/stock/compare_snapshots.html:138
 #: templates/stock/dashboard.html:191 templates/stock/purchased_stocks.html:64
 #: templates/stock/specific_snapshot.html:24
 msgid "Count"
 msgstr "株式数"
 
-#: templates/stock/compare_snapshots.html:119
+#: templates/stock/compare_snapshots.html:143
 #: templates/stock/dashboard.html:190 templates/stock/dashboard.html:221
 #: templates/stock/investment_history.html:71
 #: templates/stock/investment_history.html:202
@@ -389,11 +420,11 @@ msgstr "株式数"
 msgid "Purchased price"
 msgstr "購入価格"
 
-#: templates/stock/compare_snapshots.html:124
+#: templates/stock/compare_snapshots.html:148
 msgid "Current price"
 msgstr "現在価格"
 
-#: templates/stock/compare_snapshots.html:129
+#: templates/stock/compare_snapshots.html:153
 #: templates/stock/dashboard.html:188 templates/stock/dashboard.html:220
 #: templates/stock/dashboard.html:292 templates/stock/dashboard.html:588
 #: templates/stock/dashboard.html:606 templates/stock/dashboard.html:624
@@ -468,10 +499,6 @@ msgstr "購入済み株式の内訳"
 #: templates/stock/stocks.html:343
 msgid "Dividend yield"
 msgstr "配当利回り"
-
-#: templates/stock/dashboard.html:199 templates/stock/specific_snapshot.html:59
-msgid "Total except cash"
-msgstr "現金を除く合計値"
 
 #: templates/stock/dashboard.html:211
 msgid "Owned sector items"

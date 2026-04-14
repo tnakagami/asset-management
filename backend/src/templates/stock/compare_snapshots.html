@@ -37,6 +37,15 @@
         <button type="button" id="exec-comparison" class="btn btn-primary w-100 custom-boxshadow">{% trans "Compare" %}</button>
       </div>
       <div class="col">
+        <div class="card">
+          <div class="card-header"><span class="h5">{% trans "Note" %}</span></div>
+          <div class="card-body">
+            <p>{% trans "If the difference between element values for reference and comparison snapshot is positive, then its element value of reference snapshot is greater than that one." %}</p>
+            <p>{% trans "For example, let $r_{p}$ be purchased price of reference snapshot, $c_{p}$ be same element of comarison one. In this case, the above sentence means $\Delta > 0 \Rightarrow r_{p} > c_{p}$, where $\Delta$ is the difference between element values for reference and comparison snapshot." %}</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
         <div class="table-responsive">
           <table class="table table-hover">
             <thead>
@@ -183,6 +192,10 @@
 {% endblock %}
 
 {% block bodyjs %}
+<script>MathJax={tex:{inlineMath:[['$','$'],['(',')']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.0.0/tex-mml-chtml.min.js"
+        integrity="sha512-yxTB34XQUKlyuz73upeDrZ91/tbZW/YAURVWL3s+09bEWdmORQzUZwSKyBIRxSeHuSwh1aOKEffn2/D65kwyYg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 <script>
 (function () {
