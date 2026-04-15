@@ -146,8 +146,8 @@
                   </tr>
                   <tr>
                     <td scope="row" class="text-nowrap fw-bold">{% trans "Current price" %}</td>
-                    <td class="text-nowrap"><span data-type="refStock"></span></td>
-                    <td class="text-nowrap"><span data-type="compStock"></span></td>
+                    <td class="text-nowrap"><span data-type="refStock"></span>(<span data-type="refUnit"></span>)</td>
+                    <td class="text-nowrap"><span data-type="compStock"></span>(<span data-type="compUnit"></span>)</td>
                   </tr>
                   <tr>
                     <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend" %}</td>
@@ -205,23 +205,23 @@
       title: '{{ instance.title }}',
       endDate: new Date('{{ instance.end_date|date:"c" }}'),
       records: {{% for record in instance.get_each_record %}
-        {% if forloop.first %}'0000'{% else %}'{{ record.code }}'{% endif %}: {code: '{{ record.code }}', name: '{{ record.name }}', industry: '{{ record.industry }}', trend: '{{ record.trend }}', count: {{ record.count }}, value: {{ record.purchased_value|floatformat:-1 }}, stock: {{ record.price|floatformat:2 }} * {{ record.count }}, dividend: {{ record.real_div|floatformat:0 }}},{% endfor %}
+        {% if forloop.first %}'0000'{% else %}'{{ record.code }}'{% endif %}: {code: '{{ record.code }}', name: '{{ record.name }}', industry: '{{ record.industry }}', trend: '{{ record.trend }}', count: {{ record.count }}, value: {{ record.purchased_value|floatformat:-1 }}, stock: {{ record.price|floatformat:2 }}, dividend: {{ record.real_div|floatformat:0 }}},{% endfor %}
       },
     },{% endfor %}
   });
   const ssModal = new bootstrap.Modal('#snapshots-modal');
-  const sortSnapshotKey = (baseKey, targetKey) => {
+  const sortedSSKeys = Object.keys(snapshots).sort((baseKey, targetKey) => {
     const baseEndDate = snapshots[baseKey].endDate;
     const targetEndDate = snapshots[targetKey].endDate;
     const diff = baseEndDate.getTime() - targetEndDate.getTime();
     const sign = ((diff > 0) ? (-1) : ((diff < 0) ? 1 : 0));
 
     return sign;
-  };
+  });
 
   // Define setup method of snapshot field
   const setupSnapshotField = (instance) => {
-    const options = Object.keys(snapshots).sort(sortSnapshotKey).map((key) => { return {pk: key, label: snapshots[key].title}; });
+    const options = sortedSSKeys.map((key) => { return {pk: key, label: snapshots[key].title}; });
     // Create controller instance
     const controller = new TomSelect(document.getElementById('snapshot-list'), {
       allowEmptyOption: false,
@@ -257,24 +257,33 @@
       return out;
     };
     const convertor = (val) => (val !== null) ? val.toLocaleString() : '-';
+    const calcCurrentPrice = (item) => {
+      const price = getVal(item, 'stock');
+      const count = getVal(item, 'count');
+      const out = (price && count) ? (price * count) : null;
+
+      return out;
+    };
     const updateNodeStatus = (ref, comp, element) => {
       // Add dataset attribute
-      element.dataset.code         = wrapper(ref, comp, 'code');
-      element.dataset.name         = wrapper(ref, comp, 'name');
-      element.dataset.refCount     = convertor(getVal(ref, 'count'));
-      element.dataset.compCount    = convertor(getVal(comp, 'count'));
-      element.dataset.refValue     = convertor(getVal(ref, 'value'));
-      element.dataset.compValue    = convertor(getVal(comp, 'value'));
-      element.dataset.refStock     = convertor(getVal(ref, 'stock'));
-      element.dataset.compStock    = convertor(getVal(comp, 'stock'));
-      element.dataset.refDividend  = convertor(getVal(ref, 'dividend'));
+      element.dataset.code = wrapper(ref, comp, 'code');
+      element.dataset.name = wrapper(ref, comp, 'name');
+      element.dataset.refCount = convertor(getVal(ref, 'count'));
+      element.dataset.compCount = convertor(getVal(comp, 'count'));
+      element.dataset.refValue = convertor(getVal(ref, 'value'));
+      element.dataset.compValue = convertor(getVal(comp, 'value'));
+      element.dataset.refStock = convertor(calcCurrentPrice(ref));
+      element.dataset.compStock = convertor(calcCurrentPrice(comp));
+      element.dataset.refUnit = convertor(getVal(ref, 'stock'));
+      element.dataset.compUnit = convertor(getVal(comp, 'stock'));
+      element.dataset.refDividend = convertor(getVal(ref, 'dividend'));
       element.dataset.compDividend = convertor(getVal(comp, 'dividend'));
       element.classList.add('text-decoration-underline', 'text-primary');
       // Add click event
       element.addEventListener('click', (event) => {
         const columns = Object.freeze([
-          'refCount', 'compCount', 'refValue', 'compValue',
-          'refStock', 'compStock', 'refDividend', 'compDividend',
+          'refCount', 'compCount', 'refValue', 'compValue', 'refStock',
+          'compStock', 'refUnit', 'compUnit', 'refDividend', 'compDividend',
         ]);
         // Update modal data and show modal
         for (const key of columns) {
@@ -322,7 +331,7 @@
       trend:    (ref, comp, key, _) => wrapper(ref, comp, key),
       count:    (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
       value:    (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
-      stock:    (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
+      stock:    (ref, comp, key, _) => compare(calcCurrentPrice(ref), calcCurrentPrice(comp)),
       dividend: (ref, comp, key, _) => compare(getVal(ref, key), getVal(comp, key)),
     };
     const diffItems = ['count', 'value', 'stock', 'dividend'];
@@ -368,7 +377,10 @@
   const init = () => {
     class BtnWrapper {
       constructor() {
-        this.field = null;
+        this.field = {
+          dataset: {pk: null},
+          value: null,
+        };
         this.setField = this.setField.bind(this);
         this.callback = this.callback.bind(this);
       }
@@ -383,7 +395,7 @@
     // Init and add events
     const instance = new BtnWrapper()
     const btnPair = {
-      reference:   {name: 'set-reference-snapshot', field: 'reference-snapshot'},
+      reference: {name: 'set-reference-snapshot', field: 'reference-snapshot'},
       comparison: {name: 'set-comparison-snapshot', field: 'comparison-snapshot'},
     };
     // Setup snapshot field
@@ -410,12 +422,17 @@
       }
     });
     setTimeout(() => {
-      const arr = Object.keys(snapshots).sort(sortSnapshotKey).slice(0, 2);
-      Object.values(btnPair).forEach((item, idx) => {
-        instance.setField(document.getElementById(item.field));
-        instance.callback(arr[idx]);
-      });
-      execBtn.click();
+      const vals = Object.values(btnPair);
+      const len = vals.length;
+      const arr = sortedSSKeys.slice(0, len);
+      // If some snapshots exist
+      if (arr.length >= len) {
+        vals.forEach((item, idx) => {
+          instance.setField(document.getElementById(item.field));
+          instance.callback(arr[idx]);
+        });
+        execBtn.click();
+      }
     }, 120);
   };
   //
