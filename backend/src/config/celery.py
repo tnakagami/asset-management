@@ -12,11 +12,15 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.conf.beat_schedule = {
   'Cleanup-for-successful-tasks': {
     'task': 'stock.tasks.delete_successful_tasks',
-    'schedule': crontab(hour=16, minute=2),
+    'schedule': crontab(hour=17, minute=55),
+  },
+  'Cleanup-for-unreferenced-schedules': {
+    'task': 'stock.tasks.delelte_unreferenced_schedules',
+    'schedule': crontab(hour=17, minute=58),
   },
   'Register-monthly-report': {
     'task': 'stock.tasks.register_monthly_report',
-    'schedule': crontab(day_of_month=1, hour=16, minute=0),
+    'schedule': crontab(day_of_month=1, hour=18, minute=0),
     'args': (1, ),
   },
 }
