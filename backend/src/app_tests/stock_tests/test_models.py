@@ -1515,7 +1515,7 @@ class TestSnapshotRecord(SharedFixtures):
       'Economic trend',
       'Dividend',
       'Dividend yield',
-      'Purchased value',
+      'Purchased price',
       'Number of stocks',
       'Diff',
       'Stock price',
@@ -1973,7 +1973,7 @@ class TestSnapshot(SharedFixtures):
     expected_fname = 'snapshot-{}.csv'.format(urllib.parse.quote(fname.encode('utf-8')))
     header = [
       'Stock code', 'Name', 'Stock industry', 'Economic trend', 'Dividend', 'Dividend yield',
-      'Purchased value', 'Number of stocks', 'Diff', 'Stock price', 'Price Earnings Ratio (PER)',
+      'Purchased price', 'Number of stocks', 'Diff', 'Stock price', 'Price Earnings Ratio (PER)',
       'Price Book-value Ratio (PBR)', 'Earnings Per Share (EPS)', 'Book value Per Share (BPS)',
       'Return On Equity (ROE)', 'Equity Ratio (ER)',
     ]

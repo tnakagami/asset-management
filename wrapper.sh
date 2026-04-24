@@ -142,7 +142,7 @@ while [ -n "$1" ]; do
       ;;
 
     logs )
-      docker-compose logs -t | sort -t "|" -k 1,+2d
+      docker-compose logs -t | tr -s "[:space:]" | sort -t "|" -k 1,+2d
 
       shift
       ;;
@@ -156,7 +156,7 @@ while [ -n "$1" ]; do
         filtering="*"
         pattern=''
       fi
-      docker exec ${CELERY_CONTAINER_NAME} /opt/show-log.sh | grep -v "${filtering}" | sed -e "${pattern}"
+      docker exec ${CELERY_CONTAINER_NAME} /opt/show-log.sh | grep -v "${filtering}" | sed -e "${pattern}" -e "s/: / \| /g" -e "s/\[\|\]/ /g" | sort -t "|" -k 1
 
       shift
       ;;
@@ -172,22 +172,21 @@ while [ -n "$1" ]; do
 
     loaddata )
       docker-compose up -d
-      xml_file_path='stock/fixtures/${DJANGO_LANGUAGE_CODE}/*.yaml'
-      docker exec ${BACKEND_CONTAINER_NAME} bash -c "python manage.py loaddata ${xml_file_path}"
+      yaml_file_path='stock/fixtures/${DJANGO_LANGUAGE_CODE}/*.yaml'
+      docker exec ${BACKEND_CONTAINER_NAME} bash -c "python manage.py loaddata ${yaml_file_path}"
 
       shift
       ;;
 
     command )
       # In the case of that the 2nd argument has a hyphen as the 1st charactor (= str.startswith('-'))
+      # Ex) command -hogehoge -> ${command} is hogehoge
       if [[ "$2" =~ ^-([a-z0-9]+) ]]; then
         command=${BASH_REMATCH[1]}
         shift
-      # Otherwise
-      else
-        command="exec_job"
+        # Execute the command
+        docker exec -it ${BACKEND_CONTAINER_NAME} python manage.py ${command}
       fi
-      docker exec -it ${BACKEND_CONTAINER_NAME} python manage.py ${command}
 
       shift
       ;;

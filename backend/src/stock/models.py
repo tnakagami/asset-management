@@ -812,7 +812,7 @@ class _SnapshotRecord:
       gettext_lazy('Economic trend'),
       gettext_lazy('Dividend'),
       gettext_lazy('Dividend yield'),
-      gettext_lazy('Purchased value'),
+      gettext_lazy('Purchased price'),
       gettext_lazy('Number of stocks'),
       gettext_lazy('Diff'),
       gettext_lazy('Stock price'),

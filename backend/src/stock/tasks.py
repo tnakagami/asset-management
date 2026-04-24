@@ -2,6 +2,7 @@ from types import FunctionType
 from celery import shared_task, states
 from celery.utils.log import get_task_logger
 from django_celery_results.models import TaskResult
+from django_celery_beat.models import CrontabSchedule
 from django.utils.translation import gettext_lazy
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -39,6 +40,17 @@ def delete_successful_tasks():
       g_logger.info(f'The {count} tasks are deleted.')
     except Exception as ex:
       g_logger.error(f'Failed to delete the records that the status of celery task is {states.SUCCESS}({ex}).')
+
+@shared_task(ignore_result=True)
+def delelte_unreferenced_schedules():
+  queryset = CrontabSchedule.objects.filter(periodictask__isnull=True)
+
+  if queryset.count() > 0:
+    try:
+      count, _ = queryset.delete()
+      g_logger.info(f'The {count} schedules are deleted.')
+    except Exception as ex:
+      g_logger.error(f'Failed to delete the records({ex}).')
 
 @shared_task(ignore_result=True)
 def register_monthly_report(day_offset):
