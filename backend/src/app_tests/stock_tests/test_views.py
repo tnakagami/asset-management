@@ -38,6 +38,7 @@ def get_stock_records(django_db_blocker):
 
 class SharedFixture(BaseTestUtils):
   login_url = reverse('account:login')
+  get_pks = lambda _self, xs: [obj.pk for obj in xs]
 
   def compare_form_data(self, instance, form_data=None, other=None):
     results = []
@@ -195,6 +196,37 @@ class TestCashViews(SharedFixture):
     assert response.status_code == status.HTTP_302_FOUND
     assert response['Location'] == expected
 
+  @pytest.fixture(scope='class')
+  def get_pseudo_instances_for_listview(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      instances = factories.CashFactory.create_batch(30, user=user)
+
+    return user, instances
+
+  @pytest.mark.parametrize([
+    'num',
+    'correct_count',
+  ], [
+    (23, 23),
+    (24, 24),
+    (25, 24),
+  ], ids=[
+    'under-paginate-by-value',
+    'equal-to-paginate-by-value',
+    'over-paginate-by-value',
+  ])
+  def test_pagination_in_listview(self, mocker, login_process, get_pseudo_instances_for_listview, num, correct_count):
+    user, cashes = get_pseudo_instances_for_listview
+    cashes = models.Cash.objects.filter(pk__in=self.get_pks(cashes[:num]))
+    mocker.patch('stock.views.ListCash.get_queryset', return_value=cashes)
+    client, user = login_process(user=user)
+    response = client.get(self.list_url)
+    instances = response.context['cashes']
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(instances) == correct_count
+
   # ==========
   # CreateView
   # ==========
@@ -346,6 +378,37 @@ class TestPurchasedStockViews(SharedFixture):
 
     assert response.status_code == status.HTTP_302_FOUND
     assert response['Location'] == expected
+
+  @pytest.fixture(scope='class')
+  def get_pseudo_instances_for_listview(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      instances = factories.PurchasedStockFactory.create_batch(25, user=user)
+
+    return user, instances
+
+  @pytest.mark.parametrize([
+    'num',
+    'correct_count',
+  ], [
+    (19, 19),
+    (20, 20),
+    (21, 20),
+  ], ids=[
+    'under-paginate-by-value',
+    'equal-to-paginate-by-value',
+    'over-paginate-by-value',
+  ])
+  def test_pagination_in_listview(self, mocker, login_process, get_pseudo_instances_for_listview, num, correct_count):
+    user, pstocks = get_pseudo_instances_for_listview
+    pstocks = models.PurchasedStock.objects.filter(pk__in=self.get_pks(pstocks[:num]))
+    mocker.patch('stock.forms.PurchasedStockFilteringForm.get_queryset_with_condition', return_value=pstocks)
+    client, user = login_process(user=user)
+    response = client.get(self.list_url)
+    instances = response.context['pstocks']
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(instances) == correct_count
 
   @pytest.fixture(scope='class')
   def get_pseudo_purchased_stocks(self, django_db_blocker, get_stock_records):
@@ -649,6 +712,7 @@ class TestSnapshotViews(SharedFixture):
   delete_url = lambda _self, pk: reverse('stock:delete_snapshot', kwargs={'pk': pk})
   ajax_url = reverse('stock:update_all_snapshots')
   detail_url = lambda _self, pk: reverse('stock:detail_snapshot', kwargs={'pk': pk})
+  compare_url = reverse('stock:compare_snapshot')
   form_data = {
     'title': 'sample-snapshot',
     'start_date': get_date((2023, 4, 5)),
@@ -672,6 +736,37 @@ class TestSnapshotViews(SharedFixture):
 
     assert response.status_code == status.HTTP_302_FOUND
     assert response['Location'] == expected
+
+  @pytest.fixture(scope='class')
+  def get_pseudo_instances_for_listview(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      instances = factories.SnapshotFactory.create_batch(40, user=user)
+
+    return user, instances
+
+  @pytest.mark.parametrize([
+    'num',
+    'correct_count',
+  ], [
+    (35, 35),
+    (36, 36),
+    (37, 36),
+  ], ids=[
+    'under-paginate-by-value',
+    'equal-to-paginate-by-value',
+    'over-paginate-by-value',
+  ])
+  def test_pagination_in_listview(self, mocker, login_process, get_pseudo_instances_for_listview, num, correct_count):
+    user, snapshots = get_pseudo_instances_for_listview
+    snapshots = models.Snapshot.objects.filter(pk__in=self.get_pks(snapshots[:num]))
+    mocker.patch('stock.views.ListSnapshot.get_queryset', return_value=snapshots)
+    client, user = login_process(user=user)
+    response = client.get(self.list_url)
+    instances = response.context['snapshots']
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(instances) == correct_count
 
   # ==========
   # CreateView
@@ -861,6 +956,23 @@ class TestSnapshotViews(SharedFixture):
     assert abs(records['A1CC'].price - 900.00) < 1e-6
     assert abs(records['A1CC'].purchased_value - 1000.00*300) < 1e-6
     assert records['A1CC'].count == 300
+
+  # ========
+  # CompareView
+  # ========
+  def test_access_to_compareview(self, wrap_login):
+    client, _ = wrap_login
+    response = client.get(self.compare_url)
+
+    assert response.status_code == status.HTTP_200_OK
+
+  def test_access_to_compareview_without_authentication(self, client):
+    url = self.compare_url
+    response = client.get(url)
+    expected = '{}?next={}'.format(self.login_url, url)
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == expected
 
 # ===================
 # UploadDownloadViews
@@ -1084,6 +1196,39 @@ class TestPeriodicTaskForSnapshotViews(SharedFixture):
     assert response.status_code == status.HTTP_302_FOUND
     assert response['Location'] == expected
 
+  @pytest.fixture(scope='class')
+  def get_pseudo_instances_for_listview(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      snapshot = factories.SnapshotFactory(user=user)
+      kwargs = json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshot.pk})
+      instances = factories.PeriodicTaskFactory.create_batch(40, kwargs=kwargs)
+
+    return user, instances
+
+  @pytest.mark.parametrize([
+    'num',
+    'correct_count',
+  ], [
+    (35, 35),
+    (36, 36),
+    (37, 36),
+  ], ids=[
+    'under-paginate-by-value',
+    'equal-to-paginate-by-value',
+    'over-paginate-by-value',
+  ])
+  def test_pagination_in_listview(self, mocker, login_process, get_pseudo_instances_for_listview, num, correct_count):
+    user, tasks = get_pseudo_instances_for_listview
+    tasks = models.PeriodicTask.objects.filter(pk__in=self.get_pks(tasks[:num])).order_by('-total_run_count')
+    mocker.patch('stock.views.ListPeriodicTaskForSnapshot.get_queryset', return_value=tasks)
+    client, user = login_process(user=user)
+    response = client.get(self.list_url)
+    instances = response.context['tasks']
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(instances) == correct_count
+
   # ==========
   # CreateView
   # ==========
@@ -1240,6 +1385,36 @@ class TestStockViews(SharedFixture):
 
     assert response.status_code == status.HTTP_302_FOUND
     assert response['Location'] == expected
+
+  @pytest.fixture(scope='class')
+  def get_pseudo_instances_for_listview(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      instances = factories.StockFactory.create_batch(155)
+
+    return instances
+
+  @pytest.mark.parametrize([
+    'num',
+    'correct_count',
+  ], [
+    (149, 149),
+    (150, 150),
+    (151, 150),
+  ], ids=[
+    'under-paginate-by-value',
+    'equal-to-paginate-by-value',
+    'over-paginate-by-value',
+  ])
+  def test_pagination_in_listview(self, mocker, wrap_login, get_pseudo_instances_for_listview, num, correct_count):
+    stocks = get_pseudo_instances_for_listview
+    stocks = models.Stock.objects.filter(pk__in=self.get_pks(stocks[:num]))
+    mocker.patch('stock.forms.StockSearchForm.get_queryset_with_condition', return_value=stocks)
+    client, _ = wrap_login
+    response = client.get(self.list_url)
+    instances = response.context['stocks']
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(instances) == correct_count
 
   @pytest.mark.parametrize([
     'query_params',

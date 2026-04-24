@@ -219,6 +219,7 @@ class BaseStockTestUtils(SharedFixture):
   snapshot_update_url = lambda _self, pk: reverse('stock:update_snapshot', kwargs={'pk': pk})
   snapshot_delete_url = lambda _self, pk: reverse('stock:delete_snapshot', kwargs={'pk': pk})
   snapshot_detail_url = lambda _self, pk: reverse('stock:detail_snapshot', kwargs={'pk': pk})
+  snapshot_compare_url = reverse('stock:compare_snapshot')
   snapshot_upload_jsonformat_url = reverse('stock:upload_jsonformat_snapshot')
   snapshot_download_csv_url = lambda _self, pk: reverse('stock:download_csv_snapshot', kwargs={'pk': pk})
   snapshot_download_json_url = lambda _self, pk: reverse('stock:download_json_snapshot', kwargs={'pk': pk})
@@ -241,18 +242,20 @@ class TestPageTransition(BaseStockTestUtils):
   ], [
     ('Dashboard', 'dashboard_url'),
     ('Investment history', 'history_url'),
+    ('Snapshot list', 'snapshot_list_url'),
+    ('Compare specific snapshot pair', 'snapshot_compare_url'),
     ('Cash list', 'cash_list_url'),
     ('Purchased stock list', 'pstock_list_url'),
-    ('Snapshot list', 'snapshot_list_url'),
     ('Periodic task list for snapshot', 'ptask_snapshot_list_url'),
     ('Stock list', 'list_stock_url'),
     ('Explanation', 'explanation_url'),
   ], ids=[
     'dashboard-page',
     'history-page',
+    'snapshot-list-page',
+    'compare-snapshot-pair-page',
     'cash-list-page',
     'purchased-stock-list-page',
-    'snapshot-list-page',
     'periodic-task-for-snapshot-list-page',
     'stock-list-page',
     'explanation-page',
@@ -328,6 +331,16 @@ class TestPageTransition(BaseStockTestUtils):
 
     assert response.status_code == status.HTTP_200_OK
     assert get_current_path(response) == target_url
+
+  def test_move_to_create_page_if_ss_doesnot_exist_in_compare_ss_pair_page(self, init_webtest):
+    app, users = init_webtest
+    owner = users['owner']
+    # Access to target page
+    page = app.get(self.snapshot_compare_url, user=owner)
+    response = page.click('Register snapshot')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert get_current_path(response) == self.snapshot_create_url
 
   @pytest.mark.parametrize([
     'base_link',

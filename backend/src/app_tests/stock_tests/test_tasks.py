@@ -4,6 +4,7 @@ from celery import states
 from datetime import datetime, timezone
 from decimal import Decimal
 from django_celery_results.models import TaskResult
+from django_celery_beat.models import CrontabSchedule
 from zoneinfo import ZoneInfo
 from app_tests import factories, get_date, BaseTestUtils
 from stock.models import convert_timezone, Snapshot
@@ -84,6 +85,43 @@ class TestTask(BaseTestUtils):
     stock.tasks.delete_successful_tasks()
     # Check total records of TaskResult model
     total = TaskResult.objects.filter(pk__in=self.get_pks(task_results)).count()
+
+    assert log_message in fake_logger.msg
+    assert total == expected
+
+  @pytest.mark.parametrize([
+    'num_tasks',
+    'is_raise',
+    'expected',
+    'log_message',
+  ], [
+    (0, True, 1, ''),
+    (1, False, 1, 'The 1 schedules are deleted.'),
+    (2, False, 1, 'The 2 schedules are deleted.'),
+    (1, True, 2, 'Failed to delete the records('),
+  ], ids=[
+    'no-unreferenced-schedules-exist',
+    'can-delete-one-unreferenced-schedule',
+    'can-delete-two-unreferenced-schedules',
+    'failed-to-delete-unreferenced-schedules',
+  ])
+  def test_check_delete_unreferenced_schedules(self, mocker, num_tasks, is_raise, expected, log_message):
+    import stock.tasks
+    schedules = [
+      *factories.CrontabScheduleFactory.create_batch(num_tasks),
+      factories.CrontabScheduleFactory(),
+    ]
+    _ = factories.PeriodicTaskFactory(crontab=schedules[-1])
+    fake_logger = FakeLogger()
+    mocker.patch.object(stock.tasks.g_logger, 'info', side_effect=lambda msg: fake_logger.store(msg))
+    mocker.patch.object(stock.tasks.g_logger, 'error', side_effect=lambda msg: fake_logger.store(msg))
+
+    if is_raise:
+      mocker.patch('django.db.models.query.QuerySet.delete', side_effect=Exception())
+    # Call target method
+    stock.tasks.delelte_unreferenced_schedules()
+    # Check total schedules
+    total = CrontabSchedule.objects.filter(pk__in=self.get_pks(schedules)).count()
 
     assert log_message in fake_logger.msg
     assert total == expected
