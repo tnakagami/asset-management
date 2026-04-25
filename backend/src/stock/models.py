@@ -6,6 +6,7 @@ from django.utils.html import format_html
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
+from django.utils.safestring import mark_safe
 from django_celery_beat.models import PeriodicTask
 from types import FunctionType
 from dataclasses import dataclass
@@ -112,6 +113,11 @@ class _BaseConditionVisitor(ast.NodeVisitor):
 
     return node
 
+  def visit_BoolOp(self, node):
+    # Analysis each node
+    for item in node.values:
+      self.visit(item)
+
   def visit_Compare(self, node):
     _left = [node.left] + node.comparators[:-1]
     _right = list(node.comparators)
@@ -159,6 +165,14 @@ class _ValidateCondition(_BaseConditionVisitor):
     super().__init__(*args, **kwargs)
 
   def validate(self):
+    valid_keys = self._fields.keys()
+
+    while self.stack:
+      key = self.stack.pop()
+
+      if key not in valid_keys:
+        raise KeyError(gettext_lazy('%(key)s does not exist') % {'key': key})
+
     for key in self._variables.keys():
       vals = self._variables[key]
       ops = self._operators[key]
@@ -251,9 +265,7 @@ class _AnalyzeAndCreateQmodelCondition(_BaseConditionVisitor):
     return node
 
   def visit_BoolOp(self, node):
-    # Analysis each node
-    for item in node.values:
-      self.visit(item)
+    super().visit_BoolOp(node)
     # Create condition
     q_cond = models.Q()
     op = models.Q.OR if isinstance(node.op, ast.Or) else models.Q.AND
@@ -1384,21 +1396,29 @@ class Snapshot(models.Model):
     #cls.objects.bulk_update(records, fields=['detail'])
 
 class StockScreener(models.Model):
+  class Meta:
+    ordering = ('priority', 'title')
+
   user = models.ForeignKey(
     UserModel,
     verbose_name=gettext_lazy('Owner'),
     on_delete=models.CASCADE,
     blank=True,
-    related_name='criteria',
+    related_name='conditions',
+  )
+  priority = models.IntegerField(
+    verbose_name=gettext_lazy('Priority to show the stock screener'),
+    validators=[MinValueValidator(0)],
+    default=99,
   )
   title = models.CharField(
     max_length=255,
     verbose_name=gettext_lazy('Title'),
     help_text=gettext_lazy('Max length of this field is 255.'),
   )
-  criteria = models.TextField(
-    verbose_name=gettext_lazy('Criteria'),
-    help_text=gettext_lazy('Criteria to screen stocks.'),
+  condition = models.TextField(
+    verbose_name=gettext_lazy('Condition'),
+    help_text=gettext_lazy('Condition to screen stocks.'),
     validators=[stock_validator],
   )
   ordering = models.TextField(
@@ -1407,3 +1427,23 @@ class StockScreener(models.Model):
     blank=True,
     validators=[stock_ordering_validator],
   )
+
+  def get_screened_stocks(self):
+    tree = get_tree(self.condition)
+    # Check ordering
+    if self.ordering:
+      ordering = StockOrderingTypes.separate(self.ordering)
+    else:
+      ordering = [StockOrderingTypes.CODE_ASC.value]
+    # Get queryset
+    queryset = Stock.objects.select_targets(tree=tree).order_by(*ordering)
+
+    return queryset
+
+  def get_initial_for_stock_download_form(self):
+    out = {
+      'condition': mark_safe(self.condition),
+      'ordering': self.ordering,
+    }
+
+    return out

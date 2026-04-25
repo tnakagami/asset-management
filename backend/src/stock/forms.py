@@ -699,12 +699,12 @@ class StockDownloadForm(forms.Form):
     help_text=gettext_lazy('You don’t have to enter the extention.'),
   )
   condition = forms.CharField(
-    label=gettext_lazy('Condition'),
-    max_length=1024,
+    label='',
     empty_value='',
     required=False,
-    widget=forms.HiddenInput(attrs={
+    widget=forms.Textarea(attrs={
       'id': 'download-condition',
+      'style': 'display: none;',
     }),
   )
   ordering = forms.CharField(
@@ -751,19 +751,20 @@ class StockDownloadForm(forms.Form):
 class StockScreenerForm(_BaseModelFormWithCSS):
   class Meta:
     model = models.StockScreener
-    fields = ('title', 'criteria', 'ordering')
-    field_order = ('title', 'criteria', 'ordering', 'target', 'compop', 'inputs')
+    fields = ('title', 'priority', 'condition', 'ordering')
+    field_order = ('title', 'priority', 'condition', 'ordering', 'target', 'compop', 'inputs')
     widgets = {
-      'criteria': forms.Textarea(attrs={
+      'condition': forms.Textarea(attrs={
         'class': 'h-100',
-        'id': 'criteria',
-        'name': 'criteria',
+        'id': 'condition',
+        'name': 'condition',
         'rows': '10',
         'cols': '40',
         'style': 'resize: none;',
       }),
       'ordering': forms.TextInput(attrs={
         'id': 'column-ordering',
+        'name': 'column-ordering',
         'disabled': True,
         'readonly': True,
       }),

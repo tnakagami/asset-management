@@ -11,7 +11,7 @@
           {% csrf_token %}
 
           {# Errors #}
-          <div class="row">
+          <div class="row mb-2">
           {% if form.errors %}
             <div class="col text-danger">
               <p class="h5">{% trans "Errors" %}</p>
@@ -20,7 +20,7 @@
           {% endif %}
           </div>
           {# Title #}
-          <div class="row">
+          <div class="row mb-2">
             <div class="col">
               <div class="form-floating">
               {% with field=form.title %}
@@ -30,11 +30,22 @@
               </div>
             </div>
           </div>
-          {# Criteria #}
-          <div class="row">
+          {# Priority #}
+          <div class="row mb-2">
+            <div class="col">
+              <div class="form-floating">
+              {% with field=form.priority %}
+                {{ field }}
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+              {% endwith %}
+              </div>
+            </div>
+          </div>
+          {# Screening condition #}
+          <div class="row mb-2">
             <div class="col">
               <div class="card">
-                <div class="card-header"><span class="h5">{% trans "Criteria" %}</span></div>
+                <div class="card-header"><span class="h5">{% trans "Screening condition" %}</span></div>
                 <div class="card-body">
                   {# Input helper elements #}
                   <div class="row row-cols-2 row-cols-lg-4 g-2">
@@ -68,7 +79,7 @@
                         id="add-command"
                         class="btn btn-outline-primary w-100 h-100 custom-boxshadow"
                       >
-                        {% trans "Add (Enter)" %}
+                        {% trans "Add (Ctrl + Enter)" %}
                       </button>
                     </div>
                     <div class="col">
@@ -113,14 +124,9 @@
                     </div>
                   </div>
                   {# Main element #}
-                  <div class="row">
+                  <div class="row mt-2">
                     <div class="col">
-                      <div class="form-floating">
-                      {% with field=form.criteria %}
-                        {{ field }}
-                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                      {% endwith %}
-                      </div>
+                      {% with field=form.condition %}{{ field }}{% endwith %}
                     </div>
                   </div>
                 </div>
@@ -134,23 +140,28 @@
                 <div class="card-header"><span class="h5">{% trans "Ordering" %}</span></div>
                 <div class="card-body">
                   {# Main element #}
-                  <div class="row">
+                  <div class="row mb-2">
                     <div class="col">
                       <div class="input-group">
-                        <div class="form-floating">
                         {% with field=form.ordering %}
-                          {{ field }}
-                          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                        {% endwith %}
-                        </div>
+                        {{ field }}
+                        <button
+                          type="button"
+                          id="backspace-ordering-option"
+                          class="btn btn-outline-secondary px-3"
+                          data-key="{{ field.id_for_label }}"
+                        >
+                          <i class="fas fa-arrow-left"></i>
+                        </button>
                         <button
                           type="button"
                           id="delete-ordering-option"
-                          class="btn btn-outline-danger"
-                          data-fieldname="{{ field.id_for_label }}"
+                          class="btn btn-outline-danger px-3"
+                          data-key="{{ field.id_for_label }}"
                         >
                           <i class="fas fa-trash"></i>
                         </button>
+                        {% endwith %}
                       </div>
                     </div>
                   </div>
@@ -185,7 +196,7 @@
             </div>
             <div class="col">
               <a
-                href="{% url 'stock:list_snapshot' %}"
+                href="{% url 'stock:list_stock_screener' %}"
                 class="btn btn-secondary w-100 custom-boxshadow"
               >
                 {% trans "Cancel" %}
@@ -207,8 +218,9 @@
     const targetColumn = document.getElementById('target-column-name');
     const compOperator = document.getElementById('comp-operator');
     const inputData = document.getElementById('input-data');
-    const criteria = document.getElementById('criteria');
+    const condition = document.getElementById('condition');
     const addCmd = document.getElementById('add-command');
+    const backspaceBtn = document.getElementById('backspace-ordering-option');
     const deleteBtn = document.getElementById('delete-ordering-option');
     const orderTypeBtns = document.querySelectorAll('.js-btn-event');
     const operatorValuePair = Object.freeze({
@@ -218,6 +230,7 @@
       'right-bracket': ')',
     });
     const defaultOperator = compOperator.cloneNode(true);
+    const delimiter = ',';
     removeAllAttrs(defaultOperator, 'id', 'name');
 
     // Add change event
@@ -248,7 +261,7 @@
     });
     // Add key event
     inputData.addEventListener('keyup', (event) => {
-      if (!event.ctrlKey && (event.key === 'Enter')) {
+      if (event.ctrlKey && (event.key === 'Enter')) {
         addCmd.click();
       }
     });
@@ -269,23 +282,29 @@
         const dataType = selectedOption.dataset.type;
         const value = (dataType === 'str') ? `"${_inputVal}"` : _inputVal;
         const command = `${_variableName} ${_compOp} ${value}`;
-        criteria.value += command;
+        condition.value += command;
       }
     });
     for (const [key, word] of Object.entries(operatorValuePair)) {
       const element = document.getElementById(key);
       element.addEventListener('click', () => {
-        const sentence = criteria.value;
-        const position = criteria.selectionStart;
+        const sentence = condition.value;
+        const position = condition.selectionStart;
         const beforeWord = sentence.substr(0, position);
         const afterWord = sentence.substr(position, sentence.length);
-        criteria.value = beforeWord + word + afterWord;
+        condition.value = beforeWord + word + afterWord;
         targetColumn.focus();
       });
     }
+    backspaceBtn.addEventListener('click', (event) => {
+      const key = backspaceBtn.dataset.key;
+      const element = document.getElementById(key);
+      const arr = element.value.split(delimiter);
+      element.value = arr.slice(0, -1).join(delimiter);
+    });
     deleteBtn.addEventListener('click', (event) => {
-      const fieldName = event.currentTarget.dataset.fieldname;
-      const element = document.getElementById(fieldName);
+      const key = deleteBtn.dataset.key;
+      const element = document.getElementById(key);
       element.value = '';
     });
     for (const btn of orderTypeBtns) {
@@ -293,8 +312,8 @@
         const inputData = document.getElementById('column-ordering');
         const oldVal = inputData.value;
         const newArr = [event.target.dataset.value];
-        const arr = (oldVal) ? oldVal.split(',').concat(newArr) : newArr;
-        inputData.value = arr.join(',');
+        const arr = (oldVal) ? oldVal.split(delimiter).concat(newArr) : newArr;
+        inputData.value = arr.join(delimiter);
       });
     }
     targetColumn.dispatchEvent(new Event('change'));
