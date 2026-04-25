@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Stock screeners") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="row row-cols-1 g-2">
+      <div class="col">
+        <a
+          href="{% url 'stock:register_stock_screener' %}"
+          class="btn btn-primary w-100 custom-boxshadow"
+        >
+          {% trans "Register stock screener" %}
+        </a>
+      </div>
+      <div class="col">
+        {% if screeners %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">{% trans "No." %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Title" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Page link" %}</th>
+                <th colspan="2" class="text-center">{% trans "Operate" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider">
+              {% for instance in screeners %}
+              <tr>
+                <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                <td data-type="title">
+                  <a
+                    href="{% url 'stock:detail_snapshot' pk=instance.pk %}"
+                    class="text-primary link-underline link-underline-opacity-0"
+                  >
+                    {{ instance.title }}
+                  </a>
+                </td>
+                <td data-type="pageLink">-</td>
+                <td data-operate="edit" class="text-center">
+                  <a
+                    href="{% url 'stock:update_stock_screener' pk=instance.pk %}"
+                    class="btn btn-link px-1 py-0 text-success link-underline link-underline-opacity-0"
+                  >
+                    <i class="fas fa-edit fa-lg"></i>
+                  </a>
+                </td>
+                <td data-operate="delete" class="text-center">
+                  <button
+                    class="btn btn-link px-1 py-0 text-danger delete-target-record"
+                    data-name="{{ instance.title }}"
+                    data-url="{% url 'stock:delete_stock_screener' pk=instance.pk %}"
+                  >
+                    <i class="fas fa-trash fa-lg"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <span>{% trans "There is no stock screeners. Please add the items from the above button." %}</span>
+        {% endif %}
+      </div>
+      <div class="col">
+      {% include "renderer/custom_pagenate.html" with page_obj=page_obj %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Delete-modal #}
+{% include "delete_modal_form.html" with modal_id="delete-modal" form_id="delete-form" %}
+{% endblock %}
+
+{% block bodyjs %}
+{{ block.super }}
+<script>
+(function () {
+  // Define initialization function
+  const init = () => {
+    const helper = new HelperMethods();
+    // Register delete modal event
+    helper.registerDeleteModalEvent({
+      targetCSS: 'delete-target-record',
+      formID: 'delete-form',
+      modalID: 'delete-modal',
+    });
+    // Define popper event
+    const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    [...tooltipElements].map((elem) => new bootstrap.Tooltip(elem));
+  };
+  //
+  // Add DOM event
+  //
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+{% endblock %}

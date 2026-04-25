@@ -20,81 +20,6 @@ def get_sample_stocks(django_db_blocker):
 
   return stocks
 
-class _DummyASTCondition:
-  for_str = forms._ValidateCondition.for_str
-  for_number = forms._ValidateCondition.for_number
-
-  def __init__(self, *args, **kwargs):
-    pass
-
-  def visit(self, node):
-    pass
-
-  def validate(self):
-    pass
-
-class CommonConditionConfig:
-  def get_search_form_config(self):
-    _meta = models.Stock._meta
-    fields = {
-      'code':          _meta.get_field('code'),
-      'name':          models.LocalizedStock._meta.get_field('name'),
-      'industry_name': models.LocalizedIndustry._meta.get_field('name'),
-      'price':         _meta.get_field('price'),
-      'dividend':      _meta.get_field('dividend'),
-      'div_yield':     forms._IgnoredField(),
-      'per':           _meta.get_field('per'),
-      'pbr':           _meta.get_field('pbr'),
-      'multi_pp':      forms._IgnoredField(),
-      'eps':           _meta.get_field('eps'),
-      'bps':           _meta.get_field('bps'),
-      'roe':           _meta.get_field('roe'),
-      'er':            _meta.get_field('er'),
-    }
-    # Define comparison operators to check the relationship between variable and value
-    comp_ops = {
-      'code':          _DummyASTCondition.for_str,
-      'name':          _DummyASTCondition.for_str,
-      'industry_name': _DummyASTCondition.for_str,
-      'price':         _DummyASTCondition.for_number,
-      'dividend':      _DummyASTCondition.for_number,
-      'div_yield':     _DummyASTCondition.for_number,
-      'per':           _DummyASTCondition.for_number,
-      'pbr':           _DummyASTCondition.for_number,
-      'multi_pp':      _DummyASTCondition.for_number,
-      'eps':           _DummyASTCondition.for_number,
-      'bps':           _DummyASTCondition.for_number,
-      'roe':           _DummyASTCondition.for_number,
-      'er':            _DummyASTCondition.for_number,
-    }
-
-    return fields, comp_ops
-
-  def get_filtering_form_config(self):
-    # Define purchased stock fields to check right operand
-    _meta = models.PurchasedStock._meta
-    fields = {
-      'code':          models.Stock._meta.get_field('code'),
-      'name':          models.LocalizedStock._meta.get_field('name'),
-      'industry_name': models.LocalizedIndustry._meta.get_field('name'),
-      'price':         _meta.get_field('price'),
-      'purchase_date': _meta.get_field('purchase_date'),
-      'count':         _meta.get_field('count'),
-      'diff':          forms._IgnoredField(),
-    }
-    # Define comparison operators to check the relationship between variable and value
-    comp_ops = {
-      'code':          _DummyASTCondition.for_str,
-      'name':          _DummyASTCondition.for_str,
-      'industry_name': _DummyASTCondition.for_str,
-      'price':         _DummyASTCondition.for_number,
-      'purchase_date': _DummyASTCondition.for_number,
-      'count':         _DummyASTCondition.for_number,
-      'diff':          _DummyASTCondition.for_number,
-    }
-
-    return fields, comp_ops
-
 @pytest.mark.stock
 @pytest.mark.form
 class TestGlobalFunctions:
@@ -126,273 +51,6 @@ class TestGlobalFunctions:
     estimated = forms.bool_converter(value)
 
     assert estimated == expected
-
-@pytest.mark.stock
-@pytest.mark.form
-class TestIgnoredField:
-  def test_check_ignore_field(self):
-    try:
-      instance = forms._IgnoredField()
-      instance.clean(3, None)
-    except Exception as ex:
-      pytest.fail(f'Unexpected Error: {ex}')
-
-@pytest.mark.stock
-@pytest.mark.form
-class TestValidateCondition(CommonConditionConfig):
-  @pytest.mark.parametrize([
-    'condition',
-  ], [
-    ('2<er<4', ),
-    ('price < 10\n and bps > 10', ),
-  ], ids=[
-    'simple-pattern',
-    'with-return-code',
-  ])
-  def test_validate_search_patterns(self, mocker, condition):
-    mocker.patch('stock.forms._ValidateCondition', new=_DummyASTCondition)
-
-    try:
-      forms.validate_search_condition(condition)
-    except Exception as ex:
-      pytest.fail(f'Unexpected Error: {ex}')
-
-  @pytest.mark.parametrize([
-    'method_name',
-    'exception',
-    'err_msg',
-  ], [
-    ('visit', SyntaxError('invalid-input'), 'Invalid syntax: invalid-input'),
-    ('visit', IndexError('invalid-index'), 'Invalid syntax: invalid-index'),
-    ('validate', KeyError('invalid-key'), "Invalid variable: \'invalid-key\'"),
-  ],ids=[
-    'raise-syntax-error',
-    'raise-index-error',
-    'raise-key-error',
-  ])
-  def test_invalid_search_patterns(self, mocker, method_name, exception, err_msg):
-    mocker.patch('stock.forms._ValidateCondition', new=_DummyASTCondition)
-    mocker.patch(f'stock.forms._ValidateCondition.{method_name}', side_effect=exception)
-
-    with pytest.raises(ValidationError) as ex:
-      forms.validate_search_condition('price < 100')
-
-    assert err_msg in str(ex.value)
-
-  @pytest.mark.parametrize([
-    'condition',
-  ], [
-    ('name == "cone"', ),
-    ('name != "cone"', ),
-    ('price <  10', ),
-    ('price <= 11', ),
-    ('price >  12', ),
-    ('price >= 13', ),
-    ('100 < price <= 200', ),
-    ('bps <= 0.2 < eps < 0.5 < er < 0.75', ),
-    ('name in "hoge"', ),
-    ('name not in "hoge"', ),
-    ('name in "foo" and price < 100', ),
-    ('name in "foo" or price < 100', ),
-    ('price < 100 or eps < 0.2 and er > 0.5', ),
-    ('(price < 100 or eps < 0.2) and er > 0.5', ),
-  ], ids=[
-    'check-compare-eq',
-    'check-compare-not-eq',
-    'check-compare-lt',
-    'check-compare-lte',
-    'check-compare-gt',
-    'check-compare-gte',
-    'check-compare-between-ops',
-    'check-compare-multi-ops-and-vars',
-    'check-compare-in',
-    'check-compare-not-in',
-    'check-boolop-and',
-    'check-boolop-or',
-    'check-boolop-both-ops',
-    'check-boolop-both-with-bracket',
-  ])
-  def test_valid_visit_method(self, condition):
-    fields, comp_ops = self.get_search_form_config()
-    visitor = forms._ValidateCondition(fields, comp_ops)
-    tree = ast.parse(condition, mode='eval')
-
-    try:
-      visitor.visit(tree)
-    except Exception as ex:
-      pytest.fail(f'Unexpected Error: {ex}')
-
-  @pytest.mark.parametrize([
-    'condition',
-  ], [
-    ('code == "cone"', ), ('code != "cone"', ), ('code in "cone"', ), ('code not in "cone"', ),
-    ('name == "cone"', ), ('name != "cone"', ), ('name in "cone"', ), ('name not in "cone"', ),
-    ('industry_name == "cone"', ), ('industry_name != "cone"', ), ('industry_name in "cone"', ), ('industry_name not in "cone"', ),
-    ('price == 10.0', ), ('price != 10.0', ), ('price < 10.0', ), ('price <= 10.0', ), ('price > 10.0', ), ('price >= 10.0', ),
-    ('dividend == 10.0', ), ('dividend != 10.0', ), ('dividend < 10.0', ), ('dividend <= 10.0', ), ('dividend > 10.0', ), ('dividend >= 10.0', ),
-    ('per == 10.0', ), ('per != 10.0', ), ('per < 10.0', ), ('per <= 10.0', ), ('per > 10.0', ), ('per >= 10.0', ),
-    ('pbr == 10.0', ), ('pbr != 10.0', ), ('pbr < 10.0', ), ('pbr <= 10.0', ), ('pbr > 10.0', ), ('pbr >= 10.0', ),
-    ('eps == 10.0', ), ('eps != 10.0', ), ('eps < 10.0', ), ('eps <= 10.0', ), ('eps > 10.0', ), ('eps >= 10.0', ),
-    ('bps == 10.0', ), ('bps != 10.0', ), ('bps < 10.0', ), ('bps <= 10.0', ), ('bps > 10.0', ), ('bps >= 10.0', ),
-    ('roe == 10.0', ), ('roe != 10.0', ), ('roe < 10.0', ), ('roe <= 10.0', ), ('roe > 10.0', ), ('roe >= 10.0', ),
-    ('er == 10.0', ), ('er != 10.0', ), ('er < 10.0', ), ('er <= 10.0', ), ('er > 10.0', ), ('er >= 10.0', ),
-  ], ids=[
-    'check-code-with-eq', 'check-code-with-not-eq', 'check-code-with-in', 'check-code-with-not-in',
-    'check-name-with-eq', 'check-name-with-not-eq', 'check-name-with-in', 'check-name-with-not-in',
-    'check-industry-with-eq', 'check-industry-with-not-eq', 'check-industry-with-in', 'check-industry-with-not-in',
-    'check-price-with-eq', 'check-price-with-not-eq', 'check-price-with-lt', 'check-price-with-lte', 'check-price-with-gt', 'check-price-with-gte',
-    'check-dividend-with-eq', 'check-dividend-with-not-eq', 'check-dividend-with-lt', 'check-dividend-with-lte', 'check-dividend-with-gt', 'check-dividend-with-gte',
-    'check-per-with-eq', 'check-per-with-not-eq', 'check-per-with-lt', 'check-per-with-lte', 'check-per-with-gt', 'check-per-with-gte',
-    'check-pbr-with-eq', 'check-pbr-with-not-eq', 'check-pbr-with-lt', 'check-pbr-with-lte', 'check-pbr-with-gt', 'check-pbr-with-gte',
-    'check-eps-with-eq', 'check-eps-with-not-eq', 'check-eps-with-lt', 'check-eps-with-lte', 'check-eps-with-gt', 'check-eps-with-gte',
-    'check-bps-with-eq', 'check-bps-with-not-eq', 'check-bps-with-lt', 'check-bps-with-lte', 'check-bps-with-gt', 'check-bps-with-gte',
-    'check-roe-with-eq', 'check-roe-with-not-eq', 'check-roe-with-lt', 'check-roe-with-lte', 'check-roe-with-gt', 'check-roe-with-gte',
-    'check-er-with-eq', 'check-er-with-not-eq', 'check-er-with-lt', 'check-er-with-lte', 'check-er-with-gt', 'check-er-with-gte',
-  ])
-  def test_valid_validate_method(self, condition):
-    fields, comp_ops = self.get_search_form_config()
-    visitor = forms._ValidateCondition(fields, comp_ops)
-    tree = ast.parse(condition, mode='eval')
-    visitor.visit(tree)
-
-    try:
-      visitor.validate()
-    except Exception as ex:
-      pytest.fail(f'Unexpected Error: {ex}')
-
-  @pytest.mark.parametrize([
-    'condition',
-    'err_msg',
-  ], [
-    ('a + b',  'cannot use BinOp in this application'),
-    ('a - b',  'cannot use BinOp in this application'),
-    ('a * b',  'cannot use BinOp in this application'),
-    ('a ** b', 'cannot use BinOp in this application'),
-    ('a / b',  'cannot use BinOp in this application'),
-    ('a % 3',  'cannot use BinOp in this application'),
-    ('a // b', 'cannot use BinOp in this application'),
-    ('a >> b', 'cannot use BinOp in this application'),
-    ('a << b', 'cannot use BinOp in this application'),
-    ('price < f(3)', 'cannot use Call in this application'),
-    ('price.dummy < 10', 'cannot use Attribute in this application'),
-  ], ids=[
-    'use-add-op',
-    'use-sub-op',
-    'use-mult-op',
-    'use-pow-op',
-    'use-div-op',
-    'use-mod-op',
-    'use-floor-div-op',
-    'use-right-shift-op',
-    'use-left-shift-op',
-    'use-call',
-    'use-attribute',
-  ])
-  def test_invalid_operator(self, condition, err_msg):
-    fields, comp_ops = self.get_search_form_config()
-    visitor = forms._ValidateCondition(fields, comp_ops)
-    tree = ast.parse(condition, mode='eval')
-
-    with pytest.raises(SyntaxError) as ex:
-      visitor.visit(tree)
-
-    assert err_msg in str(ex.value)
-
-  @pytest.mark.parametrize([
-    'condition',
-    'exception_type',
-    'err_msg',
-  ], [
-    ('industry == "hoge"', KeyError, 'industry does not exist'),
-    ('price < 10.001', ValidationError, 'Invalid data (price, 10.001): '),
-    ('code < "1200"', ValidationError, 'Invalid operator between code and 1200'),
-    ('price in 1200', ValidationError, 'Invalid operator between price and 1200'),
-  ], ids=[
-    'invalid-keyname',
-    'invalid-field-value',
-    'invalid-operator-for-str',
-    'invalid-operator-for-number',
-  ])
-  def test_invalid_validation_method_patterns(self, condition, exception_type, err_msg):
-    fields, comp_ops = self.get_search_form_config()
-    visitor = forms._ValidateCondition(fields, comp_ops)
-    tree = ast.parse(condition, mode='eval')
-    visitor.visit(tree)
-
-    with pytest.raises(exception_type) as ex:
-      visitor.validate()
-
-    assert err_msg in str(ex.value)
-
-
-# ==================
-# TestWrapValidation
-# ==================
-class _ExceptionCallback(_DummyASTCondition):
-  def __init__(self, exception_class, err_msg):
-    self.exception_class = exception_class
-    self.err_msg = err_msg
-
-  def validate(self):
-    raise self.exception_class(self.err_msg)
-
-@pytest.mark.stock
-@pytest.mark.form
-class TestWrapValidation(CommonConditionConfig):
-  def test_decorator_of_validation(self):
-    @forms.wrap_validation
-    def sample_callback():
-      return _DummyASTCondition()
-
-    ret = sample_callback('1 < 2')
-
-    assert ret is None
-
-  @pytest.mark.parametrize([
-    'exception_class',
-    'err_msg',
-    'expected_err',
-  ], [
-    (SyntaxError, 'hoge', 'Invalid syntax: hoge'),
-    (IndexError, 'foo', 'Invalid syntax: foo'),
-    (KeyError, 'bar', "Invalid variable: \'bar\'"),
-  ], ids=[
-    'syntax-error',
-    'index-error',
-    'key-error',
-  ])
-  def test_invalid_case_of_decorator(self, exception_class, err_msg, expected_err):
-    @forms.wrap_validation
-    def sample_callback():
-      return _ExceptionCallback(exception_class, err_msg)
-
-    with pytest.raises(ValidationError) as ex:
-      _ = sample_callback('1 < 2')
-
-    assert expected_err in str(ex.value)
-
-  @pytest.mark.parametrize([
-    'test_func_name',
-    'config_name',
-  ], [
-    ('validate_search_condition', 'get_search_form_config'),
-    ('validate_filtering_condition', 'get_filtering_form_config'),
-  ], ids=[
-    'check-search-condition',
-    'check-filtering-condition',
-  ])
-  def test_validate_conditions(self, test_func_name, config_name):
-    # Call test function
-    decorated_test_func = getattr(forms, test_func_name)
-    instance = decorated_test_func.__wrapped__()
-    field_keys = instance._fields.keys()
-    op_keys = instance._comp_ops.keys()
-    # Get expected values
-    config_getter = getattr(self, config_name)
-    expected_fields, expected_ops = config_getter()
-
-    assert all([key in field_keys for key in expected_fields.keys()])
-    assert all([key in op_keys for key in expected_ops.keys()])
 
 # ========
 # CashForm
@@ -1289,6 +947,13 @@ class TestStockSearchForm(BaseTestUtils):
     assert condition == exacts['condition']
     assert all([estimated == _exact for estimated, _exact in zip(ordering, exact_order)])
 
+  def test_invalid_ordering_type(self):
+    param = {'ordering': 'price-code'}
+    form = forms.StockSearchForm(data=param)
+    is_valid = form.is_valid()
+
+    assert not is_valid
+
   @pytest.mark.parametrize([
     'params',
     'is_valid',
@@ -1587,9 +1252,9 @@ class TestStockDownloadForm:
   ], [
     ({'filename': 'hoge.csv', 'condition': 'price > 1000', 'ordering': '-code'}, 'hoge', 'price > 1000', ['-code']),
     ({'filename': '.csv', 'condition': 'price > 1000', 'ordering': '-code'}, '', 'price > 1000', ['-code']),
-    ({'filename': 'hoge', 'condition': 'name in "foo"', 'ordering': 'yyy,price,xxx'}, 'hoge', 'name in "foo"', ['price']),
-    ({'filename': 'hoge', 'condition': 'industry_name in "bar"', 'ordering': 'code,price'}, 'hoge', 'industry_name in "bar"', ['code,price']),
-    ({'filename': 'hoge', 'condition': 'price > 10', 'ordering': 'zzz,www'}, 'hoge', 'price > 10', ['code']),
+    ({'filename': 'hoge', 'condition': 'name in "foo"', 'ordering': 'yyy,price,xxx'}, 'hoge', 'name in "foo"', [models.StockOrderingTypes.CODE_ASC.value]),
+    ({'filename': 'hoge', 'condition': 'industry_name in "bar"', 'ordering': 'code,price'}, 'hoge', 'industry_name in "bar"', ['code', 'price']),
+    ({'filename': 'hoge', 'condition': 'price > 10', 'ordering': 'zzz,www'}, 'hoge', 'price > 10', [models.StockOrderingTypes.CODE_ASC.value]),
   ], ids=[
     'valid-pattern',
     'valid-only-extension-pattern',
@@ -1608,6 +1273,7 @@ class TestStockDownloadForm:
     assert is_valid
     assert fname == arg_fname
     assert ast.dump(tree) == ast.dump(ast.parse(arg_tree, mode='eval'))
+    assert order == arg_order
 
   @pytest.mark.parametrize([
     'params',
@@ -1631,4 +1297,4 @@ class TestStockDownloadForm:
 
     assert fname == expected_fname
     assert tree is None
-    assert order == ['code']
+    assert order == [models.StockOrderingTypes.CODE_ASC.value]

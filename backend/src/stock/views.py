@@ -500,3 +500,56 @@ class ExplanationPage(LoginRequiredMixin, TemplateView, DjangoBreadcrumbsMixin):
     title=gettext_lazy('Explanation'),
     parent_view_class=Index,
   )
+
+class ListStockScreener(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = models.StockScreener
+  template_name = 'stock/stock_screeners.html'
+  paginate_by = 20
+  context_object_name = 'screeners'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:list_stock_screener',
+    title=gettext_lazy('Stock screener list'),
+    parent_view_class=ListStock,
+  )
+
+  def get_queryset(self):
+    user = self.request.user
+    queryset = user.criteria.all()
+
+    return queryset
+
+class RegisterStockScreener(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = models.StockScreener
+  form_class = forms.StockScreenerForm
+  template_name = 'stock/stock_screener_form.html'
+  success_url = reverse_lazy('stock:list_stock_screener')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:register_stock_screener',
+    title=gettext_lazy('Register stock screener'),
+    parent_view_class=ListStockScreener,
+  )
+
+class UpdateStockScreener(UpdateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = models.StockScreener
+  form_class = forms.StockScreenerForm
+  template_name = 'stock/stock_screener_form.html'
+  success_url = reverse_lazy('stock:list_stock_screener')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:update_stock_screener',
+    title=gettext_lazy('Update stock screener'),
+    parent_view_class=ListStockScreener,
+    url_keys=['pk'],
+  )
+
+class DeleteStockScreener(CustomDeleteView):
+  model = models.StockScreener
+  success_url = reverse_lazy('stock:list_stock_screener')
+
+class IsStockScreenerOwner(UserPassesTestMixin):
+  def test_func(self):
+    pk = self.kwargs['pk']
+    user = self.request.user
+    queryset = user.criteria.all().filter(pk=pk)
+    is_valid = queryset.exists()
+
+    return is_valid

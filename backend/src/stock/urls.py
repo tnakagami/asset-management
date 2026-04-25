@@ -40,4 +40,9 @@ urlpatterns = [
   path('download/stocks', views.DownloadStockPage.as_view(), name='download_stock'),
   # Explanation
   path('explanation', views.ExplanationPage.as_view(), name='explanation'),
+  # StockScreener
+  path('list/stock-screeners', views.ListStockScreener.as_view(), name='list_stock_screener'),
+  path('register/stock-screener', views.RegisterStockScreener.as_view(), name='register_stock_screener'),
+  path('update/stock-screener/<int:pk>', views.UpdateStockScreener.as_view(), name='update_stock_screener'),
+  path('delete/stock-screener/<int:pk>', views.DeleteStockScreener.as_view(), name='delete_stock_screener'),
 ]
