@@ -115,15 +115,6 @@ class TestAccountApplication(SharedFixture):
     assert response.status_code == status.HTTP_200_OK
     assert get_current_path(response) == self.profile_url(owner.pk)
 
-  def test_move_to_previous_page_from_user_profile_page(self, init_webtest):
-    app, users = init_webtest
-    owner = users['owner']
-    page = app.get(self.profile_url(owner.pk), user=owner)
-    response = page.click('Back')
-
-    assert response.status_code == status.HTTP_200_OK
-    assert get_current_path(response) == self.index_url
-
   # Update user profile page
   def test_move_to_update_user_profile_page(self, init_webtest):
     app, users = init_webtest
@@ -228,6 +219,12 @@ class BaseStockTestUtils(SharedFixture):
   ptask_snapshot_create_url = reverse('stock:register_snapshot_task')
   ptask_snapshot_update_url = lambda _self, pk: reverse('stock:update_snapshot_task', kwargs={'pk': pk})
   ptask_snapshot_delete_url = lambda _self, pk: reverse('stock:delete_snapshot_task', kwargs={'pk': pk})
+  # StockScreener
+  stock_screener_list_url = reverse('stock:list_stock_screener')
+  stock_screener_create_url = reverse('stock:register_stock_screener')
+  stock_screener_update_url = lambda _self, pk: reverse('stock:update_stock_screener', kwargs={'pk': pk})
+  stock_screener_delete_url = lambda _self, pk: reverse('stock:delete_stock_screener', kwargs={'pk': pk})
+  stock_screener_detail_url = lambda _self, pk: reverse('stock:detail_stock_screener', kwargs={'pk': pk})
   # Stock
   list_stock_url = reverse('stock:list_stock')
   # Explanation
@@ -247,7 +244,7 @@ class TestPageTransition(BaseStockTestUtils):
     ('Cash list', 'cash_list_url'),
     ('Purchased stock list', 'pstock_list_url'),
     ('Periodic task list for snapshot', 'ptask_snapshot_list_url'),
-    ('Stock list', 'list_stock_url'),
+    ('Stock screener', 'stock_screener_list_url'),
     ('Explanation', 'explanation_url'),
   ], ids=[
     'dashboard-page',
@@ -257,7 +254,7 @@ class TestPageTransition(BaseStockTestUtils):
     'cash-list-page',
     'purchased-stock-list-page',
     'periodic-task-for-snapshot-list-page',
-    'stock-list-page',
+    'stock-screener-list-page',
     'explanation-page',
   ])
   def test_move_to_link_from_index(self, init_webtest, page_title, access_link):
@@ -275,16 +272,37 @@ class TestPageTransition(BaseStockTestUtils):
     'page_title',
     'access_link',
   ], [
+    ('stock_screener_list_url', 'All stock list', 'list_stock_url'),
+  ], ids=[
+    'stock-list-page-from-stock-screener-list-page',
+  ])
+  def test_move_to_link_from_specific_page(self, init_webtest, base_link, page_title, access_link):
+    app, users = init_webtest
+    # Access to target page
+    page = app.get(getattr(self, base_link), user=users['owner'])
+    response = page.click(page_title)
+    target_url = getattr(self, access_link)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert get_current_path(response) == target_url
+
+  @pytest.mark.parametrize([
+    'base_link',
+    'page_title',
+    'access_link',
+  ], [
     # from list page to create page
     ('dashboard_url', 'Register snapshot', 'snapshot_create_url'),
     ('history_url', 'Register snapshot', 'snapshot_create_url'),
     ('cash_list_url', 'Register cash', 'cash_create_url'),
     ('pstock_list_url', 'Register purchased stock', 'pstock_create_url'),
     ('snapshot_list_url', 'Register snapshot', 'snapshot_create_url'),
+    ('stock_screener_list_url', 'Register stock screener', 'stock_screener_create_url'),
     # from create page to list page
     ('cash_create_url', 'Cancel', 'cash_list_url'),
     ('pstock_create_url', 'Cancel', 'pstock_list_url'),
     ('snapshot_create_url', 'Cancel', 'snapshot_list_url'),
+    ('stock_screener_create_url', 'Cancel', 'stock_screener_list_url'),
     ('ptask_snapshot_create_url', 'Cancel', 'ptask_snapshot_list_url'),
   ], ids=[
     'register-page-from-dashboard-page',
@@ -292,9 +310,11 @@ class TestPageTransition(BaseStockTestUtils):
     'register-page-from-cash-list-page',
     'register-page-from-purchased-stock-list-page',
     'register-page-from-snapshot-list-page',
+    'register-page-from-stock-screener-list-page',
     'list-page-from-cash-registration-page',
     'list-page-from-purchased-stock-registration-page',
     'list-page-from-snapshot-registration-page',
+    'list-page-from-stock-screener-registration-page',
     'list-page-from-periodic-task-registration-page',
   ])
   def test_move_to_link_between_list_page_and_create_page(self, init_webtest, base_link, page_title, access_link):
@@ -347,13 +367,15 @@ class TestPageTransition(BaseStockTestUtils):
     'access_link',
     'factory_class',
   ], [
-    ('cash_list_url',     'cash_update_url',     factories.CashFactory),
-    ('pstock_list_url',   'pstock_update_url',   factories.PurchasedStockFactory),
+    ('cash_list_url', 'cash_update_url', factories.CashFactory),
+    ('pstock_list_url', 'pstock_update_url', factories.PurchasedStockFactory),
     ('snapshot_list_url', 'snapshot_update_url', factories.SnapshotFactory),
+    ('stock_screener_list_url', 'stock_screener_update_url', factories.StockScreenerFactory),
   ], ids=[
     'update-cash-page-from-list-page',
     'update-purchased-stock-page-from-list-page',
     'update-snapshot-page-from-list-page',
+    'update-stock-screener-page-from-list-page',
   ])
   def test_move_to_update_page_from_list_page(self, init_webtest, base_link, access_link, factory_class):
     app, users = init_webtest
@@ -389,13 +411,15 @@ class TestPageTransition(BaseStockTestUtils):
     'factory_class',
   ], [
     # from update page to list page
-    ('cash_update_url',     'cash_list_url',     factories.CashFactory),
-    ('pstock_update_url',   'pstock_list_url',   factories.PurchasedStockFactory),
+    ('cash_update_url', 'cash_list_url', factories.CashFactory),
+    ('pstock_update_url', 'pstock_list_url', factories.PurchasedStockFactory),
     ('snapshot_update_url', 'snapshot_list_url', factories.SnapshotFactory),
+    ('stock_screener_update_url', 'stock_screener_list_url', factories.StockScreenerFactory),
   ], ids=[
     'cash-list-page-from-update-page',
     'purchased-stock-list-page-from-update-page',
     'snapshot-list-page-from-update-page',
+    'stock-screener-list-page-from-update-page',
   ])
   def test_move_to_list_page_from_update_page(self, init_webtest, base_link, access_link, factory_class):
     app, users = init_webtest
@@ -438,6 +462,7 @@ class TestPageTransition(BaseStockTestUtils):
     ('ptask_snapshot_list_url',),
     ('pstock_upload_url',),
     ('snapshot_upload_jsonformat_url',),
+    ('stock_screener_list_url',),
     ('list_stock_url',),
   ], ids=[
     'dashboard-page',
@@ -448,6 +473,7 @@ class TestPageTransition(BaseStockTestUtils):
     'periodic-task-for-snapshot-list-page',
     'purchased-stock-upload-page',
     'snapshot-upload-jsonformat-page',
+    'stock-screener-list-page',
     'list-stock-page',
   ])
   def test_redirect_login_page_without_authentication(self, csrf_exempt_django_app, access_link):
@@ -464,11 +490,13 @@ class TestPageTransition(BaseStockTestUtils):
     ('cash_create_url',),
     ('pstock_create_url',),
     ('snapshot_create_url',),
+    ('stock_screener_create_url',),
     ('ptask_snapshot_create_url',),
   ], ids=[
     'cash-registration-page',
     'purchased-stock-registration-page',
     'snapshot-registration-page',
+    'stock-screener-registration-page',
     'periodic-task-for-snapshot-registration-page',
   ])
   def test_cannot_move_to_target_page_without_authentication(self, csrf_exempt_django_app, access_link):
@@ -486,10 +514,12 @@ class TestPageTransition(BaseStockTestUtils):
     ('cash_update_url', factories.CashFactory),
     ('pstock_update_url', factories.PurchasedStockFactory),
     ('snapshot_update_url', factories.SnapshotFactory),
+    ('stock_screener_update_url', factories.StockScreenerFactory),
   ], ids=[
     'invalid-access-to-update-cash-page',
     'invalid-access-to-update-purchased-stock-page',
     'invalid-access-to-update-snapshot-page',
+    'invalid-access-to-update-stock-screener-page',
   ])
   def test_cannot_access_update_page_except_owner(self, init_webtest, access_link, factory_class):
     app, users = init_webtest
@@ -532,13 +562,15 @@ class TestStockAppOperation(BaseStockTestUtils):
     'object_name',
     'factory_class',
   ], [
-    ('cash_list_url',     'cashes',    factories.CashFactory),
-    ('pstock_list_url',   'pstocks',   factories.PurchasedStockFactory),
+    ('cash_list_url', 'cashes', factories.CashFactory),
+    ('pstock_list_url', 'pstocks', factories.PurchasedStockFactory),
     ('snapshot_list_url', 'snapshots', factories.SnapshotFactory),
+    ('stock_screener_list_url', 'screeners', factories.StockScreenerFactory),
   ], ids=[
     'count-cashes',
     'count-pstocks',
     'count-snapshots',
+    'count-screeners',
   ])
   def test_count_owned_items(self, init_webtest, access_link, object_name, factory_class):
     app, users = init_webtest
@@ -546,12 +578,12 @@ class TestStockAppOperation(BaseStockTestUtils):
     other = users['other']
     # Create instances
     for (target_user, num) in [(owner, 2), (other, 3)]:
-      _ = factories.CashFactory.create_batch(num, user=target_user)
+      _ = factory_class.create_batch(num, user=target_user)
     # Access to link
-    response = app.get(self.cash_list_url, user=owner)
+    response = app.get(getattr(self, access_link), user=owner)
 
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.context['cashes']) == 2
+    assert len(response.context[object_name]) == 2
 
   def test_count_own_ptask_items(self, init_webtest):
     app, users = init_webtest
@@ -634,7 +666,7 @@ class TestStockAppOperation(BaseStockTestUtils):
 
     return stock
 
-  @pytest.fixture(params=['cash', 'pstock', 'snapshot'])
+  @pytest.fixture(params=['cash', 'pstock', 'snapshot', 'screener'])
   def get_form_params_in_create_page(self, request, get_dummy_stock):
     key = request.param
 
@@ -695,6 +727,23 @@ class TestStockAppOperation(BaseStockTestUtils):
         'title': 'sample-snapshot',
         'startDate': '2024-12-03',
         'endDate': '2025-01-21',
+      }
+    elif key == 'screener':
+      config = {
+        'target': key,
+        'access_link': self.stock_screener_create_url,
+        'form_id': 'stock-screener-form',
+        'success_link': self.stock_screener_list_url,
+      }
+      params = {
+        'title': 'sample-screener',
+        'priority': 90,
+        'condition': 'code in "3"',
+        'ordering': 'code,-price',
+      }
+      object_name = 'screeners'
+      exacts = {
+        'title': 'sample-screener',
       }
 
     return config, params, object_name, exacts
@@ -837,6 +886,28 @@ class TestStockAppOperation(BaseStockTestUtils):
         'startDate': '2010-01-04',
         'endDate': '2011-02-15',
       }
+    elif old_conf['target'] == 'screener':
+      config = {
+        'get_link': self.stock_screener_update_url,
+        'factory': factories.StockScreenerFactory,
+        'form_id': old_conf['form_id'],
+        'success_link': old_conf['success_link'],
+      }
+      params = {
+        'title': old_params['title'],
+        'priority': old_params['priority'],
+        'condition': old_params['condition'],
+        'ordering': old_params['ordering'],
+      }
+      updated = {
+        'title': 'updated-screener',
+        'priority': 10,
+        'condition': f'{old_params["condition"]} or price > 1000',
+        'ordering': '-code',
+      }
+      exacts = {
+        'title': 'updated-screener',
+      }
 
     return config, params, updated, object_name, exacts
 
@@ -923,13 +994,15 @@ class TestStockAppOperation(BaseStockTestUtils):
     'object_name',
     'factory_class',
   ], [
-    ('cash_list_url',     'cash_delete_url',     'cashes',    factories.CashFactory),
-    ('pstock_list_url',   'pstock_delete_url',   'pstocks',   factories.PurchasedStockFactory),
+    ('cash_list_url', 'cash_delete_url', 'cashes', factories.CashFactory),
+    ('pstock_list_url', 'pstock_delete_url', 'pstocks', factories.PurchasedStockFactory),
     ('snapshot_list_url', 'snapshot_delete_url', 'snapshots', factories.SnapshotFactory),
+    ('stock_screener_list_url', 'stock_screener_delete_url', 'screeners', factories.StockScreenerFactory),
   ], ids=[
-    'cash-update-page',
-    'purchased-stock-update-page',
-    'snapshot-update-page',
+    'cash-delete-request',
+    'purchased-stock-delete-request',
+    'snapshot-delete-request',
+    'stock-screener-delete-request',
   ])
   def test_delete_form(self, init_webtest, base_link, target_link, object_name, factory_class):
     app, users = init_webtest
@@ -1060,13 +1133,15 @@ class TestStockAppOperation(BaseStockTestUtils):
     'form_id',
     'factory_class',
   ], [
-    ('cash_update_url',     'cash-form',            factories.CashFactory),
-    ('pstock_update_url',   'purchased-stock-form', factories.PurchasedStockFactory),
-    ('snapshot_update_url', 'snapshot-form',        factories.SnapshotFactory),
+    ('cash_update_url', 'cash-form', factories.CashFactory),
+    ('pstock_update_url', 'purchased-stock-form', factories.PurchasedStockFactory),
+    ('snapshot_update_url', 'snapshot-form', factories.SnapshotFactory),
+    ('stock_screener_update_url', 'stock-screener-form', factories.StockScreenerFactory),
   ], ids=[
     'invalid-post-method-in-cash',
     'invalid-post-method-in-purchased-stock',
     'invalid-post-method-in-snapshot',
+    'invalid-post-method-in-stock-screener',
   ])
   def test_invalid_post_method_in_update_page(self, init_webtest, target_link, form_id, factory_class):
     app, users = init_webtest
@@ -1103,7 +1178,7 @@ class TestStockAppOperation(BaseStockTestUtils):
     assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
   # Delete the other user's instance
-  @pytest.fixture(params=['cash', 'pstock', 'snapshot'])
+  @pytest.fixture(params=['cash', 'pstock', 'snapshot', 'screener'])
   def get_pseudo_records_to_check_delete_process(self, request):
     key = request.param
 
@@ -1119,6 +1194,10 @@ class TestStockAppOperation(BaseStockTestUtils):
       factory_class = factories.SnapshotFactory
       list_link = self.snapshot_list_url
       get_link = self.snapshot_delete_url
+    elif key == 'screener':
+      factory_class = factories.StockScreenerFactory
+      list_link = self.stock_screener_list_url
+      get_link = self.stock_screener_delete_url
 
     return list_link, get_link, factory_class
 
@@ -1158,9 +1237,9 @@ class TestStockAppOperation(BaseStockTestUtils):
 
     assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
-  # ====================
-  # Detail snapshot page
-  # ====================
+  # =======================
+  # Detail of snapshot page
+  # =======================
   def test_access_to_detail_snapshot_page(self, init_webtest):
     pstock = {
       'stock': {
@@ -1213,6 +1292,57 @@ class TestStockAppOperation(BaseStockTestUtils):
     # Invalid access for detail snapshot page
     with pytest.raises(AppError) as ex:
       app.get(self.snapshot_detail_url(instance.pk), user=other)
+
+    assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
+
+  # =============================
+  # Detail of stock screener page
+  # =============================
+  def test_access_to_detail_stock_screener_page(self, mocker, init_webtest):
+    stocks = [
+      factories.StockFactory(code='0x2c52', price=Decimal('1000.00')),
+      factories.StockFactory(code='0x2c53', price=Decimal('1200.00')),
+      factories.StockFactory(code='0x2c54', price=Decimal('2100.00')),
+      factories.StockFactory(code='0x9f10', price=Decimal('3500.00')),
+      factories.StockFactory(code='0x8e99', price=Decimal('4500.00')),
+    ]
+    queryset = models.Stock.objects.filter(pk__in=self.get_pks(stocks))
+    mocker.patch('stock.models.StockManager.get_queryset', return_value=queryset)
+    exact_ids = [stocks[1].pk, stocks[2].pk]
+    # Setup
+    app, users = init_webtest
+    owner = users['owner']
+    instance = factories.StockScreenerFactory(
+      title='example-owner-screener',
+      condition='code in "0x2c5" and price >= 1100',
+      ordering='-code,-price',
+      user=owner,
+    )
+    instance.save()
+    # Access to detail stock-screener page
+    page = app.get(self.stock_screener_list_url, user=owner)
+    target_link = self.stock_screener_detail_url(instance.pk)
+    response = page.click(href=target_link)
+    screener = response.context['screener']
+    stocks = response.context['stocks']
+    initial_values = response.context['download_form'].initial
+
+    assert response.status_code == status.HTTP_200_OK
+    assert screener.pk == instance.pk
+    assert len(stocks) == 2
+    assert all([obj.pk in exact_ids for obj in stocks])
+    assert initial_values.get('condition') == instance.condition
+    assert initial_values.get('ordering') == instance.ordering
+
+  def test_invalid_access_for_detail_stock_screener_page(self, init_webtest):
+    app, users = init_webtest
+    owner = users['owner']
+    other = users['other']
+    instance = factories.StockScreenerFactory(user=owner)
+    instance.save()
+    # Invalid access for detail stock-screener page
+    with pytest.raises(AppError) as ex:
+      app.get(self.stock_screener_detail_url(instance.pk), user=other)
 
     assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 

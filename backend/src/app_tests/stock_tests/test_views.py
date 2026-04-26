@@ -1359,6 +1359,225 @@ class TestPeriodicTaskForSnapshotViews(SharedFixture):
     assert response.status_code == status.HTTP_403_FORBIDDEN
     assert total == 1
 
+# ==================
+# StockScreenerViews
+# ==================
+@pytest.mark.stock
+@pytest.mark.view
+@pytest.mark.django_db
+class TestStockScreenerViews(SharedFixture):
+  list_url = reverse('stock:list_stock_screener')
+  create_url = reverse('stock:register_stock_screener')
+  update_url = lambda _self, pk: reverse('stock:update_stock_screener', kwargs={'pk': pk})
+  delete_url = lambda _self, pk: reverse('stock:delete_stock_screener', kwargs={'pk': pk})
+  detail_url = lambda _self, pk: reverse('stock:detail_stock_screener', kwargs={'pk': pk})
+  form_data = {
+    'title': 'sample-screener-v1',
+    'priority': 10,
+    'condition': 'price < 1000 and er > 50',
+    'ordering': '-code',
+  }
+
+  # ========
+  # ListView
+  # ========
+  def test_access_to_listview(self, wrap_login):
+    client, _ = wrap_login
+    response = client.get(self.list_url)
+
+    assert response.status_code == status.HTTP_200_OK
+
+  def test_access_to_listview_without_authentication(self, client):
+    url = self.list_url
+    response = client.get(url)
+    expected = '{}?next={}'.format(self.login_url, url)
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == expected
+
+  @pytest.fixture(scope='class')
+  def get_pseudo_instances_for_listview(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      instances = factories.StockScreenerFactory.create_batch(25, user=user)
+
+    return user, instances
+
+
+  @pytest.mark.parametrize([
+    'num',
+    'correct_count',
+  ], [
+    (19, 19),
+    (20, 20),
+    (21, 20),
+  ], ids=[
+    'under-paginate-by-value',
+    'equal-to-paginate-by-value',
+    'over-paginate-by-value',
+  ])
+  def test_pagination_in_listview(self, mocker, login_process, get_pseudo_instances_for_listview, num, correct_count):
+    user, screeners = get_pseudo_instances_for_listview
+    screeners = models.StockScreener.objects.filter(pk__in=self.get_pks(screeners[:num]))
+    mocker.patch('stock.views.ListStockScreener.get_queryset', return_value=screeners)
+    client, user = login_process(user=user)
+    response = client.get(self.list_url)
+    instances = response.context['screeners']
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(instances) == correct_count
+
+  # ==========
+  # CreateView
+  # ==========
+  def test_access_to_createview(self, wrap_login):
+    client, _ = wrap_login
+    response = client.get(self.create_url)
+
+    assert response.status_code == status.HTTP_200_OK
+
+  def test_access_to_createvie_without_authentication(self, client):
+    response = client.get(self.create_url)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_valid_post_access_to_createview(self, login_process):
+    client, user = login_process(user=factories.UserFactory())
+    response = client.post(self.create_url, data=self.form_data)
+    total = models.StockScreener.objects.filter(user=user).count()
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == self.list_url
+    assert total == 1
+
+  # ==========
+  # UpdateView
+  # ==========
+  def test_access_to_updateview(self, wrap_login):
+    client, user = wrap_login
+    instance = factories.StockScreenerFactory(user=user)
+    response = client.get(self.update_url(instance.pk))
+
+    assert response.status_code == status.HTTP_200_OK
+
+  def test_access_to_updateview_without_authentication(self, client):
+    instance = factories.StockScreenerFactory()
+    response = client.get(self.update_url(instance.pk))
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_invalid_access_to_updateview(self, wrap_login):
+    client, _ = wrap_login
+    instance = factories.StockScreenerFactory()
+    response = client.get(self.update_url(instance.pk))
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_valid_post_access_to_updateview(self, wrap_login):
+    client, user = wrap_login
+    target = factories.StockScreenerFactory(user=user)
+    response = client.post(
+      self.update_url(target.pk),
+      data=urlencode(self.form_data),
+      content_type='application/x-www-form-urlencoded',
+    )
+    instance = models.StockScreener.objects.get(pk=target.pk)
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == self.list_url
+    assert self.compare_form_data(instance)
+
+  def test_invalid_post_access_to_updateview(self, wrap_login):
+    client, _ = wrap_login
+    target = factories.StockScreenerFactory()
+    response = client.post(
+      self.update_url(target.pk),
+      data=urlencode(self.form_data),
+      content_type='application/x-www-form-urlencoded',
+    )
+    instance = models.StockScreener.objects.get(pk=target.pk)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert self.compare_form_data(instance, other=target)
+
+  # ==========
+  # DeleteView
+  # ==========
+  def test_access_to_deleteview(self, login_process):
+    client, user = login_process(user=factories.UserFactory())
+    instance = factories.StockScreenerFactory(user=user)
+    response = client.get(self.delete_url(instance.pk))
+
+    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+  def test_access_to_deleteview_without_authentication(self, client):
+    instance = factories.StockScreenerFactory()
+    response = client.get(self.delete_url(instance.pk))
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_valid_post_access_to_deleteview(self, login_process):
+    client, user = login_process(user=factories.UserFactory())
+    target = factories.StockScreenerFactory(user=user)
+    response = client.post(self.delete_url(target.pk))
+    total = models.StockScreener.objects.filter(user=user).count()
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response['Location'] == self.list_url
+    assert total == 0
+
+  def test_invalid_post_access_to_deleteview(self, wrap_login):
+    client, _ = wrap_login
+    target = factories.StockScreenerFactory()
+    response = client.post(self.delete_url(target.pk))
+    total = models.StockScreener.objects.filter(pk=target.pk).count()
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert total == 1
+
+  # ==========
+  # DetailView
+  # ==========
+  def test_access_to_detailview_without_authentication(self, client):
+    instance = factories.StockScreenerFactory()
+    response = client.get(self.detail_url(instance.pk))
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_invalid_request_to_detailview(self, wrap_login):
+    client, _ = wrap_login
+    instance = factories.StockScreenerFactory()
+    response = client.get(self.detail_url(instance.pk))
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+  def test_get_request_to_detailview(self, mocker, get_stock_records, login_process):
+    stocks = get_stock_records
+    # Setup
+    client, user = login_process(user=factories.UserFactory())
+    instance = factories.StockScreenerFactory(
+      user=user,
+      priority=3,
+      condition='code == "0002" or code == "0003" or name == "stock05"',
+      ordering='-code',
+    )
+    exact_ids = [stocks[4].pk, stocks[2].pk, stocks[1].pk]
+    queryset = models.Stock.objects.filter(pk__in=self.get_pks(stocks))
+    mocker.patch('stock.models.StockManager.get_queryset', return_value=queryset)
+    # Access to target link
+    response = client.get(self.detail_url(instance.pk))
+    screener = response.context['screener']
+    targets = response.context['stocks']
+    initial_values = response.context['download_form'].initial
+
+    assert response.status_code == status.HTTP_200_OK
+    assert screener.pk == instance.pk
+    assert len(targets) == 3
+    assert all([obj.pk in exact_ids for obj in targets])
+    assert initial_values.get('condition') == instance.condition
+    assert initial_values.get('ordering') == instance.ordering
+    assert initial_values.get('allowed_long_condition')
+
 # ==========
 # StockViews
 # ==========

@@ -8,6 +8,7 @@ from django.db.models import Q
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
 from django.utils import timezone as djangoTimeZone
+from django.utils.safestring import mark_safe
 from django.contrib.auth import get_user_model
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -414,10 +415,12 @@ class TestValidateCondition:
     ('visit', SyntaxError('invalid-input'), 'Invalid syntax: invalid-input'),
     ('visit', IndexError('invalid-index'), 'Invalid syntax: invalid-index'),
     ('validate', KeyError('invalid-key'), "Invalid variable: \'invalid-key\'"),
+    ('validate', ValueError('invalid-value'), "Invalid value: invalid-value"),
   ],ids=[
     'raise-syntax-error',
     'raise-index-error',
     'raise-key-error',
+    'raise-value-error',
   ])
   def test_invalid_stock_validator(self, mocker, method_name, exception, err_msg):
     mocker.patch('stock.models._ValidateCondition', new=_DummyASTCondition)
@@ -552,11 +555,13 @@ class TestValidateCondition:
     'exception_type',
     'err_msg',
   ], [
+    ('code in "3" and hoge', ValueError, 'Invalid inputs exist.'),
     ('industry == "hoge"', KeyError, 'industry does not exist'),
     ('price < 10.001', ValidationError, 'Invalid data (price, 10.001): '),
     ('code < "1200"', ValidationError, 'Invalid operator between code and 1200'),
     ('price in 1200', ValidationError, 'Invalid operator between price and 1200'),
   ], ids=[
+    'invalid-value',
     'invalid-keyname',
     'invalid-field-value',
     'invalid-operator-for-str',
@@ -572,6 +577,28 @@ class TestValidateCondition:
       visitor.validate()
 
     assert err_msg in str(ex.value)
+
+  def test_call_twice_and_get_same_answer(self):
+    condition = 'price < 1000 and code in "3"'
+    field_types, comp_ops = self.get_stock_validator_config()
+    visitor = models._ValidateCondition(field_types, comp_ops)
+    tree = ast.parse(condition, mode='eval')
+    # Call once
+    visitor.visit(tree)
+    vars_1st = {key: vals for key, vals in visitor._variables.items()}
+    ops_1st = {key: vals for key, vals in visitor._operators.items()}
+    len_1st = len(visitor.stack)
+    visitor.validate()
+    # Call twice
+    visitor.visit(tree)
+    vars_2nd = {key: vals for key, vals in visitor._variables.items()}
+    ops_2nd = {key: vals for key, vals in visitor._operators.items()}
+    len_2nd = len(visitor.stack)
+    visitor.validate()
+
+    assert vars_1st == vars_2nd
+    assert ops_1st == ops_2nd
+    assert len_1st == len_2nd == 0
 
 # ==================
 # TestWrapValidation
@@ -2738,13 +2765,76 @@ class TestSnapshot(SharedFixtures):
     assert detail_ss3['cash']['balance'] == 2024
     assert detail_ss3['purchased_stocks'][0]['stock']['price'] == 4567
 
+# =============
+# StockScreener
+# =============
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+class TestStockScreener(BaseTestUtils):
+  @pytest.mark.parametrize([
+    'condition',
+    'ordering',
+    'expected_ids',
+  ], [
+    ('', 'price', [1, 4, 0, 3, 2]),
+    ('price <= 1000', '', [1, 4]),
+    ('price <= 1000', 'er', [4, 1]),
+    ('1 < pbr and bps < 4', 'pbr,-eps', [3, 0, 1]),
+  ], ids=[
+    'condition-is-empty',
+    'ordering-is-empty',
+    'set-both-condition-and-ordering',
+    'multiple-ordering',
+  ])
+  def test_get_screened_stocks_method(self, mocker, pseudo_stock_data, condition, ordering, expected_ids):
+    stocks = pseudo_stock_data
+    queryset = models.Stock.objects.filter(pk__in=self.get_pks(stocks))
+    mocker.patch('stock.models.StockManager.get_queryset', return_value=queryset)
+    instance = factories.StockScreenerFactory(
+      condition=condition,
+      ordering=ordering,
+    )
+    estimated = instance.get_screened_stocks()
+    expected_pks = [stocks[idx].pk for idx in expected_ids]
+
+    assert estimated.count() == len(expected_ids)
+    assert all(obj.pk == pk for obj, pk in zip(estimated, expected_pks))
+
+  @pytest.mark.parametrize([
+    'condition',
+    'ordering',
+  ], [
+    ('', ''),
+    ('', '-er'),
+    ('price <= 1000', ''),
+    ('price <= 1000', '-er'),
+    ('price <= 1000', '-er,price'),
+  ], ids=[
+    'empty-data',
+    'set-ordering',
+    'set-condition',
+    'set-both-parameters',
+    'multiple-ordering',
+  ])
+  def test_get_initial_for_stock_download_form(self, condition, ordering):
+    instance = factories.StockScreenerFactory(
+      condition=condition,
+      ordering=ordering,
+    )
+    out = instance.get_initial_for_stock_download_form()
+
+    assert out['condition'] == mark_safe(instance.condition)
+    assert out['ordering'] == instance.ordering
+    assert out['allowed_long_condition']
+
 # ======================
 # Delete related records
 # ======================
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-class TestDeleteRecords:
+class TestDeleteRecords(BaseTestUtils):
   @pytest.mark.parametrize([
     'basename',
     'base_factory',
@@ -2755,11 +2845,15 @@ class TestDeleteRecords:
     ('industry', factories.IndustryFactory, models.Industry, factories.StockFactory, models.Stock),
     ('user', factories.UserFactory, UserModel, factories.CashFactory, models.Cash),
     ('user', factories.UserFactory, UserModel, factories.PurchasedStockFactory, models.PurchasedStock),
+    ('user', factories.UserFactory, UserModel, factories.SnapshotFactory, models.Snapshot),
+    ('user', factories.UserFactory, UserModel, factories.StockScreenerFactory, models.StockScreener),
     ('stock', factories.StockFactory, models.Stock, factories.PurchasedStockFactory, models.PurchasedStock),
   ], ids=[
     'industry-stock-pair',
     'user-cach-pair',
     'user-purchased-stock-pair',
+    'user-snapshot-pair',
+    'user-stock-screener-pair',
     'stock-purchased-stock-pair',
   ])
   def test_delete_related_records(self, basename, base_factory, base_model, target_factory, target_model):
@@ -2769,9 +2863,52 @@ class TestDeleteRecords:
       *target_factory.create_batch(5, **{basename: instances[0]}),
       *target_factory.create_batch(expected_counts, **{basename: instances[1]}),
     ]
-    all_pks = [obj.pk for obj in target_cases]
     # Delete instance
     base_model.objects.get(pk=instances[0].pk).delete()
-    rest_counts = target_model.objects.filter(pk__in=all_pks).count()
+    rest_counts = target_model.objects.filter(pk__in=self.get_pks(target_cases)).count()
 
     assert rest_counts == expected_counts
+
+  @pytest.fixture
+  def get_ss_ptasks(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      snapshots = factories.SnapshotFactory.create_batch(2, user=user)
+      periodic_tasks = [
+        factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshots[0].pk})),
+        factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshots[0].pk})),
+        factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshots[1].pk})),
+      ]
+
+    return snapshots, periodic_tasks
+
+  def test_delete_snapshot_and_periodic_task(self, get_ss_ptasks):
+    snapshots, periodic_tasks = get_ss_ptasks
+    snapshots[0].delete()
+    ptasks = models.PeriodicTask.objects.filter(pk__in=self.get_pks(periodic_tasks))
+
+    assert ptasks.count() == 1
+    assert ptasks.first().pk == periodic_tasks[-1].pk
+
+  @pytest.mark.parametrize([
+    'target_method',
+  ], [
+    ('django.db.models.query.QuerySet.delete', ),
+    ('django.db.models.Model.delete', ),
+  ], ids=[
+    'failed-to-delte-method-of-queryset',
+    'failed-to-original-delete-method',
+  ])
+  def test_failed_to_delete_snapshot(self, mocker, get_ss_ptasks, target_method):
+    mock_delete = mocker.patch(target_method, side_effect=Exception('Failed to delete the object'))
+    snapshots, periodic_tasks = get_ss_ptasks
+
+    with pytest.raises(Exception) as ex:
+      snapshots[1].delete()
+    # Check relevant records
+    ss_records = models.Snapshot.objects.filter(pk__in=self.get_pks(snapshots))
+    ptasks_records = models.PeriodicTask.objects.filter(pk__in=self.get_pks(periodic_tasks))
+
+    assert mock_delete.called
+    assert ss_records.count() == len(snapshots)
+    assert ptasks_records.count() == len(periodic_tasks)

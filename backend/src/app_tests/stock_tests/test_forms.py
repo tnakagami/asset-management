@@ -1194,6 +1194,7 @@ class TestStockDownloadForm:
     ({'filename': 'hoge', 'condition': 'price in 0', 'ordering': 'code'}, ),
     ({'filename': 'hoge', 'condition': 'price > 0', 'ordering': 'xxx'}, ),
     ({'filename': '日本語', 'condition': 'price > 0', 'ordering': 'code'}, ),
+    ({'filename': 'hoge', 'condition': '2'*1025, 'ordering': 'code', 'allowed_long_condition': True}, ),
   ], ids=[
     'no-inputs',
     'empty-data',
@@ -1201,6 +1202,7 @@ class TestStockDownloadForm:
     'invalid-condition',
     'invalid-ordering',
     'use-multi-byte-filename',
+    'allowd-long-condition',
   ])
   def test_check_validation(self, params):
     form = forms.StockDownloadForm(data=params)
@@ -1222,6 +1224,33 @@ class TestStockDownloadForm:
     form = forms.StockDownloadForm(data=params)
 
     assert not form.is_valid()
+
+  @pytest.mark.parametrize([
+    'condition',
+    'is_allowd',
+    'is_valid',
+  ], [
+    ('123', False, True),
+    ('1'*1025, False, False),
+    ('1'*1025, True, True),
+  ], ids=[
+    'short-condition',
+    'invalid-long-condition',
+    'allow-long-condition',
+  ])
+  def test_check_clean_method(self, condition, is_allowd, is_valid):
+    err_msg = 'Condition is too long. Please enter more short condition.'
+    params = {
+      'condition': condition,
+      'allowed_long_condition': is_allowd,
+    }
+    form = forms.StockDownloadForm(data=params)
+    validation_result = form.is_valid()
+    exact = '' if is_valid else err_msg
+    err = form.errors.get('condition', '')
+
+    assert validation_result == is_valid
+    assert exact in err
 
   @pytest.mark.parametrize([
     'params',
@@ -1298,3 +1327,74 @@ class TestStockDownloadForm:
     assert fname == expected_fname
     assert tree is None
     assert order == [models.StockOrderingTypes.CODE_ASC.value]
+
+# =================
+# StockScreenerForm
+# =================
+@pytest.mark.stock
+@pytest.mark.form
+@pytest.mark.django_db
+class TestStockScreenerForm:
+  @pytest.mark.parametrize([
+    'field_name',
+    'choices',
+    'attrs',
+  ], [
+    ('target', models.StockMembers.choices, models.StockMembers.get_attribute_types()),
+    ('compop', models.OperatorTypes.choices, models.OperatorTypes.get_attribute_types()),
+  ], ids=[
+    'target',
+    'compop',
+  ])
+  def test_check_widgets(self, get_user, field_name, choices, attrs):
+    user = get_user
+    form = forms.StockScreenerForm(user=user)
+    field = form.fields.get(field_name)
+    data_attrs = field.widget.data_attrs
+
+    assert field.choices == choices
+    assert data_attrs == attrs
+
+  def test_check_ordering_types(self, get_user):
+    user = get_user
+    form = forms.StockScreenerForm(user=user)
+    ordering_types = form.ordering_types
+    exacts = models.StockOrderingTypes.choices
+
+    assert ordering_types == exacts
+
+  @pytest.mark.parametrize([
+    'params',
+    'is_valid',
+  ], [
+    ({'title': 'hoge', 'priority':  1, 'condition': 'price < 1000 and code in "5"', 'ordering': '-er'}, True),
+    ({'title': 'hoge', 'priority':  1, 'condition': 'price < 1000 and code in "5"', 'ordering': '-er,-code'}, True),
+    ({'title':  'foo', 'priority':  0, 'condition': 'price < 1000 and code in "5"'}, True),
+    ({'title':  'bar',                 'condition': 'price < 1000 and code in "5"', 'ordering': '-code'}, False),
+    ({'title':     '', 'priority':  1, 'condition': 'price < 1000', 'ordering': '-bps'}, False),
+    ({                 'priority':  1, 'condition': 'price < 1000', 'ordering': '-roe'}, False),
+    ({'title': 'hoge', 'priority':  1, 'condition':             '', 'ordering': 'code'}, False),
+    ({'title': 'hoge', 'priority':  1,                              'ordering': 'pbr'}, False),
+    ({'title': 'hoge', 'priority':  1, 'condition': 'price < 1000 and hogehoge', 'ordering': 'per'}, False),
+    ({'title': 'hoge', 'priority': -1, 'condition': 'price < 1000', 'ordering': '-price'}, False),
+    ({'title': 'hoge', 'priority':  1, 'condition': 'price < 1000', 'ordering': 'code-price'}, False),
+    ({'title': 'hoge', 'priority':  1, 'condition': 'price < 1000', 'ordering': 'hogehoge'}, False),
+  ], ids=[
+    'normal-input',
+    'normal-input-with-multiple-orderings',
+    'ordering-is-not-set',
+    'priority-is-not-set',
+    'title-is-empty',
+    'title-is-not-set',
+    'condition-is-empty',
+    'condition-is-not-set',
+    'has-condition-error',
+    'has-priority-error',
+    'has-ordering-error',
+    'include-invalid-ordering',
+  ])
+  def test_check_stock_screener_form(self, get_user, params, is_valid):
+    user = get_user
+    form = forms.StockScreenerForm(user=user, data=params)
+
+    assert form.is_valid() == is_valid

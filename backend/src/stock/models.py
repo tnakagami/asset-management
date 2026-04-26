@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.core.validators import MinValueValidator, ValidationError
 from django.utils.translation import gettext_lazy, get_language
@@ -78,6 +78,12 @@ def wrap_validation(callback):
       if tree is not None:
         visitor.visit(tree)
         visitor.validate()
+    except ValueError as ex:
+      raise ValidationError(
+        gettext_lazy('Invalid value: %(ex)s'),
+        code='invalid_value',
+        params={'ex': str(ex)},
+      )
     except (SyntaxError, IndexError) as ex:
       raise ValidationError(
         gettext_lazy('Invalid syntax: %(ex)s'),
@@ -165,13 +171,9 @@ class _ValidateCondition(_BaseConditionVisitor):
     super().__init__(*args, **kwargs)
 
   def validate(self):
-    valid_keys = self._fields.keys()
-
-    while self.stack:
-      key = self.stack.pop()
-
-      if key not in valid_keys:
-        raise KeyError(gettext_lazy('%(key)s does not exist') % {'key': key})
+    # If some items which do not have any comparison operators exist, raise exception
+    if self.stack:
+      raise ValueError(gettext_lazy('Invalid inputs exist.'))
 
     for key in self._variables.keys():
       vals = self._variables[key]
@@ -258,6 +260,7 @@ class _AnalyzeAndCreateQmodelCondition(_BaseConditionVisitor):
 
   # Assumption: top module name is an expression
   def visit_Expression(self, node):
+    self.q_cond = None
     super().visit_Expression(node)
     self.visit(node.body)
     self.q_cond = self.stack.pop()
@@ -1231,6 +1234,16 @@ class Snapshot(models.Model):
       self.update_record()
     super().save(*args, **kwargs)
 
+  @transaction.atomic
+  def delete(self, *args, **kwargs):
+    condition = json.dumps({'user_pk': self.user.pk, 'snapshot_pk': self.pk})[1:-1]
+    params = {'kwargs__contains': condition}
+    # Delete this instance and related periodic tasks
+    PeriodicTask.objects.filter(**params).delete()
+    results = super().delete(*args, **kwargs)
+
+    return results
+
   def __str__(self):
     target_time = convert_timezone(self.created_at, is_string=True)
     out = f'{self.title}({target_time})'
@@ -1444,6 +1457,7 @@ class StockScreener(models.Model):
     out = {
       'condition': mark_safe(self.condition),
       'ordering': self.ordering,
+      'allowed_long_condition': True,
     }
 
     return out

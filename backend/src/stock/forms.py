@@ -716,6 +716,26 @@ class StockDownloadForm(forms.Form):
       'id': 'download-ordering',
     }),
   )
+  allowed_long_condition = forms.BooleanField(
+    label=gettext_lazy('Allowed long condition'),
+    required=False,
+    initial=False,
+    widget=forms.HiddenInput(),
+  )
+
+  def __init__(self, *args, max_condition_length=1024, **kwargs):
+    self.max_condition_length = max_condition_length
+    super().__init__(*args, **kwargs)
+
+  def clean(self):
+    cleaned_data = super().clean()
+    condition = cleaned_data.get('condition')
+    allowed_long_condition = cleaned_data.get('allowed_long_condition')
+
+    if not allowed_long_condition and len(condition) > self.max_condition_length:
+      self.add_error('condition', gettext_lazy('Condition is too long. Please enter more short condition.'))
+
+    return cleaned_data
 
   def get_query_string(self):
     condition = self.cleaned_data.get('condition', '')
@@ -764,14 +784,14 @@ class StockScreenerForm(_BaseModelFormWithCSS):
       }),
       'ordering': forms.TextInput(attrs={
         'id': 'column-ordering',
-        'name': 'column-ordering',
+        'name': 'ordering',
         'disabled': True,
         'readonly': True,
       }),
     }
 
   @property
-  def get_ordering_types(self):
+  def ordering_types(self):
     return models.StockOrderingTypes.choices
 
   target = forms.ChoiceField(
