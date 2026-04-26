@@ -149,14 +149,14 @@ while [ -n "$1" ]; do
 
     celery-log )
       if [ "$2" = "-s" ]; then
-        filtering="MainProcess"
+        filtering="ForkPoolWorker"
         pattern='s|\[[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*\]||g'
         shift
       else
-        filtering="*"
+        filtering="^[^/]"
         pattern=''
       fi
-      docker exec ${CELERY_CONTAINER_NAME} /opt/show-log.sh | grep -v "${filtering}" | sed -e "${pattern}" -e "s/: / \| /g" -e "s/\[\|\]/ /g" | sort -t "|" -k 1
+      docker exec ${CELERY_CONTAINER_NAME} /opt/show-log.sh | grep "${filtering}" | sed -e "${pattern}" -e "s/: / \| /g" -e "s/\[\|\]/ /g" | sort -t "|" -k 1 | grep -v "^$"
 
       shift
       ;;
