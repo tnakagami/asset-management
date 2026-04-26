@@ -3,10 +3,12 @@ import ast
 import json
 import re
 import urllib.parse
+import itertools
 from django.db.models import Q
 from django.db.utils import IntegrityError, DataError
 from django.core.validators import ValidationError
 from django.utils import timezone as djangoTimeZone
+from django.utils.safestring import mark_safe
 from django.contrib.auth import get_user_model
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -180,6 +182,16 @@ class DummyModule:
 # ================
 @pytest.mark.stock
 @pytest.mark.model
+class TestIgnoredField:
+  def test_check_ignore_field(self):
+    try:
+      instance = models._IgnoredField()
+      instance.clean(3, None)
+    except Exception as ex:
+      pytest.fail(f'Unexpected Error: {ex}')
+
+@pytest.mark.stock
+@pytest.mark.model
 class TestGlobalFunction:
   def test_check_bind_function(self):
     @models.bind_user_function
@@ -303,6 +315,371 @@ class TestGlobalFunction:
     with pytest.raises(ValidationError) as ex:
       models._validate_code(code)
     assert 'either alphabets or numbers' in str(ex.value)
+
+  @pytest.mark.parametrize([
+    'ordering',
+  ], [
+    (val, ) for val in models.StockOrderingTypes.values
+  ], ids=lambda xs: str(xs))
+  def test_valid_single_pair(self, ordering):
+    models.stock_ordering_validator(ordering)
+
+  @pytest.mark.parametrize([
+    'left_pair',
+    'right_pair',
+  ], [
+    (pair1, pair2) for pair1, pair2 in itertools.combinations(models.StockOrderingTypes.values, 2)
+  ], ids=lambda xs: str(xs))
+  def test_valid_multi_pairs(self, left_pair, right_pair):
+    models.stock_ordering_validator(f'{left_pair},{right_pair}')
+    models.stock_ordering_validator([left_pair, right_pair])
+
+  def test_invalid_stock_ordering_validator(self):
+    asc_code = models.StockOrderingTypes.CODE_ASC.value
+    desc_price = models.StockOrderingTypes.PRICE_DESC
+    ordering = f'{asc_code}{desc_price}'
+
+    with pytest.raises(ValidationError) as ex:
+      models.stock_ordering_validator(ordering)
+    assert 'Invalid data' in str(ex.value)
+
+  @pytest.mark.parametrize([
+    'condition',
+  ], [
+    ('a < 10', ),
+    ('0 < a < 10', ),
+    ('c < 10 and \n d < 20', ),
+    ('x < y\n and y < z\n or z > c', ),
+  ], ids=[
+    'single-operator',
+    'multi-operators',
+    'with-single-return-code',
+    'with-multi-return-codes',
+  ])
+  def test_valid_get_tree(self, condition):
+    tree = models.get_tree(condition)
+
+    assert tree is not None
+
+  @pytest.mark.parametrize([
+    'condition',
+  ], [
+    ('', ),
+    (' ', ),
+    ('      ', ),
+    ('\n', ),
+    ('\n\n', ),
+    (' \n ', ),
+    (' \t\n \t\n ', ),
+  ], ids=[
+    'no-string',
+    'single-blank',
+    'only-blanks',
+    'only-return-code',
+    'only-return-codes',
+    'blank-and-return-code',
+    'complex-pattern',
+  ])
+  def test_invalid_get_tree(self, condition):
+    tree = models.get_tree(condition)
+
+    assert tree is None
+
+# =====================
+# TestValidateCondition
+# =====================
+class _DummyASTCondition:
+  def __init__(self, *args, **kwargs):
+    pass
+
+  def visit(self, node):
+    pass
+
+  def validate(self):
+    pass
+
+@pytest.mark.stock
+@pytest.mark.model
+class TestValidateCondition:
+  def get_stock_validator_config(self):
+    field_types = models.StockMembers.get_field_types()
+    comp_ops = models.StockMembers.get_comp_ops()
+
+    return field_types, comp_ops
+
+  @pytest.mark.parametrize([
+    'method_name',
+    'exception',
+    'err_msg',
+  ], [
+    ('visit', SyntaxError('invalid-input'), 'Invalid syntax: invalid-input'),
+    ('visit', IndexError('invalid-index'), 'Invalid syntax: invalid-index'),
+    ('validate', KeyError('invalid-key'), "Invalid variable: \'invalid-key\'"),
+    ('validate', ValueError('invalid-value'), "Invalid value: invalid-value"),
+  ],ids=[
+    'raise-syntax-error',
+    'raise-index-error',
+    'raise-key-error',
+    'raise-value-error',
+  ])
+  def test_invalid_stock_validator(self, mocker, method_name, exception, err_msg):
+    mocker.patch('stock.models._ValidateCondition', new=_DummyASTCondition)
+    mocker.patch(f'stock.models._ValidateCondition.{method_name}', side_effect=exception)
+
+    with pytest.raises(ValidationError) as ex:
+      models.stock_validator('price < 100')
+
+    assert err_msg in str(ex.value)
+
+  @pytest.mark.parametrize([
+    'condition',
+  ], [
+    ('name == "cone"', ),
+    ('name != "cone"', ),
+    ('price <  10', ),
+    ('price <= 11', ),
+    ('price >  12', ),
+    ('price >= 13', ),
+    ('100 < price <= 200', ),
+    ('bps <= 0.2 < eps < 0.5 < er < 0.75', ),
+    ('name in "hoge"', ),
+    ('name not in "hoge"', ),
+    ('name in "foo" and price < 100', ),
+    ('name in "foo" or price < 100', ),
+    ('price < 100 or eps < 0.2 and er > 0.5', ),
+    ('(price < 100 or eps < 0.2) and er > 0.5', ),
+  ], ids=[
+    'check-compare-eq',
+    'check-compare-not-eq',
+    'check-compare-lt',
+    'check-compare-lte',
+    'check-compare-gt',
+    'check-compare-gte',
+    'check-compare-between-ops',
+    'check-compare-multi-ops-and-vars',
+    'check-compare-in',
+    'check-compare-not-in',
+    'check-boolop-and',
+    'check-boolop-or',
+    'check-boolop-both-ops',
+    'check-boolop-both-with-bracket',
+  ])
+  def test_valid_visit_method(self, condition):
+    field_types, comp_ops = self.get_stock_validator_config()
+    visitor = models._ValidateCondition(field_types, comp_ops)
+    tree = ast.parse(condition, mode='eval')
+
+    try:
+      visitor.visit(tree)
+    except Exception as ex:
+      pytest.fail(f'Unexpected Error: {ex}')
+
+  @pytest.mark.parametrize([
+    'condition',
+  ], [
+    ('code == "cone"', ), ('code != "cone"', ), ('code in "cone"', ), ('code not in "cone"', ),
+    ('name == "cone"', ), ('name != "cone"', ), ('name in "cone"', ), ('name not in "cone"', ),
+    ('industry_name == "cone"', ), ('industry_name != "cone"', ), ('industry_name in "cone"', ), ('industry_name not in "cone"', ),
+    ('price == 10.0', ), ('price != 10.0', ), ('price < 10.0', ), ('price <= 10.0', ), ('price > 10.0', ), ('price >= 10.0', ),
+    ('dividend == 10.0', ), ('dividend != 10.0', ), ('dividend < 10.0', ), ('dividend <= 10.0', ), ('dividend > 10.0', ), ('dividend >= 10.0', ),
+    ('per == 10.0', ), ('per != 10.0', ), ('per < 10.0', ), ('per <= 10.0', ), ('per > 10.0', ), ('per >= 10.0', ),
+    ('pbr == 10.0', ), ('pbr != 10.0', ), ('pbr < 10.0', ), ('pbr <= 10.0', ), ('pbr > 10.0', ), ('pbr >= 10.0', ),
+    ('eps == 10.0', ), ('eps != 10.0', ), ('eps < 10.0', ), ('eps <= 10.0', ), ('eps > 10.0', ), ('eps >= 10.0', ),
+    ('bps == 10.0', ), ('bps != 10.0', ), ('bps < 10.0', ), ('bps <= 10.0', ), ('bps > 10.0', ), ('bps >= 10.0', ),
+    ('roe == 10.0', ), ('roe != 10.0', ), ('roe < 10.0', ), ('roe <= 10.0', ), ('roe > 10.0', ), ('roe >= 10.0', ),
+    ('er == 10.0', ), ('er != 10.0', ), ('er < 10.0', ), ('er <= 10.0', ), ('er > 10.0', ), ('er >= 10.0', ),
+  ], ids=[
+    'check-code-with-eq', 'check-code-with-not-eq', 'check-code-with-in', 'check-code-with-not-in',
+    'check-name-with-eq', 'check-name-with-not-eq', 'check-name-with-in', 'check-name-with-not-in',
+    'check-industry-with-eq', 'check-industry-with-not-eq', 'check-industry-with-in', 'check-industry-with-not-in',
+    'check-price-with-eq', 'check-price-with-not-eq', 'check-price-with-lt', 'check-price-with-lte', 'check-price-with-gt', 'check-price-with-gte',
+    'check-dividend-with-eq', 'check-dividend-with-not-eq', 'check-dividend-with-lt', 'check-dividend-with-lte', 'check-dividend-with-gt', 'check-dividend-with-gte',
+    'check-per-with-eq', 'check-per-with-not-eq', 'check-per-with-lt', 'check-per-with-lte', 'check-per-with-gt', 'check-per-with-gte',
+    'check-pbr-with-eq', 'check-pbr-with-not-eq', 'check-pbr-with-lt', 'check-pbr-with-lte', 'check-pbr-with-gt', 'check-pbr-with-gte',
+    'check-eps-with-eq', 'check-eps-with-not-eq', 'check-eps-with-lt', 'check-eps-with-lte', 'check-eps-with-gt', 'check-eps-with-gte',
+    'check-bps-with-eq', 'check-bps-with-not-eq', 'check-bps-with-lt', 'check-bps-with-lte', 'check-bps-with-gt', 'check-bps-with-gte',
+    'check-roe-with-eq', 'check-roe-with-not-eq', 'check-roe-with-lt', 'check-roe-with-lte', 'check-roe-with-gt', 'check-roe-with-gte',
+    'check-er-with-eq', 'check-er-with-not-eq', 'check-er-with-lt', 'check-er-with-lte', 'check-er-with-gt', 'check-er-with-gte',
+  ])
+  def test_valid_validate_method(self, condition):
+    field_types, comp_ops = self.get_stock_validator_config()
+    visitor = models._ValidateCondition(field_types, comp_ops)
+    tree = ast.parse(condition, mode='eval')
+    visitor.visit(tree)
+
+    try:
+      visitor.validate()
+    except Exception as ex:
+      pytest.fail(f'Unexpected Error: {ex}')
+
+  @pytest.mark.parametrize([
+    'condition',
+    'err_msg',
+  ], [
+    ('a + b',  'cannot use BinOp in this application'),
+    ('a - b',  'cannot use BinOp in this application'),
+    ('a * b',  'cannot use BinOp in this application'),
+    ('a ** b', 'cannot use BinOp in this application'),
+    ('a / b',  'cannot use BinOp in this application'),
+    ('a % 3',  'cannot use BinOp in this application'),
+    ('a // b', 'cannot use BinOp in this application'),
+    ('a >> b', 'cannot use BinOp in this application'),
+    ('a << b', 'cannot use BinOp in this application'),
+    ('price < f(3)', 'cannot use Call in this application'),
+    ('price.dummy < 10', 'cannot use Attribute in this application'),
+  ], ids=[
+    'use-add-op',
+    'use-sub-op',
+    'use-mult-op',
+    'use-pow-op',
+    'use-div-op',
+    'use-mod-op',
+    'use-floor-div-op',
+    'use-right-shift-op',
+    'use-left-shift-op',
+    'use-call',
+    'use-attribute',
+  ])
+  def test_invalid_operator(self, condition, err_msg):
+    field_types, comp_ops = self.get_stock_validator_config()
+    visitor = models._ValidateCondition(field_types, comp_ops)
+    tree = ast.parse(condition, mode='eval')
+
+    with pytest.raises(SyntaxError) as ex:
+      visitor.visit(tree)
+
+    assert err_msg in str(ex.value)
+
+  @pytest.mark.parametrize([
+    'condition',
+    'exception_type',
+    'err_msg',
+  ], [
+    ('code in "3" and hoge', ValueError, 'Invalid inputs exist.'),
+    ('industry == "hoge"', KeyError, 'industry does not exist'),
+    ('price < 10.001', ValidationError, 'Invalid data (price, 10.001): '),
+    ('code < "1200"', ValidationError, 'Invalid operator between code and 1200'),
+    ('price in 1200', ValidationError, 'Invalid operator between price and 1200'),
+  ], ids=[
+    'invalid-value',
+    'invalid-keyname',
+    'invalid-field-value',
+    'invalid-operator-for-str',
+    'invalid-operator-for-number',
+  ])
+  def test_invalid_validation_method_patterns(self, condition, exception_type, err_msg):
+    field_types, comp_ops = self.get_stock_validator_config()
+    visitor = models._ValidateCondition(field_types, comp_ops)
+    tree = ast.parse(condition, mode='eval')
+    visitor.visit(tree)
+
+    with pytest.raises(exception_type) as ex:
+      visitor.validate()
+
+    assert err_msg in str(ex.value)
+
+  def test_call_twice_and_get_same_answer(self):
+    condition = 'price < 1000 and code in "3"'
+    field_types, comp_ops = self.get_stock_validator_config()
+    visitor = models._ValidateCondition(field_types, comp_ops)
+    tree = ast.parse(condition, mode='eval')
+    # Call once
+    visitor.visit(tree)
+    vars_1st = {key: vals for key, vals in visitor._variables.items()}
+    ops_1st = {key: vals for key, vals in visitor._operators.items()}
+    len_1st = len(visitor.stack)
+    visitor.validate()
+    # Call twice
+    visitor.visit(tree)
+    vars_2nd = {key: vals for key, vals in visitor._variables.items()}
+    ops_2nd = {key: vals for key, vals in visitor._operators.items()}
+    len_2nd = len(visitor.stack)
+    visitor.validate()
+
+    assert vars_1st == vars_2nd
+    assert ops_1st == ops_2nd
+    assert len_1st == len_2nd == 0
+
+# ==================
+# TestWrapValidation
+# ==================
+class _ExceptionCallback(_DummyASTCondition):
+  def __init__(self, exception_class, err_msg):
+    self.exception_class = exception_class
+    self.err_msg = err_msg
+
+  def validate(self):
+    raise self.exception_class(self.err_msg)
+
+@pytest.mark.stock
+@pytest.mark.model
+class TestWrapValidation:
+  @pytest.mark.parametrize([
+    'condition',
+  ], [
+    ('2<er<4', ),
+    ('price < 10\n and bps > 10', ),
+    (' \n \t\t   \n   ', ),
+  ], ids=[
+    'simple-pattern',
+    'with-return-code',
+    'blank-data',
+  ])
+  def test_decorator_of_validation(self, condition):
+    @models.wrap_validation
+    def sample_callback():
+      return _DummyASTCondition()
+
+    ret = sample_callback(condition)
+
+    assert ret is None
+
+  @pytest.mark.parametrize([
+    'exception_class',
+    'err_msg',
+    'expected_err',
+  ], [
+    (SyntaxError, 'hoge', 'Invalid syntax: hoge'),
+    (IndexError, 'foo', 'Invalid syntax: foo'),
+    (KeyError, 'bar', "Invalid variable: \'bar\'"),
+  ], ids=[
+    'syntax-error',
+    'index-error',
+    'key-error',
+  ])
+  def test_invalid_case_of_decorator(self, exception_class, err_msg, expected_err):
+    @models.wrap_validation
+    def sample_callback():
+      return _ExceptionCallback(exception_class, err_msg)
+
+    with pytest.raises(ValidationError) as ex:
+      _ = sample_callback('1 < 2')
+
+    assert expected_err in str(ex.value)
+
+  def test_check_stock_validator_args(self):
+    # Call test function
+    instance = models.stock_validator.__wrapped__()
+    field_keys = instance._fields.keys()
+    op_keys = instance._comp_ops.keys()
+    # Get expected values
+    expected_fields = models.StockMembers.get_field_types()
+    expected_ops = models.StockMembers.get_comp_ops()
+
+    assert all([key in field_keys for key in expected_fields.keys()])
+    assert all([key in op_keys for key in expected_ops.keys()])
+
+  def test_purchased_stock_validator_args(self):
+    # Call test function
+    instance = models.purchased_stock_validator.__wrapped__()
+    field_keys = instance._fields.keys()
+    op_keys = instance._comp_ops.keys()
+    # Get expected values
+    expected_fields = models.PurchasedStockMembers.get_field_types()
+    expected_ops = models.PurchasedStockMembers.get_comp_ops()
+
+    assert all([key in field_keys for key in expected_fields.keys()])
+    assert all([key in op_keys for key in expected_ops.keys()])
 
 # ===============
 # QmodelCondition
@@ -826,6 +1203,117 @@ class TestStock(SharedFixtures):
       for stock, item in zip(stocks, data)
     ])
 
+# ============
+# StockMembers
+# ============
+@pytest.mark.stock
+@pytest.mark.model
+class TestStockMembers:
+  class_name = models.StockMembers
+
+  def test_get_attribute_types(self):
+    expect_string_members = [
+      self.class_name.CODE.value, self.class_name.NAME.value, self.class_name.INDUSTRY.value,
+    ]
+    expect_number_members = [
+      self.class_name.PRICE.value, self.class_name.DIVIDEND.value, self.class_name.DIV_YIELD.value,
+      self.class_name.PER.value, self.class_name.PBR.value, self.class_name.MULTI_PP.value, self.class_name.EPS.value,
+      self.class_name.BPS.value, self.class_name.ROE.value, self.class_name.ER.value,
+    ]
+    # Call target method
+    attr_types = self.class_name.get_attribute_types()
+    members = self.class_name.values
+
+    assert all([key in members for key in attr_types.keys()])
+    assert all([attr_types[key] == 'str' for key in expect_string_members])
+    assert all([attr_types[key] == 'number' for key in expect_number_members])
+
+  def test_get_field_types(self):
+    defaults = [
+      self.class_name.CODE.value, self.class_name.PRICE.value, self.class_name.DIVIDEND.value,
+      self.class_name.PER.value, self.class_name.PBR.value, self.class_name.EPS.value,
+      self.class_name.BPS.value, self.class_name.ROE.value, self.class_name.ER.value,
+    ]
+    exacts = {
+      self.class_name.NAME.value:      type(models.LocalizedStock._meta.get_field('name')),
+      self.class_name.INDUSTRY.value:  type(models.LocalizedIndustry._meta.get_field('name')),
+      self.class_name.DIV_YIELD.value: models._IgnoredField,
+      self.class_name.MULTI_PP.value:  models._IgnoredField,
+    }
+    exacts.update({key: type(models.Stock._meta.get_field(key)) for key in defaults})
+    # Call target method
+    field_types = self.class_name.get_field_types()
+
+    assert(all([isinstance(field_types[key], exacts[key]) for key in field_types.keys()]))
+
+  def test_get_comp_ops(self):
+    string_members = [
+      self.class_name.CODE.value, self.class_name.NAME.value, self.class_name.INDUSTRY.value,
+    ]
+    number_members = [
+      self.class_name.PRICE.value, self.class_name.DIVIDEND.value, self.class_name.DIV_YIELD.value,
+      self.class_name.PER.value, self.class_name.PBR.value, self.class_name.MULTI_PP.value, self.class_name.EPS.value,
+      self.class_name.BPS.value, self.class_name.ROE.value, self.class_name.ER.value,
+    ]
+    exact_string = {key: models.FOR_STRING for key in string_members}
+    exact_number = {key: models.FOR_NUMBER for key in number_members}
+    # Call target method
+    comp_ops = self.class_name.get_comp_ops()
+    members = self.class_name.values
+
+    assert all([key in members for key in comp_ops.keys()])
+    assert(all([comp_ops[key] == vals for key, vals in exact_string.items()]))
+    assert(all([comp_ops[key] == vals for key, vals in exact_number.items()]))
+
+# =============
+# OperatorTypes
+# =============
+@pytest.mark.stock
+@pytest.mark.model
+class TestOperatorTypes:
+  class_name = models.OperatorTypes
+
+  def test_get_attribute_types(self):
+    for_both = [self.class_name.EQUAL.value, self.class_name.NOT_EQUAL.value]
+    for_number = [
+      self.class_name.GREATER_THAN.value, self.class_name.GREATER_THAN_OR_EQ.value,
+      self.class_name.LESS_THAN.value, self.class_name.LESS_THAN_OR_EQ.value
+    ]
+    for_str = [self.class_name.IN.value, self.class_name.NOT_IN.value]
+    # Call target method
+    attr_types = self.class_name.get_attribute_types()
+    members = self.class_name.values
+
+    assert all([key in members for key in attr_types.keys()])
+    assert all([attr_types[key] == 'both' for key in for_both])
+    assert all([attr_types[key] == 'number' for key in for_number])
+    assert all([attr_types[key] == 'str' for key in for_str])
+
+# ==================
+# StockOrderingTypes
+# ==================
+class TestStockOrderingTypes:
+  @pytest.mark.parametrize([
+    'value',
+    'exact',
+  ], [
+    ('hoge', ['hoge']),
+    ('hoge,foo', ['hoge', 'foo']),
+    ('hoge,-foo,-bar', ['hoge', '-foo', '-bar']),
+    ('foo,bar*hoge', ['foo', 'bar*hoge']),
+    ('foo-bar+hoge', ['foo-bar+hoge']),
+  ], ids=[
+    'without-delimiter',
+    'with-single-item',
+    'with-multi-items',
+    'include-invalid-delimiter',
+    'no-valid-delimiters',
+  ])
+  def test_separate(self, value, exact):
+    output = models.StockOrderingTypes.separate(value)
+
+    assert output == exact
+
 # ====
 # Cash
 # ====
@@ -1299,6 +1787,58 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
     assert params['header'] == ['Code', 'Date', 'Price', 'Count']
     assert records[2] == expected_2nd
     assert records[-1] == expected_last
+
+# =====================
+# PurchasedStockMembers
+# =====================
+class TestPurchasedStockMembers:
+  class_name = models.PurchasedStockMembers
+
+  def test_get_attribute_types(self):
+    string_members = [self.class_name.CODE.value, self.class_name.NAME.value, self.class_name.INDUSTRY.value]
+    number_members = [
+      self.class_name.PRICE.value, self.class_name.PURCHASE_DATE.value,
+      self.class_name.COUNT.value, self.class_name.DIFF.value
+    ]
+    # Call target method
+    attr_types = self.class_name.get_attribute_types()
+    members = self.class_name.values
+
+    assert all([key in members for key in attr_types.keys()])
+    assert all([attr_types[key] == 'str' for key in string_members])
+    assert all([attr_types[key] == 'number' for key in number_members])
+
+  def test_get_field_types(self):
+    defaults = [
+      self.class_name.PRICE.value, self.class_name.PURCHASE_DATE.value, self.class_name.COUNT.value
+    ]
+    exacts = {
+      self.class_name.CODE.value:     type(models.Stock._meta.get_field(self.class_name.CODE.value)),
+      self.class_name.NAME.value:     type(models.LocalizedStock._meta.get_field('name')),
+      self.class_name.INDUSTRY.value: type(models.LocalizedIndustry._meta.get_field('name')),
+      self.class_name.DIFF.value:     models._IgnoredField,
+    }
+    exacts.update({key: type(models.PurchasedStock._meta.get_field(key)) for key in defaults})
+    # Call target method
+    field_types = self.class_name.get_field_types()
+
+    assert(all([isinstance(field_types[key], exacts[key]) for key in field_types.keys()]))
+
+  def test_get_comp_ops(self):
+    string_members = [self.class_name.CODE.value, self.class_name.NAME.value, self.class_name.INDUSTRY.value]
+    number_members = [
+      self.class_name.PRICE.value, self.class_name.PURCHASE_DATE.value,
+      self.class_name.COUNT.value, self.class_name.DIFF.value
+    ]
+    exact_string = {key: models.FOR_STRING for key in string_members}
+    exact_number = {key: models.FOR_NUMBER for key in number_members}
+    # Call target method
+    comp_ops = self.class_name.get_comp_ops()
+    members = self.class_name.values
+
+    assert all([key in members for key in comp_ops.keys()])
+    assert all([comp_ops[key] == vals for key, vals in exact_string.items()])
+    assert all([comp_ops[key] == vals for key, vals in exact_number.items()])
 
 # ==============
 # SnapshotRecord
@@ -2225,13 +2765,76 @@ class TestSnapshot(SharedFixtures):
     assert detail_ss3['cash']['balance'] == 2024
     assert detail_ss3['purchased_stocks'][0]['stock']['price'] == 4567
 
+# =============
+# StockScreener
+# =============
+@pytest.mark.stock
+@pytest.mark.model
+@pytest.mark.django_db
+class TestStockScreener(BaseTestUtils):
+  @pytest.mark.parametrize([
+    'condition',
+    'ordering',
+    'expected_ids',
+  ], [
+    ('', 'price', [1, 4, 0, 3, 2]),
+    ('price <= 1000', '', [1, 4]),
+    ('price <= 1000', 'er', [4, 1]),
+    ('1 < pbr and bps < 4', 'pbr,-eps', [3, 0, 1]),
+  ], ids=[
+    'condition-is-empty',
+    'ordering-is-empty',
+    'set-both-condition-and-ordering',
+    'multiple-ordering',
+  ])
+  def test_get_screened_stocks_method(self, mocker, pseudo_stock_data, condition, ordering, expected_ids):
+    stocks = pseudo_stock_data
+    queryset = models.Stock.objects.filter(pk__in=self.get_pks(stocks))
+    mocker.patch('stock.models.StockManager.get_queryset', return_value=queryset)
+    instance = factories.StockScreenerFactory(
+      condition=condition,
+      ordering=ordering,
+    )
+    estimated = instance.get_screened_stocks()
+    expected_pks = [stocks[idx].pk for idx in expected_ids]
+
+    assert estimated.count() == len(expected_ids)
+    assert all(obj.pk == pk for obj, pk in zip(estimated, expected_pks))
+
+  @pytest.mark.parametrize([
+    'condition',
+    'ordering',
+  ], [
+    ('', ''),
+    ('', '-er'),
+    ('price <= 1000', ''),
+    ('price <= 1000', '-er'),
+    ('price <= 1000', '-er,price'),
+  ], ids=[
+    'empty-data',
+    'set-ordering',
+    'set-condition',
+    'set-both-parameters',
+    'multiple-ordering',
+  ])
+  def test_get_initial_for_stock_download_form(self, condition, ordering):
+    instance = factories.StockScreenerFactory(
+      condition=condition,
+      ordering=ordering,
+    )
+    out = instance.get_initial_for_stock_download_form()
+
+    assert out['condition'] == mark_safe(instance.condition)
+    assert out['ordering'] == instance.ordering
+    assert out['allowed_long_condition']
+
 # ======================
 # Delete related records
 # ======================
 @pytest.mark.stock
 @pytest.mark.model
 @pytest.mark.django_db
-class TestDeleteRecords:
+class TestDeleteRecords(BaseTestUtils):
   @pytest.mark.parametrize([
     'basename',
     'base_factory',
@@ -2242,11 +2845,15 @@ class TestDeleteRecords:
     ('industry', factories.IndustryFactory, models.Industry, factories.StockFactory, models.Stock),
     ('user', factories.UserFactory, UserModel, factories.CashFactory, models.Cash),
     ('user', factories.UserFactory, UserModel, factories.PurchasedStockFactory, models.PurchasedStock),
+    ('user', factories.UserFactory, UserModel, factories.SnapshotFactory, models.Snapshot),
+    ('user', factories.UserFactory, UserModel, factories.StockScreenerFactory, models.StockScreener),
     ('stock', factories.StockFactory, models.Stock, factories.PurchasedStockFactory, models.PurchasedStock),
   ], ids=[
     'industry-stock-pair',
     'user-cach-pair',
     'user-purchased-stock-pair',
+    'user-snapshot-pair',
+    'user-stock-screener-pair',
     'stock-purchased-stock-pair',
   ])
   def test_delete_related_records(self, basename, base_factory, base_model, target_factory, target_model):
@@ -2256,9 +2863,52 @@ class TestDeleteRecords:
       *target_factory.create_batch(5, **{basename: instances[0]}),
       *target_factory.create_batch(expected_counts, **{basename: instances[1]}),
     ]
-    all_pks = [obj.pk for obj in target_cases]
     # Delete instance
     base_model.objects.get(pk=instances[0].pk).delete()
-    rest_counts = target_model.objects.filter(pk__in=all_pks).count()
+    rest_counts = target_model.objects.filter(pk__in=self.get_pks(target_cases)).count()
 
     assert rest_counts == expected_counts
+
+  @pytest.fixture
+  def get_ss_ptasks(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      snapshots = factories.SnapshotFactory.create_batch(2, user=user)
+      periodic_tasks = [
+        factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshots[0].pk})),
+        factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshots[0].pk})),
+        factories.PeriodicTaskFactory(kwargs=json.dumps({'user_pk': user.pk, 'snapshot_pk': snapshots[1].pk})),
+      ]
+
+    return snapshots, periodic_tasks
+
+  def test_delete_snapshot_and_periodic_task(self, get_ss_ptasks):
+    snapshots, periodic_tasks = get_ss_ptasks
+    snapshots[0].delete()
+    ptasks = models.PeriodicTask.objects.filter(pk__in=self.get_pks(periodic_tasks))
+
+    assert ptasks.count() == 1
+    assert ptasks.first().pk == periodic_tasks[-1].pk
+
+  @pytest.mark.parametrize([
+    'target_method',
+  ], [
+    ('django.db.models.query.QuerySet.delete', ),
+    ('django.db.models.Model.delete', ),
+  ], ids=[
+    'failed-to-delte-method-of-queryset',
+    'failed-to-original-delete-method',
+  ])
+  def test_failed_to_delete_snapshot(self, mocker, get_ss_ptasks, target_method):
+    mock_delete = mocker.patch(target_method, side_effect=Exception('Failed to delete the object'))
+    snapshots, periodic_tasks = get_ss_ptasks
+
+    with pytest.raises(Exception) as ex:
+      snapshots[1].delete()
+    # Check relevant records
+    ss_records = models.Snapshot.objects.filter(pk__in=self.get_pks(snapshots))
+    ptasks_records = models.PeriodicTask.objects.filter(pk__in=self.get_pks(periodic_tasks))
+
+    assert mock_delete.called
+    assert ss_records.count() == len(snapshots)
+    assert ptasks_records.count() == len(periodic_tasks)

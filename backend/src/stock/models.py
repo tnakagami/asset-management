@@ -1,21 +1,26 @@
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.core.validators import MinValueValidator, ValidationError
 from django.utils.translation import gettext_lazy, get_language
+from django.utils.html import format_html
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.html import json_script
+from django.utils.safestring import mark_safe
 from django_celery_beat.models import PeriodicTask
 from types import FunctionType
 from dataclasses import dataclass
 from collections import deque
-import urllib.parse
-import re
-import json
-import uuid
+from functools import wraps
 import ast
+import json
+import re
+import urllib.parse
+import uuid
 
 UserModel = get_user_model()
+FOR_STRING = [ast.Eq, ast.NotEq, ast.In, ast.NotIn]
+FOR_NUMBER = [ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE]
 
 def bind_user_function(callback):
   def wrapper(**kwargs):
@@ -55,10 +60,177 @@ def generate_default_filename():
 
   return filename
 
-class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
+def get_tree(data):
+  condition = ' '.join(data.splitlines()).strip()
+  # Convert python like script to abstract syntax tree
+  tree = ast.parse(condition, mode='eval') if condition else None
+
+  return tree
+
+def wrap_validation(callback):
+  @wraps(callback)
+  def wrapper(value):
+    visitor = callback()
+
+    try:
+      tree = get_tree(value)
+
+      if tree is not None:
+        visitor.visit(tree)
+        visitor.validate()
+    except ValueError as ex:
+      raise ValidationError(
+        gettext_lazy('Invalid value: %(ex)s'),
+        code='invalid_value',
+        params={'ex': str(ex)},
+      )
+    except (SyntaxError, IndexError) as ex:
+      raise ValidationError(
+        gettext_lazy('Invalid syntax: %(ex)s'),
+        code='invalid_syntax',
+        params={'ex': str(ex)},
+      )
+    except KeyError as ex:
+      raise ValidationError(
+        gettext_lazy('Invalid variable: %(ex)s'),
+        code='invalid_variable',
+        params={'ex': str(ex)},
+      )
+
+  return wrapper
+
+class _BaseConditionVisitor(ast.NodeVisitor):
+  def __init__(self, *args, **kwargs):
+    self.stack = deque()
+    self._swap_pairs = {
+      ast.Lt:  ast.Gt(),
+      ast.LtE: ast.GtE(),
+      ast.Gt:  ast.Lt(),
+      ast.GtE: ast.LtE(),
+    }
+    super().__init__(*args, **kwargs)
+
+  def callback_compare(self, comp_op):
+    raise NotImplementedError
+
+  # Assumption: top module name is an expression
+  def visit_Expression(self, node):
+    self.stack.clear()
+
+    return node
+
+  def visit_BoolOp(self, node):
+    # Analysis each node
+    for item in node.values:
+      self.visit(item)
+
+  def visit_Compare(self, node):
+    _left = [node.left] + node.comparators[:-1]
+    _right = list(node.comparators)
+
+    for left_item, comp_op, right_item in zip(_left, node.ops, _right):
+      if isinstance(left_item, ast.Constant) and isinstance(right_item, ast.Name):
+        # Swap each item
+        left_item, right_item = right_item, left_item
+        # Swap comparison operator
+        for key, alter_op in self._swap_pairs.items():
+          if isinstance(comp_op, key):
+            comp_op = alter_op
+            break
+      # Analysis each node
+      self.visit(left_item)
+      self.visit(right_item)
+      # Callback
+      self.callback_compare(comp_op)
+
+    return node
+
+  def visit_Name(self, node):
+    self.stack.append(node.id)
+
+    return node
+
+  def visit_Constant(self, node):
+    self.stack.append(node.value)
+
+    return node
+
+class _ValidateCondition(_BaseConditionVisitor):
+  def __init__(self, fields, comp_ops, *args, **kwargs):
+    self._enable_classes = [
+      'Expression',
+      'BoolOp', 'And', 'Or',
+      'Compare', 'Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE', 'In', 'NotIn',
+      'Name',
+      'Constant',
+    ]
+    self._variables = {}
+    self._operators = {}
+    self._fields = fields
+    self._comp_ops = comp_ops
+    super().__init__(*args, **kwargs)
+
+  def validate(self):
+    # If some items which do not have any comparison operators exist, raise exception
+    if self.stack:
+      raise ValueError(gettext_lazy('Invalid inputs exist.'))
+
+    for key in self._variables.keys():
+      vals = self._variables[key]
+      ops = self._operators[key]
+
+      try:
+        field = self._fields[key]
+        comp_ops = self._comp_ops[key]
+      except KeyError:
+        raise KeyError(gettext_lazy('%(key)s does not exist') % {'key': key})
+
+      for value, operator in zip(vals, ops):
+        try:
+          field.clean(f'{value}', None)
+        except ValidationError as ex:
+          raise ValidationError(
+            gettext_lazy('Invalid data (%(key)s, %(value)s): %(ex)s'),
+            code='invalid_data',
+            params={'key': key, 'value': str(value), 'ex': str(ex)},
+          )
+
+        if not any([isinstance(operator, _op) for _op in comp_ops]):
+          raise ValidationError(
+            gettext_lazy('Invalid operator between %(key)s and %(value)s'),
+            code='invalid_operator',
+            params={'key': key, 'value': str(value)},
+          )
+
+  def callback_compare(self, comp_op):
+    # Get relevant data
+    var_value = self.stack.pop()
+    var_name = self.stack.pop()
+    # Add name-value pair to variable list
+    old_vals = self._variables.get(var_name, [])
+    old_ops = self._operators.get(var_name, [])
+    self._variables[var_name] = old_vals + [var_value]
+    self._operators[var_name] = old_ops + [comp_op]
+
+  def visit(self, node):
+    classname = node.__class__.__name__
+
+    if classname not in self._enable_classes:
+      raise SyntaxError(gettext_lazy('cannot use %(name)s in this application') % {'name': classname})
+
+    return super().visit(node)
+
+  def visit_Expression(self, node):
+    self._variables = {}
+    self._operators = {}
+    super().visit_Expression(node)
+    self.visit(node.body)
+
+    return node
+
+class _AnalyzeAndCreateQmodelCondition(_BaseConditionVisitor):
   def __init__(self, *args, **kwargs):
     self.q_cond = None
-    self._data_stack = deque()
     self._comp_op_callbacks = {
       ast.Eq:    lambda name, val:  models.Q(**{f'{name}__exact': val}),
       ast.NotEq: lambda name, val: ~models.Q(**{f'{name}__exact': val}),
@@ -69,87 +241,54 @@ class _AnalyzeAndCreateQmodelCondition(ast.NodeVisitor):
       ast.In:    lambda name, val:  models.Q(**{f'{name}__contains': val}),
       ast.NotIn: lambda name, val: ~models.Q(**{f'{name}__contains': val}),
     }
-    self._swap_pairs = {
-      ast.Lt:  ast.Gt(),
-      ast.LtE: ast.GtE(),
-      ast.Gt:  ast.Lt(),
-      ast.GtE: ast.LtE(),
-    }
     super().__init__(*args, **kwargs)
 
   @property
   def condition(self):
     return self.q_cond
 
+  def callback_compare(self, comp_op):
+    # Note: the right item position is upper than left item one because of using stack
+    val = self.stack.pop()
+    name = self.stack.pop()
+    # Search matched operand
+    for key, callback in self._comp_op_callbacks.items():
+      if isinstance(comp_op, key):
+        q_cond = callback(name, val)
+        self.stack.append(q_cond)
+        break
+
   # Assumption: top module name is an expression
   def visit_Expression(self, node):
-    self._data_stack.clear()
+    self.q_cond = None
+    super().visit_Expression(node)
     self.visit(node.body)
-    self.q_cond = self._data_stack.pop()
+    self.q_cond = self.stack.pop()
 
     return node
 
   def visit_BoolOp(self, node):
-    _len = len(node.values)
-    # Analysis each node
-    for item in node.values:
-      self.visit(item)
+    super().visit_BoolOp(node)
     # Create condition
     q_cond = models.Q()
-    _op = models.Q.OR if isinstance(node.op, ast.Or) else models.Q.AND
-    for _ in range(_len):
-      item = self._data_stack.pop()
-      q_cond.add(item, _op)
-    self._data_stack.append(q_cond)
+    op = models.Q.OR if isinstance(node.op, ast.Or) else models.Q.AND
+    for _ in node.values:
+      item = self.stack.pop()
+      q_cond.add(item, op)
+    self.stack.append(q_cond)
 
     return node
 
   def visit_Compare(self, node):
-    _left = [node.left] + node.comparators[:-1]
-    _right = list(node.comparators)
-    count = 0
-
-    for left_item, comp_op, right_item in zip(_left, node.ops, _right):
-      if isinstance(left_item, ast.Constant) and isinstance(right_item, ast.Name):
-        # Swap each item
-        left_item, right_item = right_item, left_item
-
-        for key, alter_op in self._swap_pairs.items():
-          if isinstance(comp_op, key):
-            comp_op = alter_op
-            break
-
-      # Analysis each node
-      self.visit(left_item)
-      self.visit(right_item)
-      # Note: the right item position is upper than left item one because of using stack
-      val = self._data_stack.pop()
-      name = self._data_stack.pop()
-      # Search matched operand
-      for key, callback in self._comp_op_callbacks.items():
-        if isinstance(comp_op, key):
-          q_cond = callback(name, val)
-          self._data_stack.append(q_cond)
-          break
-      count = count + 1
-
-    q_cond = self._data_stack.pop()
+    super().visit_Compare(node)
+    count = len(node.comparators)
+    q_cond = self.stack.pop()
     # Bind multi comparison
     for _ in range(count - 1):
-      _q_item = self._data_stack.pop()
-      q_cond &= _q_item
+      item = self.stack.pop()
+      q_cond &= item
     # Store added items
-    self._data_stack.append(q_cond)
-
-    return node
-
-  def visit_Name(self, node):
-    self._data_stack.append(node.id)
-
-    return node
-
-  def visit_Constant(self, node):
-    self._data_stack.append(node.value)
+    self.stack.append(q_cond)
 
     return node
 
@@ -457,6 +596,151 @@ class Stock(models.Model):
   def __str__(self):
     return f'{self.get_name()}({self.code})'
 
+class _IgnoredField:
+  def clean(self, value, option):
+    pass
+
+class StockMembers(models.TextChoices):
+  CODE      = 'code',          gettext_lazy('Stock code')
+  NAME      = 'name',          gettext_lazy('Stock name')
+  INDUSTRY  = 'industry_name', gettext_lazy('Stock industry')
+  PRICE     = 'price',         gettext_lazy('Stock price')
+  DIVIDEND  = 'dividend',      gettext_lazy('Dividend')
+  DIV_YIELD = 'div_yield',     gettext_lazy('Dividend yield')
+  PER       = 'per',           gettext_lazy('Price Earnings Ratio')
+  PBR       = 'pbr',           gettext_lazy('Price Book-value Ratio')
+  MULTI_PP  = 'multi_pp',      format_html('{} &times; {}', 'PER', 'PBR')
+  EPS       = 'eps',           gettext_lazy('Earnings Per Share')
+  BPS       = 'bps',           gettext_lazy('Book value Per Share')
+  ROE       = 'roe',           gettext_lazy('Return On Equity')
+  ER        = 'er',            gettext_lazy('Equity Ratio')
+
+  @classmethod
+  def get_attribute_types(cls):
+    for_str = [
+      cls.CODE.value, cls.NAME.value, cls.INDUSTRY.value,
+    ]
+    for_number = [
+      cls.PRICE.value, cls.DIVIDEND.value, cls.DIV_YIELD.value,
+      cls.PER.value, cls.PBR.value, cls.MULTI_PP.value, cls.EPS.value,
+      cls.BPS.value, cls.ROE.value, cls.ER.value,
+    ]
+    pairs = [(key, 'str') for key in for_str] + [(key, 'number') for key in for_number]
+    attr_types = dict(pairs)
+
+    return attr_types
+
+  @classmethod
+  def get_field_types(cls):
+    default_case = lambda key: Stock._meta.get_field(key)
+    rare_cases = {
+      cls.NAME.value:      lambda key: LocalizedStock._meta.get_field('name'),
+      cls.INDUSTRY.value:  lambda key: LocalizedIndustry._meta.get_field('name'),
+      cls.DIV_YIELD.value: lambda key: _IgnoredField(),
+      cls.MULTI_PP.value:  lambda key: _IgnoredField(),
+    }
+    targets = [
+      cls.CODE.value, cls.NAME.value, cls.INDUSTRY.value,
+      cls.PRICE.value, cls.DIVIDEND.value, cls.DIV_YIELD.value,
+      cls.PER.value, cls.PBR.value, cls.MULTI_PP.value, cls.EPS.value,
+      cls.BPS.value, cls.ROE.value, cls.ER.value,
+    ]
+    field_types = dict([(key, rare_cases.get(key, default_case)(key)) for key in targets])
+
+    return field_types
+
+  @classmethod
+  def get_comp_ops(cls):
+    pattern = {
+      'str': FOR_STRING,
+      'number': FOR_NUMBER,
+    }
+    attr_types = cls.get_attribute_types()
+    comp_ops = {key: pattern[val] for key, val in attr_types.items()}
+
+    return comp_ops
+
+@wrap_validation
+def stock_validator():
+  # Define stock fields to check right operand
+  field_types = StockMembers.get_field_types()
+  # Define comparison operators to check the relationship between variable and value
+  comp_ops = StockMembers.get_comp_ops()
+  visitor = _ValidateCondition(field_types, comp_ops)
+
+  return visitor
+
+class OperatorTypes(models.TextChoices):
+  EQUAL              = '==',     gettext_lazy('Equal to')
+  NOT_EQUAL          = '!=',     gettext_lazy('Not equal to')
+  GREATER_THAN       = '>',      gettext_lazy('Geater than')
+  GREATER_THAN_OR_EQ = '>=',     gettext_lazy('Geater than or equal to')
+  LESS_THAN          = '<',      gettext_lazy('Less than')
+  LESS_THAN_OR_EQ    = '<=',     gettext_lazy('Less than or equal to')
+  IN                 = 'in',     gettext_lazy('Include')
+  NOT_IN             = 'not in', gettext_lazy('Not include')
+
+  @classmethod
+  def get_attribute_types(cls):
+    for_both = [cls.EQUAL.value, cls.NOT_EQUAL.value]
+    for_number = [
+      cls.GREATER_THAN.value, cls.GREATER_THAN_OR_EQ.value,
+      cls.LESS_THAN.value, cls.LESS_THAN_OR_EQ.value
+    ]
+    for_str = [cls.IN.value, cls.NOT_IN.value]
+    pairs =   [(key, 'both') for key in for_both] \
+            + [(key, 'number') for key in for_number] \
+            + [(key, 'str') for key in for_str]
+    attr_types = dict(pairs)
+
+    return attr_types
+
+class StockOrderingTypes(models.TextChoices):
+  CODE_ASC       = 'code',           gettext_lazy('Stock code (ASC)')
+  CODE_DESC      = '-code',          gettext_lazy('Stock code (DESC)')
+  NAME_ASC       = 'name',           gettext_lazy('Stock name (ASC)')
+  NAME_DESC      = '-name',          gettext_lazy('Stock name (DESC)')
+  INDUSTRY_ASC   = 'industry_name',  gettext_lazy('Stock industry (ASC)')
+  INDUSTRY_DESC  = '-industry_name', gettext_lazy('Stock industry (DESC)')
+  PRICE_ASC      = 'price',          gettext_lazy('Stock price (ASC)')
+  PRICE_DESC     = '-price',         gettext_lazy('Stock price (DESC)')
+  DIVIDEND_ASC   = 'dividend',       gettext_lazy('Dividend (ASC)')
+  DIVIDEND_DESC  = '-dividend',      gettext_lazy('Dividend (DESC)')
+  DIV_YIELD_ASC  = 'div_yield',      gettext_lazy('Dividend yield (ASC)')
+  DIV_YIELD_DESC = '-div_yield',     gettext_lazy('Dividend yield (DESC)')
+  PER_ASC        = 'per',            gettext_lazy('Price Earnings Ratio (ASC)')
+  PER_DESC       = '-per',           gettext_lazy('Price Earnings Ratio (DESC)')
+  PBR_ASC        = 'pbr',            gettext_lazy('Price Book-value Ratio (ASC)')
+  PBR_DESC       = '-pbr',           gettext_lazy('Price Book-value Ratio (DESC)')
+  MULTI_PP_ASC   = 'multi_pp',       format_html('PER &times; PBR{}', gettext_lazy(' (ASC)'))
+  MULTI_PP_DESC  = '-multi_pp',      format_html('PER &times; PBR{}', gettext_lazy(' (DESC)'))
+  EPS_ASC        = 'eps',            gettext_lazy('Earnings Per Share (ASC)')
+  EPS_DESC       = '-eps',           gettext_lazy('Earnings Per Share (DESC)')
+  BPS_ASC        = 'bps',            gettext_lazy('Book value Per Share (ASC)')
+  BPS_DESC       = '-bps',           gettext_lazy('Book value Per Share (DESC)')
+  ROE_ASC        = 'roe',            gettext_lazy('Return On Equity (ASC)')
+  ROE_DESC       = '-roe',           gettext_lazy('Return On Equity (DESC)')
+  ER_ASC         = 'er',             gettext_lazy('Equity Ratio (ASC)')
+  ER_DESC        = '-er',            gettext_lazy('Equity Ratio (DESC)')
+
+  @classmethod
+  def separate(cls, value):
+    return value.split(',')
+
+def stock_ordering_validator(value):
+  valid_orders = StockOrderingTypes.values
+
+  if isinstance(value, str):
+    value = StockOrderingTypes.separate(value)
+
+  for order in value:
+    if order not in valid_orders:
+      raise ValidationError(
+        gettext_lazy('Invalid data(%(order)s)'),
+        code='invalid_data',
+        params={'order': str(order)},
+      )
+
 class CashQuerySet(models.QuerySet):
   def selected_range(self, from_date=None, to_date=None):
     if from_date and to_date:
@@ -700,6 +984,61 @@ class PurchasedStock(models.Model):
 
     return out
 
+class PurchasedStockMembers(models.TextChoices):
+  CODE          = 'code',          gettext_lazy('Stock code')
+  NAME          = 'name',          gettext_lazy('Stock name')
+  INDUSTRY      = 'industry_name', gettext_lazy('Stock industry')
+  PRICE         = 'price',         gettext_lazy('Average trade price')
+  PURCHASE_DATE = 'purchase_date', gettext_lazy('Purchased date')
+  COUNT         = 'count',         gettext_lazy('The number of purchased stocks')
+  DIFF          = 'diff',          gettext_lazy('Difference')
+
+  @classmethod
+  def get_attribute_types(cls):
+    for_str = [cls.CODE.value, cls.NAME.value, cls.INDUSTRY.value]
+    for_number = [cls.PRICE.value, cls.PURCHASE_DATE.value, cls.COUNT.value, cls.DIFF.value]
+    attr_types = dict([(key, 'str') for key in for_str] + [(key, 'number') for key in for_number])
+
+    return attr_types
+
+  @classmethod
+  def get_field_types(cls):
+    default_case = lambda key: PurchasedStock._meta.get_field(key)
+    rare_cases = {
+      cls.CODE.value:     lambda key: Stock._meta.get_field(key),
+      cls.NAME.value:     lambda key: LocalizedStock._meta.get_field('name'),
+      cls.INDUSTRY.value: lambda key: LocalizedIndustry._meta.get_field('name'),
+      cls.DIFF.value:     lambda key: _IgnoredField(),
+    }
+    targets = [
+      cls.CODE.value, cls.NAME.value, cls.INDUSTRY.value, cls.PRICE.value,
+      cls.PURCHASE_DATE.value, cls.COUNT.value, cls.DIFF.value
+    ]
+    field_types = dict([(key, rare_cases.get(key, default_case)(key)) for key in targets])
+
+    return field_types
+
+  @classmethod
+  def get_comp_ops(cls):
+    pattern = {
+      'str': FOR_STRING,
+      'number': FOR_NUMBER,
+    }
+    attr_types = cls.get_attribute_types()
+    comp_ops = {key: pattern[val] for key, val in attr_types.items()}
+
+    return comp_ops
+
+@wrap_validation
+def purchased_stock_validator():
+  # Define purchased stock fields to check right operand
+  field_types = PurchasedStockMembers.get_field_types()
+  # Define comparison operators to check the relationship between variable and value
+  comp_ops = PurchasedStockMembers.get_comp_ops()
+  visitor = _ValidateCondition(field_types, comp_ops)
+
+  return visitor
+
 @dataclass
 class _SnapshotRecord:
   code: str
@@ -895,6 +1234,16 @@ class Snapshot(models.Model):
       self.update_record()
     super().save(*args, **kwargs)
 
+  @transaction.atomic
+  def delete(self, *args, **kwargs):
+    condition = json.dumps({'user_pk': self.user.pk, 'snapshot_pk': self.pk})[1:-1]
+    params = {'kwargs__contains': condition}
+    # Delete this instance and related periodic tasks
+    PeriodicTask.objects.filter(**params).delete()
+    results = super().delete(*args, **kwargs)
+
+    return results
+
   def __str__(self):
     target_time = convert_timezone(self.created_at, is_string=True)
     out = f'{self.title}({target_time})'
@@ -1058,3 +1407,57 @@ class Snapshot(models.Model):
       records += [instance]
     # Update relevant fields
     #cls.objects.bulk_update(records, fields=['detail'])
+
+class StockScreener(models.Model):
+  class Meta:
+    ordering = ('priority', 'title')
+
+  user = models.ForeignKey(
+    UserModel,
+    verbose_name=gettext_lazy('Owner'),
+    on_delete=models.CASCADE,
+    blank=True,
+    related_name='conditions',
+  )
+  priority = models.IntegerField(
+    verbose_name=gettext_lazy('Priority to show the stock screener'),
+    validators=[MinValueValidator(0)],
+    default=99,
+  )
+  title = models.CharField(
+    max_length=255,
+    verbose_name=gettext_lazy('Title'),
+    help_text=gettext_lazy('Max length of this field is 255.'),
+  )
+  condition = models.TextField(
+    verbose_name=gettext_lazy('Condition'),
+    help_text=gettext_lazy('Condition to screen stocks.'),
+    validators=[stock_validator],
+  )
+  ordering = models.TextField(
+    verbose_name=gettext_lazy('Ordering'),
+    help_text=gettext_lazy('Ordering type of stocks.'),
+    blank=True,
+    validators=[stock_ordering_validator],
+  )
+
+  def get_screened_stocks(self):
+    tree = get_tree(self.condition)
+    # Check ordering
+    if self.ordering:
+      ordering = StockOrderingTypes.separate(self.ordering)
+    else:
+      ordering = [StockOrderingTypes.CODE_ASC.value]
+    # Get queryset
+    queryset = Stock.objects.select_targets(tree=tree).order_by(*ordering)
+
+    return queryset
+
+  def get_initial_for_stock_download_form(self):
+    out = {
+      'condition': mark_safe(self.condition),
+      'ordering': self.ordering,
+      'allowed_long_condition': True,
+    }
+
+    return out

@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=_("Register/Update stock screener") %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" id="stock-screener-form">
+          {% csrf_token %}
+
+          {# Errors #}
+          <div class="row mb-2">
+          {% if form.errors %}
+            <div class="col text-danger">
+              <p class="h5">{% trans "Errors" %}</p>
+              {{ form.errors }}
+            </div>
+          {% endif %}
+          </div>
+          {# Title #}
+          <div class="row mb-2">
+            <div class="col">
+              <div class="form-floating">
+              {% with field=form.title %}
+                {{ field }}
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+              {% endwith %}
+              </div>
+            </div>
+          </div>
+          {# Priority #}
+          <div class="row mb-2">
+            <div class="col">
+              <div class="form-floating">
+              {% with field=form.priority %}
+                {{ field }}
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+              {% endwith %}
+              </div>
+            </div>
+          </div>
+          {# Screening condition #}
+          <div class="row mb-2">
+            <div class="col">
+              <div class="card">
+                <div class="card-header"><span class="h5">{% trans "Screening condition" %}</span></div>
+                <div class="card-body">
+                  {# Input helper elements #}
+                  <div class="row row-cols-2 row-cols-lg-4 g-2">
+                    <div class="col">
+                      <div class="form-floating">
+                      {% with field=form.target %}
+                        {{ field }}
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                      {% endwith %}
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-floating">
+                      {% with field=form.compop %}
+                        {{ field }}
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                      {% endwith %}
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-floating">
+                      {% with field=form.inputs %}
+                        {{ field }}
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                      {% endwith %}
+                      </div>
+                    </div>
+                    <div class="col">
+                      <button
+                        type="button"
+                        id="add-command"
+                        class="btn btn-outline-primary w-100 h-100 custom-boxshadow"
+                      >
+                        {% trans "Add (Ctrl + Enter)" %}
+                      </button>
+                    </div>
+                    <div class="col">
+                      <button
+                        type="button"
+                        id="and-operator"
+                        accesskey="a"
+                        class="btn btn-outline-success w-100 custom-boxshadow"
+                      >
+                        {% trans "AND" %}(<u>a</u>)
+                      </button>
+                    </div>
+                    <div class="col">
+                      <button
+                        type="button"
+                        id="or-operator"
+                        accesskey="o"
+                        class="btn btn-outline-success w-100 custom-boxshadow"
+                      >
+                        {% trans "OR" %}(<u>o</u>)
+                      </button>
+                    </div>
+                    <div class="col">
+                      <button
+                        type="button"
+                        id="left-bracket"
+                        accesskey="l"
+                        class="btn btn-outline-success w-100 custom-boxshadow"
+                      >
+                        {% trans "(" %}<span class="ps-1">(<u>l</u>)</span>
+                      </button>
+                    </div>
+                    <div class="col">
+                      <button
+                        type="button"
+                        id="right-bracket"
+                        accesskey="r"
+                        class="btn btn-outline-success w-100 custom-boxshadow"
+                      >
+                        {% trans ")" %}<span class="ps-1">(<u>r</u>)</span>
+                      </button>
+                    </div>
+                  </div>
+                  {# Main element #}
+                  <div class="row mt-2">
+                    <div class="col">
+                      {% with field=form.condition %}{{ field }}{% endwith %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {# Ordering #}
+          <div class="row">
+            <div class="col">
+              <div class="card">
+                <div class="card-header"><span class="h5">{% trans "Ordering" %}</span></div>
+                <div class="card-body">
+                  {# Main element #}
+                  <div class="row mb-2">
+                    <div class="col">
+                      <div class="input-group">
+                        {% with field=form.ordering %}
+                        {{ field }}
+                        <button
+                          type="button"
+                          id="backspace-ordering-option"
+                          class="btn btn-outline-secondary px-3"
+                          data-key="{{ field.id_for_label }}"
+                        >
+                          <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <button
+                          type="button"
+                          id="delete-ordering-option"
+                          class="btn btn-outline-danger px-3"
+                          data-key="{{ field.id_for_label }}"
+                        >
+                          <i class="fas fa-trash"></i>
+                        </button>
+                        {% endwith %}
+                      </div>
+                    </div>
+                  </div>
+                  {# Input helper elements #}
+                  <div class="row row-cols-2 row-cols-lg-4 g-2">
+                    {% for value, label in form.ordering_types %}
+                    <div class="col">
+                      <button
+                        type="button"
+                        class="btn btn-outline-primary w-100 custom-boxshadow js-btn-event"
+                        data-value="{{ value }}"
+                      >
+                        {{ label }}
+                      </button>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {# Register or cancel #}
+          <div class="mt-1 row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <button
+                type="submit"
+                class="btn btn-primary w-100 custom-boxshadow"
+              >
+                {% trans "Register/Update" %}
+              </button>
+            </div>
+            <div class="col">
+              <a
+                href="{% url 'stock:list_stock_screener' %}"
+                class="btn btn-secondary w-100 custom-boxshadow"
+              >
+                {% trans "Cancel" %}
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block bodyjs %}
+<script>
+(function () {
+  const setupScreenerForm = () => {
+    const removeAllAttrs = (element, ...attrs) => attrs.forEach((_attr) => element.removeAttribute(_attr));
+    const targetColumn = document.getElementById('target-column-name');
+    const compOperator = document.getElementById('comp-operator');
+    const inputData = document.getElementById('input-data');
+    const condition = document.getElementById('condition');
+    const addCmd = document.getElementById('add-command');
+    const backspaceBtn = document.getElementById('backspace-ordering-option');
+    const deleteBtn = document.getElementById('delete-ordering-option');
+    const orderTypeBtns = document.querySelectorAll('.js-btn-event');
+    const operatorValuePair = Object.freeze({
+      'and-operator': ' and ',
+      'or-operator': ' or ',
+      'left-bracket': '(',
+      'right-bracket': ')',
+    });
+    const defaultOperator = compOperator.cloneNode(true);
+    const delimiter = ',';
+    removeAllAttrs(defaultOperator, 'id', 'name');
+
+    // Add change event
+    targetColumn.addEventListener('change', (event) => {
+      const target = event.target;
+      const selectedOption = target.options[target.selectedIndex];
+      const dataType = selectedOption.dataset.type;
+      // Get valid options
+      const validOptions = Array.from(defaultOperator.options).filter((option) => {
+        const _type = option.dataset.type;
+        const ret = (_type === 'both') || (_type === dataType);
+
+        return ret;
+      });
+      // Delete all children
+      while (compOperator.firstChild) {
+        compOperator.removeChild(compOperator.firstChild);
+      }
+      // Add relevant options
+      for (const _option of validOptions) {
+        const element = document.createElement('OPTION');
+        element.setAttribute('value', _option.value);
+        element.setAttribute('data-type', _option.dataset.type);
+        const text = document.createTextNode(_option.textContent);
+        element.appendChild(text);
+        compOperator.appendChild(element);
+      }
+    });
+    // Add key event
+    inputData.addEventListener('keyup', (event) => {
+      if (event.ctrlKey && (event.key === 'Enter')) {
+        addCmd.click();
+      }
+    });
+    // Add focus event
+    inputData.addEventListener('focusin', (event) => {
+      const selectedOption = targetColumn.options[targetColumn.selectedIndex];
+      const dataType = selectedOption.dataset.type;
+      event.target.type = (dataType === 'number') ? 'number' : 'text';
+    });
+    // Add click event
+    addCmd.addEventListener('click', () => {
+      const _variableName = targetColumn.value;
+      const _compOp = compOperator.value;
+      const _inputVal = inputData.value;
+
+      if (_variableName && _compOp && _inputVal) {
+        const selectedOption = targetColumn.options[targetColumn.selectedIndex];
+        const dataType = selectedOption.dataset.type;
+        const value = (dataType === 'str') ? `"${_inputVal}"` : _inputVal;
+        const command = `${_variableName} ${_compOp} ${value}`;
+        condition.value += command;
+      }
+    });
+    for (const [key, word] of Object.entries(operatorValuePair)) {
+      const element = document.getElementById(key);
+      element.addEventListener('click', () => {
+        const sentence = condition.value;
+        const position = condition.selectionStart;
+        const beforeWord = sentence.substr(0, position);
+        const afterWord = sentence.substr(position, sentence.length);
+        condition.value = beforeWord + word + afterWord;
+        targetColumn.focus();
+      });
+    }
+    backspaceBtn.addEventListener('click', (event) => {
+      const key = backspaceBtn.dataset.key;
+      const element = document.getElementById(key);
+      const arr = element.value.split(delimiter);
+      element.value = arr.slice(0, -1).join(delimiter);
+    });
+    deleteBtn.addEventListener('click', (event) => {
+      const key = deleteBtn.dataset.key;
+      const element = document.getElementById(key);
+      element.value = '';
+    });
+    for (const btn of orderTypeBtns) {
+      btn.addEventListener('click', (event) => {
+        const inputData = document.getElementById('column-ordering');
+        const oldVal = inputData.value;
+        const newArr = [event.target.dataset.value];
+        const arr = (oldVal) ? oldVal.split(delimiter).concat(newArr) : newArr;
+        inputData.value = arr.join(delimiter);
+      });
+    }
+    targetColumn.dispatchEvent(new Event('change'));
+  };
+
+  // Define initialization function
+  const init = () => {
+    const form = document.getElementById('stock-screener-form');
+    setupScreenerForm();
+    // Add submit event
+    form.addEventListener('submit', (event) => {
+      const ordering = document.getElementById('column-ordering');
+      ordering.disabled = false;
+    });
+  };
+  //
+  // Add DOM event
+  //
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+{% endblock %}

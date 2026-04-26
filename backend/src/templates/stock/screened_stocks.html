@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% load utils_extras %}
+{% load i18n %}
+{% load humanize %}
+
+{% block header %}
+<style>
+  .hidden-column {
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'breadcrumbs.html' with title=screener.title %}
+<div class="row justify-content-center">
+  <div class="col">
+    <div class="row row-cols-1 g-3">
+      <div class="col">
+        <button
+          type="button"
+          class="btn btn-primary w-100 custom-boxshadow px-0 text-nowrap"
+          data-bs-toggle="modal"
+          data-bs-target="#download-stock-modal"
+        >
+          {% trans "Download stock" %}
+        </button>
+      </div>
+      <div class="col">
+        <p class="fs-4">{% trans "Target headers" %}</p>
+        <select
+          name="headers"
+          id="headers"
+          data-available="{% trans 'Skipped headers' %}"
+          data-selected="{% trans 'Selected headers' %}"
+          data-uptxt="{% trans 'Move selected item up' %}"
+          data-downtxt="{% trans 'Move selected item down' %}"
+        ></select>
+      </div>
+      <div class="col">
+        {% if stocks %}
+        <div class="table-responsive">
+          <table class="table table-hover" id="stock-table">
+            <thead>
+              <tr>
+                <th scope="col" data-name="no">{% trans "No." %}</th>
+                <th scope="col" class="text-nowrap" data-name="code">{% trans "Code" %}</th>
+                <th scope="col" class="text-nowrap" data-name="stock">{% trans "Stock name" %}</th>
+                <th scope="col" class="text-nowrap" data-name="industry">{% trans "Industry" %}</th>
+                <th scope="col" class="text-nowrap" data-name="price">{% trans "Stock price" %}</th>
+                <th scope="col" class="text-nowrap" data-name="dividend">{% trans "Dividend" %}</th>
+                <th scope="col" class="text-nowrap" data-name="yield">{% trans "Dividend yield" %}</th>
+                <th scope="col" class="text-nowrap" data-name="per">{% trans "Price Earnings Ratio" %}</th>
+                <th scope="col" class="text-nowrap" data-name="pbr">{% trans "Price Book-value Ratio" %}</th>
+                <th scope="col" class="text-nowrap" data-name="multpp">{% trans "PER &times; PBR" %}</th>
+                <th scope="col" class="text-nowrap" data-name="eps">{% trans "Earnings Per Share" %}</th>
+                <th scope="col" class="text-nowrap" data-name="bps">{% trans "Book value Per Share" %}</th>
+                <th scope="col" class="text-nowrap" data-name="roe">{% trans "Return On Equity" %}</th>
+                <th scope="col" class="text-nowrap" data-name="er">{% trans "Equity Ratio" %}</th>
+              </tr>
+            </thead>
+            <tbody class="table-group-divider">
+              {% for instance in stocks %}
+              <tr>
+                <td scope="row">{{ forloop.counter }}</td>
+                <td data-type="code">{{ instance.code }}</td>
+                <td data-type="name">{{ instance.get_name }}</td>
+                <td data-type="industry">{{ instance.industry }}</td>
+                <td data-type="price" {% if instance.price|is_negative %}class="text-danger"{% endif %}>{{ instance.price|intcomma }}</td>
+                <td data-type="dividend">{{ instance.dividend|intcomma }}</td>
+                <td data-type="yield">{{ instance.div_yield|floatformat:2 }}&#37;</td>
+                <td data-type="per">{{ instance.per }}</td>
+                <td data-type="pbr">{{ instance.pbr }}</td>
+                <td data-type="multi">{{ instance.multi_pp|floatformat:2 }}</td>
+                <td data-type="eps" {% if instance.eps|is_negative %}class="text-danger"{% endif %}>{{ instance.eps|intcomma }}</td>
+                <td data-type="bps" {% if instance.bps|is_negative %}class="text-danger"{% endif %}>{{ instance.bps|intcomma }}</td>
+                <td data-type="roe" {% if instance.roe|is_negative %}class="text-danger"{% endif %}>{{ instance.roe }}&#37;</td>
+                <td data-type="er" {% if instance.er|is_negative %}class="text-danger"{% endif %}>{{ instance.er }}&#37;</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <span>{% trans "There is no stocks. Please check the screening conditions." %}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Download stock modal #}
+<div class="modal fade" id="download-stock-modal" tabindex="-1" aria-labelledby="download-stock-label" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <p class="modal-title h3" id="download-stock-label">{% trans "Download stock" %}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{% url 'stock:download_stock' %}" id="download-stock-form">
+          {% csrf_token %}
+
+          {{ download_form }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <div class="mt-1 row row-cols-1 row-cols-md-2 g-2 w-100">
+          <div class="col">
+            <button
+              type="submit"
+              id="download-stock-btn"
+              form="download-stock-form"
+              class="btn btn-primary w-100 custom-boxshadow"
+            >
+              {% trans "Download" %}
+            </button>
+          </div>
+          <div class="col">
+            <button
+              id="close-download-stock-modal"
+              type="button"
+              class="btn btn-secondary w-100 custom-boxshadow"
+              data-bs-dismiss="modal"
+            >
+              {% trans "Close" %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block bodyjs %}
+{{ block.super }}
+<script>
+(function () {
+  const setupDualListbox = (helper) => {
+    const updateTableHeaders = (defaultIDs) => {
+      const table = document.getElementById('stock-table');
+      const itemStats = (() => {
+        const columns = Array.from(table.rows[0].cells);
+        const elements = document.querySelectorAll('.dual-listbox__selected > li');
+        const ids = defaultIDs.concat(Array.from(elements).map((elem) => elem.dataset.id));
+        const out = columns.map((col) => ids.includes(col.dataset.name));
+
+        return out;
+      })();
+      for (const row of table.rows) {
+        itemStats.forEach((selected, idx) => {
+          const cell = row.cells[idx];
+          // Update classList
+          if (selected) {
+            cell.classList.remove('hidden-column');
+          }
+          else {
+            cell.classList.add('hidden-column');
+          }
+        });
+      }
+    };
+    // Define options
+    const defaultIDs = ['no', 'code', 'stock'];
+    const options = [
+      {value: 'industry', order:  1, selected: false, text: '{% trans "Industry" %}'},
+      {value: 'price',    order:  2, selected: false, text: '{% trans "Stock price" %}'},
+      {value: 'dividend', order:  3, selected: false, text: '{% trans "Dividend" %}'},
+      {value: 'yield',    order:  4, selected: false, text: '{% trans "Dividend yield" %}'},
+      {value: 'per',      order:  5, selected: false, text: '{% trans "Price Earnings Ratio" %}'},
+      {value: 'pbr',      order:  6, selected: false, text: '{% trans "Price Book-value Ratio" %}'},
+      {value: 'multpp',   order:  7, selected: false, text: '{% trans "PER &times; PBR" %}'},
+      {value: 'eps',      order:  8, selected: false, text: '{% trans "Earnings Per Share" %}'},
+      {value: 'bps',      order:  9, selected: false, text: '{% trans "Book value Per Share" %}'},
+      {value: 'roe',      order: 10, selected: false, text: '{% trans "Return On Equity" %}'},
+      {value: 'er',       order: 11, selected: false, text: '{% trans "Equity Ratio" %}'},
+    ];
+    const dualListbox = helper.createDualListbox('headers', options);
+    const callback = () => updateTableHeaders(defaultIDs);
+    dualListbox.addEventListener('added', callback);
+    dualListbox.addEventListener('removed', callback);
+    dualListbox.add_all_button.addEventListener('click', callback);
+    dualListbox.remove_all_button.addEventListener('click', callback);
+    dualListbox.add_all_button.click();
+  };
+  // Setup download form
+  const setupDownloadForm = (helper) => {
+    const downloadForm = document.getElementById('download-stock-form');
+    const filenameField = document.getElementById('download-filename');
+    // Add keyup event
+    filenameField.addEventListener('keyup', (event) => {
+      if (!event.ctrlKey && (event.key === 'Enter')) {
+        downloadForm.submit();
+      }
+    });
+    // Add submit event
+    downloadForm.addEventListener('submit', (event) => {
+      const execDownload = document.getElementById('download-stock-btn');
+      execDownload.disabled = true;
+      // Setup timer
+      helper.setupDownloadStatus('stock_download_status', '{{ is_secure }}', () => {
+        execDownload.disabled = false;
+        const element = document.getElementById('close-download-stock-modal');
+        element.click();
+      });
+    });
+  };
+  // Define initialization function
+  const init = () => {
+    const helper = new HelperMethods();
+    // Setup download form
+    setupDownloadForm(helper);
+    // Setup dual listbox
+    setupDualListbox(helper);
+  };
+  //
+  // Add DOM event
+  //
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+{% endblock %}

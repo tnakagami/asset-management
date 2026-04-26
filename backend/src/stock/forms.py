@@ -3,7 +3,6 @@ from django.core.validators import FileExtensionValidator
 from django.db import transaction
 from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy
-from django.utils.html import format_html
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
 from utils.forms import ModelFormBasedOnUser, BaseModelDatalistForm
 from utils.widgets import (
@@ -15,10 +14,7 @@ from utils.widgets import (
   CustomRadioSelect,
 )
 from . import models
-from collections import deque
-from functools import wraps
 from io import TextIOWrapper
-import ast
 import csv
 import json
 import urllib.parse
@@ -128,7 +124,6 @@ class PurchasedStockForm(BaseModelDatalistForm, _BaseModelFormWithCSS):
     purchased_stock = self._meta.model.objects.get(pk=pk)
     queryset = models.Stock.objects.filter(pk=purchased_stock.stock.pk)
     self.fields['stock'].queryset = queryset
-
 
 class UploadCsvPurchasedStockForm(forms.Form):
   template_name = 'renderer/custom_form.html'
@@ -535,235 +530,27 @@ class PeriodicTaskForSnapshotForm(forms.ModelForm):
 
     return instance
 
-class _IgnoredField:
-  def clean(self, value, option):
-    pass
-
-class _ValidateCondition(ast.NodeVisitor):
-  for_str = [ast.Eq, ast.NotEq, ast.In, ast.NotIn]
-  for_number = [ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE]
-
-  def __init__(self, fields, comp_ops, *args, **kwargs):
-    self._enable_classes = [
-      'Expression',
-      'BoolOp', 'And', 'Or',
-      'Compare', 'Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE', 'In', 'NotIn',
-      'Name',
-      'Constant',
-    ]
-    self._variables = {}
-    self._operators = {}
-    self._fields = fields
-    self._comp_ops = comp_ops
-    self._stack = deque()
-    super().__init__(*args, **kwargs)
-
-  def validate(self):
-    for key in self._variables.keys():
-      vals = self._variables[key]
-      ops = self._operators[key]
-
-      try:
-        field = self._fields[key]
-        comp_ops = self._comp_ops[key]
-      except KeyError:
-        raise KeyError(gettext_lazy('%(key)s does not exist') % {'key': key})
-
-      for value, operator in zip(vals, ops):
-        try:
-          field.clean(f'{value}', None)
-        except forms.ValidationError as ex:
-          raise forms.ValidationError(
-            gettext_lazy('Invalid data (%(key)s, %(value)s): %(ex)s'),
-            code='invalid_data',
-            params={'key': key, 'value': str(value), 'ex': str(ex)},
-          )
-
-        if not any([isinstance(operator, _op) for _op in comp_ops]):
-          raise forms.ValidationError(
-            gettext_lazy('Invalid operator between %(key)s and %(value)s'),
-            code='invalid_operator',
-            params={'key': key, 'value': str(value)},
-          )
-
-  def visit(self, node):
-    classname = node.__class__.__name__
-
-    if classname not in self._enable_classes:
-      raise SyntaxError(gettext_lazy('cannot use %(name)s in this application') % {'name': classname})
-
-    return super().visit(node)
-
-  def visit_Expression(self, node):
-    self._stack.clear()
-    self._variables = {}
-    self.visit(node.body)
-
-    return node
-
-  def visit_Compare(self, node):
-    _left = [node.left] + node.comparators[:-1]
-    _right = list(node.comparators)
-
-    for left_item, comp_op, right_item in zip(_left, node.ops, _right):
-      if isinstance(left_item, ast.Constant) and isinstance(right_item, ast.Name):
-        # Swap each item
-        left_item, right_item = right_item, left_item
-      # Analysis each node
-      self.visit(left_item)
-      self.visit(right_item)
-      # Get relevant data
-      var_value = self._stack.pop()
-      var_name = self._stack.pop()
-      # Add name-value pair to variable list
-      old_vals = self._variables.get(var_name, [])
-      old_ops = self._operators.get(var_name, [])
-      self._variables[var_name] = old_vals + [var_value]
-      self._operators[var_name] = old_ops + [comp_op]
-
-    return node
-
-  def visit_Name(self, node):
-    self._stack.append(node.id)
-
-    return node
-
-  def visit_Constant(self, node):
-    self._stack.append(node.value)
-
-    return node
-
-def wrap_validation(callback):
-  @wraps(callback)
-  def wrapper(value):
-    condition = ' '.join(value.splitlines())
-    visitor = callback()
-
-    try:
-      tree = ast.parse(condition, mode='eval')
-      visitor.visit(tree)
-      visitor.validate()
-    except (SyntaxError, IndexError) as ex:
-      raise forms.ValidationError(
-        gettext_lazy('Invalid syntax: %(ex)s'),
-        code='invalid_syntax',
-        params={'ex': str(ex)},
-      )
-    except KeyError as ex:
-      raise forms.ValidationError(
-        gettext_lazy('Invalid variable: %(ex)s'),
-        code='invalid_variable',
-        params={'ex': str(ex)},
-      )
-
-  return wrapper
-
-@wrap_validation
-def validate_search_condition():
-  # Define stock fields to check right operand
-  _meta = models.Stock._meta
-  fields = {
-    'code':          _meta.get_field('code'),
-    'name':          models.LocalizedStock._meta.get_field('name'),
-    'industry_name': models.LocalizedIndustry._meta.get_field('name'),
-    'price':         _meta.get_field('price'),
-    'dividend':      _meta.get_field('dividend'),
-    'div_yield':     _IgnoredField(),
-    'per':           _meta.get_field('per'),
-    'pbr':           _meta.get_field('pbr'),
-    'multi_pp':      _IgnoredField(),
-    'eps':           _meta.get_field('eps'),
-    'bps':           _meta.get_field('bps'),
-    'roe':           _meta.get_field('roe'),
-    'er':            _meta.get_field('er'),
-  }
-  # Define comparison operators to check the relationship between variable and value
-  comp_ops = {
-    'code':          _ValidateCondition.for_str,
-    'name':          _ValidateCondition.for_str,
-    'industry_name': _ValidateCondition.for_str,
-    'price':         _ValidateCondition.for_number,
-    'dividend':      _ValidateCondition.for_number,
-    'div_yield':     _ValidateCondition.for_number,
-    'per':           _ValidateCondition.for_number,
-    'pbr':           _ValidateCondition.for_number,
-    'multi_pp':      _ValidateCondition.for_number,
-    'eps':           _ValidateCondition.for_number,
-    'bps':           _ValidateCondition.for_number,
-    'roe':           _ValidateCondition.for_number,
-    'er':            _ValidateCondition.for_number,
-  }
-  visitor = _ValidateCondition(fields, comp_ops)
-
-  return visitor
-
 class StockSearchForm(forms.Form):
   target = forms.ChoiceField(
     label=gettext_lazy('Target column name'),
-    choices=(
-      ('code', gettext_lazy('Stock code')),
-      ('name', gettext_lazy('Stock name')),
-      ('industry_name', gettext_lazy('Stock industry')),
-      ('price', gettext_lazy('Stock price')),
-      ('dividend', gettext_lazy('Dividend')),
-      ('div_yield', gettext_lazy('Dividend yield')),
-      ('per', gettext_lazy('Price Earnings Ratio')),
-      ('pbr', gettext_lazy('Price Book-value Ratio')),
-      ('multi_pp', format_html('{} &times; {}', 'PER', 'PBR')),
-      ('eps', gettext_lazy('Earnings Per Share')),
-      ('bps', gettext_lazy('Book value Per Share')),
-      ('roe', gettext_lazy('Return On Equity')),
-      ('er', gettext_lazy('Equity Ratio')),
-    ),
+    choices=models.StockMembers.choices,
     required=False,
     widget=SelectWithDataAttr(attrs={
       'class': 'form-control',
       'id': 'target-column-name',
       'data-attr-name': 'type',
-      'data-attrs': {
-        'code': 'str',
-        'name': 'str',
-        'industry_name': 'str',
-        'price': 'number',
-        'dividend': 'number',
-        'div_yield': 'number',
-        'per': 'number',
-        'pbr': 'number',
-        'multi_pp': 'number',
-        'eps': 'number',
-        'bps': 'number',
-        'roe': 'number',
-        'er': 'number',
-      },
+      'data-attrs': models.StockMembers.get_attribute_types(),
     }),
   )
   compop = forms.ChoiceField(
     label=gettext_lazy('Comparison operator'),
-    choices=(
-      ('==', gettext_lazy('Equal to')),
-      ('!=', gettext_lazy('Not equal to')),
-      ('>', gettext_lazy('Geater than')),
-      ('>=', gettext_lazy('Geater than or equal to')),
-      ('<', gettext_lazy('Less than')),
-      ('<=', gettext_lazy('Less than or equal to')),
-      ('in', gettext_lazy('Include')),
-      ('not in', gettext_lazy('Not include')),
-    ),
+    choices=models.OperatorTypes.choices,
     required=False,
     widget=SelectWithDataAttr(attrs={
       'class': 'form-control',
       'id': 'comp-operator',
       'data-attr-name': 'type',
-      'data-attrs': {
-        '==': 'both',
-        '!=': 'both',
-        '>': 'number',
-        '>=': 'number',
-        '<': 'number',
-        '<=': 'number',
-        'in': 'str',
-        'not in': 'str',
-      },
+      'data-attrs': models.OperatorTypes.get_attribute_types(),
     }),
   )
   inputs = forms.CharField(
@@ -788,39 +575,12 @@ class StockSearchForm(forms.Form):
       'cols': '40',
       'style': 'resize: none;',
     }),
-    validators=[validate_search_condition],
+    validators=[models.stock_validator],
   )
   ordering = DropdownField(
     label=gettext_lazy('Ordering'),
-    choices=(
-      ('code', gettext_lazy('Stock code (ASC)')),
-      ('-code', gettext_lazy('Stock code (DESC)')),
-      ('name', gettext_lazy('Stock name (ASC)')),
-      ('-name', gettext_lazy('Stock name (DESC)')),
-      ('industry_name', gettext_lazy('Stock industry (ASC)')),
-      ('-industry_name', gettext_lazy('Stock industry (DESC)')),
-      ('price', gettext_lazy('Stock price (ASC)')),
-      ('-price', gettext_lazy('Stock price (DESC)')),
-      ('dividend', gettext_lazy('Dividend (ASC)')),
-      ('-dividend', gettext_lazy('Dividend (DESC)')),
-      ('div_yield', gettext_lazy('Dividend yield (ASC)')),
-      ('-div_yield', gettext_lazy('Dividend yield (DESC)')),
-      ('per', gettext_lazy('Price Earnings Ratio (ASC)')),
-      ('-per', gettext_lazy('Price Earnings Ratio (DESC)')),
-      ('pbr', gettext_lazy('Price Book-value Ratio (ASC)')),
-      ('-pbr', gettext_lazy('Price Book-value Ratio (DESC)')),
-      ('multi_pp', format_html('PER &times; PBR{}', gettext_lazy(' (ASC)'))),
-      ('-multi_pp',  format_html('PER &times; PBR{}', gettext_lazy(' (DESC)'))),
-      ('eps', gettext_lazy('Earnings Per Share (ASC)')),
-      ('-eps', gettext_lazy('Earnings Per Share (DESC)')),
-      ('bps', gettext_lazy('Book value Per Share (ASC)')),
-      ('-bps', gettext_lazy('Book value Per Share (DESC)')),
-      ('roe', gettext_lazy('Return On Equity (ASC)')),
-      ('-roe', gettext_lazy('Return On Equity (DESC)')),
-      ('er', gettext_lazy('Equity Ratio (ASC)')),
-      ('-er', gettext_lazy('Equity Ratio (DESC)')),
-    ),
-    initial=['code'],
+    choices=models.StockOrderingTypes.choices,
+    initial=[models.StockOrderingTypes.CODE_ASC],
     required=False,
     widget=DropdownWithInput(attrs={
       'class': 'form-control',
@@ -829,6 +589,7 @@ class StockSearchForm(forms.Form):
       'disabled': True,
       'readonly': True,
     }),
+    validators=[models.stock_ordering_validator],
   )
 
   def __init__(self, *args, **kwargs):
@@ -836,7 +597,7 @@ class StockSearchForm(forms.Form):
     # Convert message
     for key, val in params.items():
       if key == 'ordering':
-        target = val.split(',')
+        target = models.StockOrderingTypes.separate(val)
       else:
         utf8str = val.encode('utf-8', 'ignore')
         target = urllib.parse.unquote(utf8str)
@@ -846,100 +607,37 @@ class StockSearchForm(forms.Form):
   def get_queryset_with_condition(self):
     if self.is_valid():
       data = self.cleaned_data.get('condition', '')
-      condition = ' '.join(data.splitlines())
-      # Convert python like script to abstract syntax tree
-      tree = ast.parse(condition, mode='eval') if condition else None
+      tree = models.get_tree(data)
     else:
       tree = None
     # Get ordering of queryset
-    ordering = self.cleaned_data.get('ordering') or ['code']
+    ordering = self.cleaned_data.get('ordering') or [models.StockOrderingTypes.CODE_ASC]
     # Get queryset
     queryset = models.Stock.objects.select_targets(tree=tree).order_by(*ordering)
 
     return queryset
 
-@wrap_validation
-def validate_filtering_condition():
-  # Define purchased stock fields to check right operand
-  _meta = models.PurchasedStock._meta
-  fields = {
-    'code':          models.Stock._meta.get_field('code'),
-    'name':          models.LocalizedStock._meta.get_field('name'),
-    'industry_name': models.LocalizedIndustry._meta.get_field('name'),
-    'price':         _meta.get_field('price'),
-    'purchase_date': _meta.get_field('purchase_date'),
-    'count':         _meta.get_field('count'),
-    'diff':          _IgnoredField(),
-  }
-  # Define comparison operators to check the relationship between variable and value
-  comp_ops = {
-    'code':          _ValidateCondition.for_str,
-    'name':          _ValidateCondition.for_str,
-    'industry_name': _ValidateCondition.for_str,
-    'price':         _ValidateCondition.for_number,
-    'purchase_date': _ValidateCondition.for_number,
-    'count':         _ValidateCondition.for_number,
-    'diff':          _ValidateCondition.for_number,
-  }
-  visitor = _ValidateCondition(fields, comp_ops)
-
-  return visitor
-
 class PurchasedStockFilteringForm(forms.Form):
   target = forms.ChoiceField(
     label=gettext_lazy('Target column name'),
-    choices=(
-      ('code', gettext_lazy('Stock code')),
-      ('name', gettext_lazy('Stock name')),
-      ('industry_name', gettext_lazy('Stock industry')),
-      ('price', gettext_lazy('Average trade price')),
-      ('purchase_date', gettext_lazy('Purchased date')),
-      ('count', gettext_lazy('The number of purchased stocks')),
-      ('diff', gettext_lazy('Difference')),
-    ),
+    choices=models.PurchasedStockMembers.choices,
     required=False,
     widget=SelectWithDataAttr(attrs={
       'class': 'form-control',
       'id': 'target-column-name',
       'data-attr-name': 'type',
-      'data-attrs': {
-        'code': 'str',
-        'name': 'str',
-        'industry_name': 'str',
-        'price': 'number',
-        'purchase_date': 'number',
-        'count': 'number',
-        'diff': 'number',
-      },
+      'data-attrs': models.PurchasedStockMembers.get_attribute_types(),
     }),
   )
   compop = forms.ChoiceField(
     label=gettext_lazy('Comparison operator'),
-    choices=(
-      ('==', gettext_lazy('Equal to')),
-      ('!=', gettext_lazy('Not equal to')),
-      ('>', gettext_lazy('Geater than')),
-      ('>=', gettext_lazy('Geater than or equal to')),
-      ('<', gettext_lazy('Less than')),
-      ('<=', gettext_lazy('Less than or equal to')),
-      ('in', gettext_lazy('Include')),
-      ('not in', gettext_lazy('Not include')),
-    ),
+    choices=models.OperatorTypes.choices,
     required=False,
     widget=SelectWithDataAttr(attrs={
       'class': 'form-control',
       'id': 'comp-operator',
       'data-attr-name': 'type',
-      'data-attrs': {
-        '==': 'both',
-        '!=': 'both',
-        '>': 'number',
-        '>=': 'number',
-        '<': 'number',
-        '<=': 'number',
-        'in': 'str',
-        'not in': 'str',
-      },
+      'data-attrs': models.OperatorTypes.get_attribute_types(),
     }),
   )
   inputs = forms.CharField(
@@ -964,7 +662,7 @@ class PurchasedStockFilteringForm(forms.Form):
       'cols': '40',
       'style': 'resize: none;',
     }),
-    validators=[validate_filtering_condition],
+    validators=[models.purchased_stock_validator],
   )
 
   def __init__(self, *args, **kwargs):
@@ -978,9 +676,7 @@ class PurchasedStockFilteringForm(forms.Form):
   def get_queryset_with_condition(self, user):
     if self.is_valid():
       data = self.cleaned_data.get('condition', '')
-      condition = ' '.join(data.splitlines())
-      # Convert python like script to abstract syntax tree
-      tree = ast.parse(condition, mode='eval') if condition else None
+      tree = models.get_tree(data)
     else:
       tree = None
     # Get queryset
@@ -1003,12 +699,12 @@ class StockDownloadForm(forms.Form):
     help_text=gettext_lazy('You don’t have to enter the extention.'),
   )
   condition = forms.CharField(
-    label=gettext_lazy('Condition'),
-    max_length=1024,
+    label='',
     empty_value='',
     required=False,
-    widget=forms.HiddenInput(attrs={
+    widget=forms.Textarea(attrs={
       'id': 'download-condition',
+      'style': 'display: none;',
     }),
   )
   ordering = forms.CharField(
@@ -1020,6 +716,26 @@ class StockDownloadForm(forms.Form):
       'id': 'download-ordering',
     }),
   )
+  allowed_long_condition = forms.BooleanField(
+    label=gettext_lazy('Allowed long condition'),
+    required=False,
+    initial=False,
+    widget=forms.HiddenInput(),
+  )
+
+  def __init__(self, *args, max_condition_length=1024, **kwargs):
+    self.max_condition_length = max_condition_length
+    super().__init__(*args, **kwargs)
+
+  def clean(self):
+    cleaned_data = super().clean()
+    condition = cleaned_data.get('condition')
+    allowed_long_condition = cleaned_data.get('allowed_long_condition')
+
+    if not allowed_long_condition and len(condition) > self.max_condition_length:
+      self.add_error('condition', gettext_lazy('Condition is too long. Please enter more short condition.'))
+
+    return cleaned_data
 
   def get_query_string(self):
     condition = self.cleaned_data.get('condition', '')
@@ -1032,23 +748,80 @@ class StockDownloadForm(forms.Form):
     filename = self.cleaned_data.get('filename', '').replace('.csv', '')
     ordering = self.cleaned_data.get('ordering', '')
     data = self.cleaned_data.get('condition', '')
-    qs_order = []
+    qs_order = [models.StockOrderingTypes.CODE_ASC.value]
 
     try:
       # Check condition
-      validate_search_condition(data)
-      condition = ' '.join(data.splitlines())
-      tree = ast.parse(condition, mode='eval') if condition else None
+      models.stock_validator(data)
+      tree = models.get_tree(data)
     except forms.ValidationError:
       tree = None
     # Check ordering
     if ordering:
-      search_form = StockSearchForm()
-      valid_orders = [arr[0] for arr in search_form.fields['ordering'].choices]
-      qs_order = [order for order in ordering.split(',') if order in valid_orders]
-    if not qs_order:
-      qs_order = ['code']
+      try:
+        qs_order = models.StockOrderingTypes.separate(ordering)
+        models.stock_ordering_validator(qs_order)
+      except forms.ValidationError:
+        qs_order = [models.StockOrderingTypes.CODE_ASC.value]
     # Create response kwargs
     kwargs = models.Stock.create_response_kwargs(filename, tree, qs_order)
 
     return kwargs
+
+class StockScreenerForm(_BaseModelFormWithCSS):
+  class Meta:
+    model = models.StockScreener
+    fields = ('title', 'priority', 'condition', 'ordering')
+    field_order = ('title', 'priority', 'condition', 'ordering', 'target', 'compop', 'inputs')
+    widgets = {
+      'condition': forms.Textarea(attrs={
+        'class': 'h-100',
+        'id': 'condition',
+        'name': 'condition',
+        'rows': '10',
+        'cols': '40',
+        'style': 'resize: none;',
+      }),
+      'ordering': forms.TextInput(attrs={
+        'id': 'column-ordering',
+        'name': 'ordering',
+        'disabled': True,
+        'readonly': True,
+      }),
+    }
+
+  @property
+  def ordering_types(self):
+    return models.StockOrderingTypes.choices
+
+  target = forms.ChoiceField(
+    label=gettext_lazy('Target column name'),
+    choices=models.StockMembers.choices,
+    required=False,
+    widget=SelectWithDataAttr(attrs={
+      'class': 'form-control',
+      'id': 'target-column-name',
+      'data-attr-name': 'type',
+      'data-attrs': models.StockMembers.get_attribute_types(),
+    }),
+  )
+  compop = forms.ChoiceField(
+    label=gettext_lazy('Comparison operator'),
+    choices=models.OperatorTypes.choices,
+    required=False,
+    widget=SelectWithDataAttr(attrs={
+      'class': 'form-control',
+      'id': 'comp-operator',
+      'data-attr-name': 'type',
+      'data-attrs': models.OperatorTypes.get_attribute_types(),
+    }),
+  )
+  inputs = forms.CharField(
+    label=gettext_lazy('Input data'),
+    empty_value='',
+    required=False,
+    widget=forms.TextInput(attrs={
+      'class': 'form-control',
+      'id': 'input-data',
+    }),
+  )

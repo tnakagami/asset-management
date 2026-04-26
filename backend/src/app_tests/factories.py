@@ -1,4 +1,5 @@
 import factory
+import factory.fuzzy
 import uuid
 from celery import states
 from django.utils import timezone
@@ -146,6 +147,15 @@ class SnapshotFactory(factory.django.DjangoModelFactory):
   title = factory.LazyAttribute(lambda instance: clip(faker.name(), 255))
   end_date = factory.LazyFunction(timezone.now)
   created_at = factory.LazyFunction(timezone.now)
+
+class StockScreenerFactory(factory.django.DjangoModelFactory):
+  class Meta:
+    model = models.StockScreener
+
+  user = factory.SubFactory(UserFactory)
+  title = factory.LazyAttribute(lambda instance: clip(faker.name(), 255))
+  condition = 'price > 0'
+  ordering = factory.fuzzy.FuzzyChoice(models.StockOrderingTypes.values)
 
 class TaskResultFactory(factory.django.DjangoModelFactory):
   class Meta:

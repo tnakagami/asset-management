@@ -8,6 +8,7 @@ from .models import (
   Cash,
   PurchasedStock,
   Snapshot,
+  StockScreener,
 )
 
 @admin.register(LocalizedIndustry)
@@ -82,3 +83,12 @@ class SnapshotAdmin(admin.ModelAdmin):
   list_filter = ('user',)
   search_fields = ('user__username', 'user__screen_name', 'priority', 'start_date', 'end_date')
   ordering = ('priority', '-end_date',)
+
+@admin.register(StockScreener)
+class StockScreenerAdmin(admin.ModelAdmin):
+  model = StockScreener
+  fields = ['user', 'title', 'priority', 'condition', 'ordering']
+  list_display = ('user', 'title', 'priority')
+  list_filter = ('user',)
+  search_fields = ('user__username', 'user__screen_name', 'title', 'priority')
+  ordering = ('priority', 'title')

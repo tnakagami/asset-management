@@ -431,6 +431,84 @@ class DeletePeriodicTaskForSnapshot(LoginRequiredMixin, IsOwnSnapshotTask, Delet
   model = PeriodicTask
   success_url = reverse_lazy('stock:list_snapshot_task')
 
+class ListStockScreener(LoginRequiredMixin, ListView, DjangoBreadcrumbsMixin):
+  model = models.StockScreener
+  template_name = 'stock/stock_screeners.html'
+  paginate_by = 20
+  context_object_name = 'screeners'
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:list_stock_screener',
+    title=gettext_lazy('Stock screener list'),
+    parent_view_class=Index,
+  )
+
+  def get_queryset(self):
+    user = self.request.user
+    queryset = user.conditions.all()
+
+    return queryset
+
+class RegisterStockScreener(CreateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = models.StockScreener
+  form_class = forms.StockScreenerForm
+  template_name = 'stock/stock_screener_form.html'
+  success_url = reverse_lazy('stock:list_stock_screener')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:register_stock_screener',
+    title=gettext_lazy('Register stock screener'),
+    parent_view_class=ListStockScreener,
+  )
+
+class UpdateStockScreener(UpdateViewBasedOnUser, DjangoBreadcrumbsMixin):
+  model = models.StockScreener
+  form_class = forms.StockScreenerForm
+  template_name = 'stock/stock_screener_form.html'
+  success_url = reverse_lazy('stock:list_stock_screener')
+  crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+    url_name='stock:update_stock_screener',
+    title=gettext_lazy('Update stock screener'),
+    parent_view_class=ListStockScreener,
+    url_keys=['pk'],
+  )
+
+class DeleteStockScreener(CustomDeleteView):
+  model = models.StockScreener
+  success_url = reverse_lazy('stock:list_stock_screener')
+
+class IsStockScreenerOwner(UserPassesTestMixin):
+  def test_func(self):
+    pk = self.kwargs['pk']
+    user = self.request.user
+    queryset = user.conditions.all().filter(pk=pk)
+    is_valid = queryset.exists()
+
+    return is_valid
+
+class DetailScreenedStock(LoginRequiredMixin, IsStockScreenerOwner, DetailView, DjangoBreadcrumbsMixin):
+  raise_exception = True
+  model = models.StockScreener
+  context_object_name = 'screener'
+  template_name = 'stock/screened_stocks.html'
+
+  def get_context_data(self, **kwargs):
+    is_secure = getattr(settings, 'IS_SECURE_COOKIE', True)
+    context = super().get_context_data(**kwargs)
+    instance = context[self.context_object_name]
+    initial = instance.get_initial_for_stock_download_form()
+    context['stocks'] = instance.get_screened_stocks()
+    context['download_form'] = forms.StockDownloadForm(initial=initial)
+    context['is_secure'] = 'Secure' if is_secure else ''
+
+    # Set breadcrumbs
+    self.crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
+      url_name='stock:detail_snapshot',
+      title=instance.title,
+      parent_view_class=ListStockScreener,
+      url_keys=['pk'],
+    )
+
+    return context
+
 class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   http_method_names = ['get']
   model = models.Stock
@@ -441,7 +519,7 @@ class ListStock(LoginRequiredMixin, FormView, ListView, DjangoBreadcrumbsMixin):
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(
     url_name='stock:list_stock',
     title=gettext_lazy('Stock list'),
-    parent_view_class=Index,
+    parent_view_class=ListStockScreener,
   )
 
   def get_queryset(self):

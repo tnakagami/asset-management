@@ -35,6 +35,12 @@ urlpatterns = [
   path('register/periodic-snapshot-task', views.RegisterPeriodicTaskForSnapshot.as_view(), name='register_snapshot_task'),
   path('update/periodic-snapshot-task/<int:pk>', views.UpdatePeriodicTaskForSnapshot.as_view(), name='update_snapshot_task'),
   path('delete/periodic-snapshot-task/<int:pk>', views.DeletePeriodicTaskForSnapshot.as_view(), name='delete_snapshot_task'),
+  # StockScreener
+  path('list/stock-screeners', views.ListStockScreener.as_view(), name='list_stock_screener'),
+  path('register/stock-screener', views.RegisterStockScreener.as_view(), name='register_stock_screener'),
+  path('update/stock-screener/<int:pk>', views.UpdateStockScreener.as_view(), name='update_stock_screener'),
+  path('delete/stock-screener/<int:pk>', views.DeleteStockScreener.as_view(), name='delete_stock_screener'),
+  path('detail/stock-screener/<int:pk>', views.DetailScreenedStock.as_view(), name='detail_stock_screener'),
   # Stock
   path('list/stocks', views.ListStock.as_view(), name='list_stock'),
   path('download/stocks', views.DownloadStockPage.as_view(), name='download_stock'),
