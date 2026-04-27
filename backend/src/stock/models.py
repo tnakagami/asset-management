@@ -524,6 +524,26 @@ class Stock(models.Model):
     help_text=gettext_lazy('Equity Ratio'),
     default=0,
   )
+  market_cap = models.DecimalField(
+    max_digits=10,
+    decimal_places=2,
+    verbose_name=gettext_lazy('Market Capitalization'),
+    help_text=gettext_lazy('Unit: 100 million yen'),
+    default=0,
+  )
+  payout_ratio = models.DecimalField(
+    max_digits=6,
+    decimal_places=2,
+    verbose_name=gettext_lazy('Payout Ratio'),
+    default=0,
+  )
+  operating_cashflow = models.DecimalField(
+    max_digits=10,
+    decimal_places=2,
+    verbose_name=gettext_lazy('Operating Cashflow'),
+    help_text=gettext_lazy('Unit: 100 million yen'),
+    default=0,
+  )
   skip_task = models.BooleanField(
     verbose_name=gettext_lazy('Skip executing user task'),
     default=False,
@@ -546,12 +566,15 @@ class Stock(models.Model):
       'industry': self.industry.get_dict(),
       'price': float(self.price),
       'dividend': float(self.dividend),
+      'payout_ratio': float(self.payout_ratio),
       'per': float(self.per),
       'pbr': float(self.pbr),
       'eps': float(self.eps),
       'bps': float(self.bps),
       'roe': float(self.roe),
       'er': float(self.er),
+      'market_cap': float(self.market_cap),
+      'operating_cashflow': float(self.operating_cashflow),
     }
 
   def get_name(self):
@@ -566,8 +589,9 @@ class Stock(models.Model):
     rows = (
       [
         obj.code, obj.get_name(), str(obj.industry), str(obj.price), str(obj.dividend),
-        f'{obj.div_yield:.2f}', str(obj.per), str(obj.pbr), f'{obj.multi_pp:.2f}',
-        str(obj.eps), str(obj.bps), str(obj.roe), str(obj.er),
+        f'{obj.div_yield:.2f}', str(obj.payout_ratio), str(obj.per), str(obj.pbr),
+        f'{obj.multi_pp:.2f}',str(obj.eps), str(obj.bps), str(obj.roe), str(obj.er),
+        str(obj.market_cap), str(obj.operating_cashflow),
       ] for obj in queryset.iterator(chunk_size=512)
     )
     header = [
@@ -577,6 +601,7 @@ class Stock(models.Model):
       gettext_lazy('Stock price'),
       gettext_lazy('Dividend'),
       gettext_lazy('Dividend yield'),
+      gettext_lazy('Payout Ratio'),
       gettext_lazy('Price Earnings Ratio (PER)'),
       gettext_lazy('Price Book-value Ratio (PBR)'),
       gettext_lazy('PER x PBR'),
@@ -584,6 +609,8 @@ class Stock(models.Model):
       gettext_lazy('Book value Per Share (BPS)'),
       gettext_lazy('Return On Equity (ROE)'),
       gettext_lazy('Equity Ratio (ER)'),
+      gettext_lazy('Market Capitalization (100M)'),
+      gettext_lazy('Operating Cashflow (100M)'),
     ]
     kwargs = {
       'rows': rows,
@@ -601,19 +628,22 @@ class _IgnoredField:
     pass
 
 class StockMembers(models.TextChoices):
-  CODE      = 'code',          gettext_lazy('Stock code')
-  NAME      = 'name',          gettext_lazy('Stock name')
-  INDUSTRY  = 'industry_name', gettext_lazy('Stock industry')
-  PRICE     = 'price',         gettext_lazy('Stock price')
-  DIVIDEND  = 'dividend',      gettext_lazy('Dividend')
-  DIV_YIELD = 'div_yield',     gettext_lazy('Dividend yield')
-  PER       = 'per',           gettext_lazy('Price Earnings Ratio')
-  PBR       = 'pbr',           gettext_lazy('Price Book-value Ratio')
-  MULTI_PP  = 'multi_pp',      format_html('{} &times; {}', 'PER', 'PBR')
-  EPS       = 'eps',           gettext_lazy('Earnings Per Share')
-  BPS       = 'bps',           gettext_lazy('Book value Per Share')
-  ROE       = 'roe',           gettext_lazy('Return On Equity')
-  ER        = 'er',            gettext_lazy('Equity Ratio')
+  CODE               = 'code',               gettext_lazy('Stock code')
+  NAME               = 'name',               gettext_lazy('Stock name')
+  INDUSTRY           = 'industry_name',      gettext_lazy('Stock industry')
+  PRICE              = 'price',              gettext_lazy('Stock price')
+  DIVIDEND           = 'dividend',           gettext_lazy('Dividend')
+  DIV_YIELD          = 'div_yield',          gettext_lazy('Dividend yield')
+  PAYOUT_RATIO       = 'payout_ratio',       gettext_lazy('Payout Ratio')
+  PER                = 'per',                gettext_lazy('Price Earnings Ratio')
+  PBR                = 'pbr',                gettext_lazy('Price Book-value Ratio')
+  MULTI_PP           = 'multi_pp',           format_html('{} &times; {}', 'PER', 'PBR')
+  EPS                = 'eps',                gettext_lazy('Earnings Per Share')
+  BPS                = 'bps',                gettext_lazy('Book value Per Share')
+  ROE                = 'roe',                gettext_lazy('Return On Equity')
+  ER                 = 'er',                 gettext_lazy('Equity Ratio')
+  MARKET_CAP         = 'market_cap',         gettext_lazy('Market Capitalization')
+  OPERATING_CASHFLOW = 'operating_cashflow', gettext_lazy('Operating Cashflow')
 
   @classmethod
   def get_attribute_types(cls):
@@ -622,8 +652,10 @@ class StockMembers(models.TextChoices):
     ]
     for_number = [
       cls.PRICE.value, cls.DIVIDEND.value, cls.DIV_YIELD.value,
-      cls.PER.value, cls.PBR.value, cls.MULTI_PP.value, cls.EPS.value,
-      cls.BPS.value, cls.ROE.value, cls.ER.value,
+      cls.PAYOUT_RATIO.value, cls.PER.value, cls.PBR.value,
+      cls.MULTI_PP.value, cls.EPS.value, cls.BPS.value,
+      cls.ROE.value, cls.ER.value, cls.MARKET_CAP.value,
+      cls.OPERATING_CASHFLOW.value,
     ]
     pairs = [(key, 'str') for key in for_str] + [(key, 'number') for key in for_number]
     attr_types = dict(pairs)
@@ -642,8 +674,10 @@ class StockMembers(models.TextChoices):
     targets = [
       cls.CODE.value, cls.NAME.value, cls.INDUSTRY.value,
       cls.PRICE.value, cls.DIVIDEND.value, cls.DIV_YIELD.value,
-      cls.PER.value, cls.PBR.value, cls.MULTI_PP.value, cls.EPS.value,
-      cls.BPS.value, cls.ROE.value, cls.ER.value,
+      cls.PAYOUT_RATIO.value, cls.PER.value, cls.PBR.value,
+      cls.MULTI_PP.value, cls.EPS.value, cls.BPS.value,
+      cls.ROE.value, cls.ER.value, cls.MARKET_CAP.value,
+      cls.OPERATING_CASHFLOW.value,
     ]
     field_types = dict([(key, rare_cases.get(key, default_case)(key)) for key in targets])
 
@@ -696,32 +730,38 @@ class OperatorTypes(models.TextChoices):
     return attr_types
 
 class StockOrderingTypes(models.TextChoices):
-  CODE_ASC       = 'code',           gettext_lazy('Stock code (ASC)')
-  CODE_DESC      = '-code',          gettext_lazy('Stock code (DESC)')
-  NAME_ASC       = 'name',           gettext_lazy('Stock name (ASC)')
-  NAME_DESC      = '-name',          gettext_lazy('Stock name (DESC)')
-  INDUSTRY_ASC   = 'industry_name',  gettext_lazy('Stock industry (ASC)')
-  INDUSTRY_DESC  = '-industry_name', gettext_lazy('Stock industry (DESC)')
-  PRICE_ASC      = 'price',          gettext_lazy('Stock price (ASC)')
-  PRICE_DESC     = '-price',         gettext_lazy('Stock price (DESC)')
-  DIVIDEND_ASC   = 'dividend',       gettext_lazy('Dividend (ASC)')
-  DIVIDEND_DESC  = '-dividend',      gettext_lazy('Dividend (DESC)')
-  DIV_YIELD_ASC  = 'div_yield',      gettext_lazy('Dividend yield (ASC)')
-  DIV_YIELD_DESC = '-div_yield',     gettext_lazy('Dividend yield (DESC)')
-  PER_ASC        = 'per',            gettext_lazy('Price Earnings Ratio (ASC)')
-  PER_DESC       = '-per',           gettext_lazy('Price Earnings Ratio (DESC)')
-  PBR_ASC        = 'pbr',            gettext_lazy('Price Book-value Ratio (ASC)')
-  PBR_DESC       = '-pbr',           gettext_lazy('Price Book-value Ratio (DESC)')
-  MULTI_PP_ASC   = 'multi_pp',       format_html('PER &times; PBR{}', gettext_lazy(' (ASC)'))
-  MULTI_PP_DESC  = '-multi_pp',      format_html('PER &times; PBR{}', gettext_lazy(' (DESC)'))
-  EPS_ASC        = 'eps',            gettext_lazy('Earnings Per Share (ASC)')
-  EPS_DESC       = '-eps',           gettext_lazy('Earnings Per Share (DESC)')
-  BPS_ASC        = 'bps',            gettext_lazy('Book value Per Share (ASC)')
-  BPS_DESC       = '-bps',           gettext_lazy('Book value Per Share (DESC)')
-  ROE_ASC        = 'roe',            gettext_lazy('Return On Equity (ASC)')
-  ROE_DESC       = '-roe',           gettext_lazy('Return On Equity (DESC)')
-  ER_ASC         = 'er',             gettext_lazy('Equity Ratio (ASC)')
-  ER_DESC        = '-er',            gettext_lazy('Equity Ratio (DESC)')
+  CODE_ASC                = 'code',                gettext_lazy('Stock code (ASC)')
+  CODE_DESC               = '-code',               gettext_lazy('Stock code (DESC)')
+  NAME_ASC                = 'name',                gettext_lazy('Stock name (ASC)')
+  NAME_DESC               = '-name',               gettext_lazy('Stock name (DESC)')
+  INDUSTRY_ASC            = 'industry_name',       gettext_lazy('Stock industry (ASC)')
+  INDUSTRY_DESC           = '-industry_name',      gettext_lazy('Stock industry (DESC)')
+  PRICE_ASC               = 'price',               gettext_lazy('Stock price (ASC)')
+  PRICE_DESC              = '-price',              gettext_lazy('Stock price (DESC)')
+  DIVIDEND_ASC            = 'dividend',            gettext_lazy('Dividend (ASC)')
+  DIVIDEND_DESC           = '-dividend',           gettext_lazy('Dividend (DESC)')
+  DIV_YIELD_ASC           = 'div_yield',           gettext_lazy('Dividend yield (ASC)')
+  DIV_YIELD_DESC          = '-div_yield',          gettext_lazy('Dividend yield (DESC)')
+  PAYOUT_RATIO_ASC        = 'payout_ratio',        gettext_lazy('Payout Ratio (ASC)')
+  PAYOUT_RATIO_DESC       = '-payout_ratio',       gettext_lazy('Payout Ratio (DESC)')
+  PER_ASC                 = 'per',                 gettext_lazy('Price Earnings Ratio (ASC)')
+  PER_DESC                = '-per',                gettext_lazy('Price Earnings Ratio (DESC)')
+  PBR_ASC                 = 'pbr',                 gettext_lazy('Price Book-value Ratio (ASC)')
+  PBR_DESC                = '-pbr',                gettext_lazy('Price Book-value Ratio (DESC)')
+  MULTI_PP_ASC            = 'multi_pp',            format_html('PER &times; PBR{}', gettext_lazy(' (ASC)'))
+  MULTI_PP_DESC           = '-multi_pp',           format_html('PER &times; PBR{}', gettext_lazy(' (DESC)'))
+  EPS_ASC                 = 'eps',                 gettext_lazy('Earnings Per Share (ASC)')
+  EPS_DESC                = '-eps',                gettext_lazy('Earnings Per Share (DESC)')
+  BPS_ASC                 = 'bps',                 gettext_lazy('Book value Per Share (ASC)')
+  BPS_DESC                = '-bps',                gettext_lazy('Book value Per Share (DESC)')
+  ROE_ASC                 = 'roe',                 gettext_lazy('Return On Equity (ASC)')
+  ROE_DESC                = '-roe',                gettext_lazy('Return On Equity (DESC)')
+  ER_ASC                  = 'er',                  gettext_lazy('Equity Ratio (ASC)')
+  ER_DESC                 = '-er',                 gettext_lazy('Equity Ratio (DESC)')
+  MARKET_CAP_ASC          = 'market_cap',          gettext_lazy('Market Capitalization (ASC)')
+  MARKET_CAP_DESC         = '-market_cap',         gettext_lazy('Market Capitalization (DESC)')
+  OPERATING_CASHFLOW_ASC  = 'operating_cashflow',  gettext_lazy('Operating Cashflow (ASC)')
+  OPERATING_CASHFLOW_DESC = '-operating_cashflow', gettext_lazy('Operating Cashflow (DESC)')
 
   @classmethod
   def separate(cls, value):
@@ -1044,12 +1084,15 @@ class _SnapshotRecord:
   code: str
   price: float
   dividend: float
+  payout_ratio: float
   per: float
   pbr: float
   eps: float
   bps: float
   roe: float
   er: float
+  market_cap: float
+  operating_cashflow: float
   name: str = ''
   industry: str = ''
   trend: str = ''
@@ -1128,6 +1171,7 @@ class _SnapshotRecord:
       self.trend,
       formatter(self.real_div),
       formatter(self.div_yield),
+      formatter(self.payout_ratio),
       formatter(self.purchased_value),
       str(self.count),
       formatter(self.diff),
@@ -1138,6 +1182,8 @@ class _SnapshotRecord:
       formatter(self.bps),
       formatter(self.roe),
       formatter(self.er),
+      formatter(self.market_cap),
+      formatter(self.operating_cashflow),
     ]
 
     return record
@@ -1151,6 +1197,7 @@ class _SnapshotRecord:
       gettext_lazy('Economic trend'),
       gettext_lazy('Dividend'),
       gettext_lazy('Dividend yield'),
+      gettext_lazy('Payout Ratio'),
       gettext_lazy('Purchased price'),
       gettext_lazy('Number of stocks'),
       gettext_lazy('Diff'),
@@ -1161,6 +1208,8 @@ class _SnapshotRecord:
       gettext_lazy('Book value Per Share (BPS)'),
       gettext_lazy('Return On Equity (ROE)'),
       gettext_lazy('Equity Ratio (ER)'),
+      gettext_lazy('Market Capitalization (100M)'),
+      gettext_lazy('Operating Cashflow (100M)'),
     ]
 
     return header
@@ -1269,12 +1318,15 @@ class Snapshot(models.Model):
       code='-',
       price=0.0,
       dividend=0.0,
+      payout_ratio=0.0,
       per=0.0,
       pbr=0.0,
       eps=0.0,
       bps=0.0,
       roe=0.0,
       er=0.0,
+      market_cap=0.0,
+      operating_cashflow=0.0,
       name=str(gettext_lazy('Cash')),
       industry='-',
       trend='-',
@@ -1291,14 +1343,17 @@ class Snapshot(models.Model):
       if instance is None:
         instance = _SnapshotRecord(
           code=code,
-          price=stock['price'],
-          dividend=stock['dividend'],
-          per=stock['per'],
-          pbr=stock['pbr'],
-          eps=stock['eps'],
-          bps=stock['bps'],
-          roe=stock['roe'],
-          er=stock['er'],
+          price=stock.get('price', 0.0),
+          dividend=stock.get('dividend', 0.0),
+          payout_ratio=stock.get('payout_ratio', 0.0),
+          per=stock.get('per', 0.0),
+          pbr=stock.get('pbr', 0.0),
+          eps=stock.get('eps', 0.0),
+          bps=stock.get('bps', 0.0),
+          roe=stock.get('roe', 0.0),
+          er=stock.get('er', 0.0),
+          market_cap=stock.get('market_cap', 0.0),
+          operating_cashflow=stock.get('operating_cashflow', 0.0),
         )
         instance.set_name(stock)
         instance.set_industry(stock['industry'])

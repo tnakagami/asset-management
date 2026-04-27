@@ -75,6 +75,7 @@
                 data-price="{{ instance.stock.price|intcomma }}"
                 data-dividend="{{ instance.stock.dividend|floatformat:1 }}"
                 data-yield="{{ instance|get_yield|floatformat:2 }}"
+                data-payoutratio="{{ instance.stock.payout_ratio|default:'0.0'|floatformat:2 }}"
                 data-per="{{ instance.stock.per }}"
                 data-pbr="{{ instance.stock.pbr }}"
                 data-multi="{{ instance|get_multi_per_pbr|floatformat:2 }}"
@@ -82,6 +83,8 @@
                 data-bps="{{ instance.stock.bps|intcomma }}"
                 data-roe="{{ instance.stock.roe }}"
                 data-er="{{ instance.stock.er }}"
+                data-marketcap="{{ instance.stock.market_cap|default:'0.0'|intcomma }}"
+                data-operatingcashflow="{{ instance.stock.operating_cashflow|default:'0.0'|intcomma }}"
               >
                 {% with table_css=instance.has_been_sold|yesno:'table-secondary,' %}
                 <td scope="row" class="{{ table_css }}">{{ page_obj.start_index|add:forloop.counter0 }}</td>
@@ -171,6 +174,10 @@
                 <td class="text-nowrap"><span data-target="yield"></span>&#37;</td>
               </tr>
               <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Payout Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="payoutratio"></span>&#37;</td>
+              </tr>
+              <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
                 <td class="text-nowrap"><span data-target="per"></span></td>
               </tr>
@@ -197,6 +204,14 @@
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Equity Ratio" %}</td>
                 <td class="text-nowrap"><span data-target="er"></span>&#37;</td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Market Capitalization (100M)" %}</td>
+                <td class="text-nowrap"><span data-target="marketcap"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Operating Cashflow (100M)" %}</td>
+                <td class="text-nowrap"><span data-target="operatingcashflow"></span></td>
               </tr>
             </tbody>
           </table>
@@ -507,7 +522,8 @@
   const setupClickLinkEvent = () => {
     const columns = Object.freeze([
       'code', 'name', 'industry', 'price', 'dividend', 'yield',
-      'per', 'pbr', 'multi', 'eps', 'bps', 'roe', 'er',
+      'payoutratio', 'per', 'pbr', 'multi', 'eps', 'bps', 'roe',
+      'er', 'marketcap', 'operatingcashflow',
     ]);
     const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
     const isNegative = (val) => pattern.test(val);
