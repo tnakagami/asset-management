@@ -360,7 +360,7 @@
   <td><span class="asset-trend"></span></td>
   <td><span class="asset-realDividend"></span></td>
   <td><span class="asset-yield"></span>&#37;</td>
-  <td><span class="asset-payoutratio"></span>&#37;</td>
+  <td><span class="asset-payoutRatio"></span>&#37;</td>
   <td><span class="asset-value"></span></td>
   <td><span class="asset-count"></span></td>
   <td><span class="asset-diff"></span></td>
@@ -449,6 +449,7 @@
         industry: _getName(_stock.industry),
         dividend: _stock.dividend,
         realDividend: _scaler(_stock.dividend),
+        payoutRatio: getValue(_stock.payout_ratio),
         isDefensive: trendStat.isDefensive,
         trend: trendStat.name,
         price: record.price,
@@ -456,7 +457,6 @@
         diff: diff,
         options: {
           price: getValue(_stock.price),
-          payout_ratio: getValue(_stock.payout_ratio),
           per: getValue(_stock.per),
           pbr: getValue(_stock.pbr),
           eps: getValue(_stock.eps),
@@ -490,6 +490,7 @@
             dividend: item.dividend,
             realDividend: item.realDividend,
             yield: 0,
+            payoutRatio: getValue(item.payoutRatio),
             isDefensive: item.isDefensive,
             trend: item.trend,
             value: _calcValue(item),
@@ -509,6 +510,7 @@
       industry: '-',
       dividend: 0,
       realDividend: 0,
+      payoutRatio: 0,
       yield: 0,
       isDefensive: undefined,
       trend: '-',
@@ -715,7 +717,7 @@
         element.dataset.price = item.options.price.toFixed(2);
         element.dataset.dividend = item.dividend.toFixed(2);
         element.dataset.yield = get_yield(item.options.price, item.dividend);
-        element.dataset.payoutratio = item.options.payout_ratio.toFixed(2);
+        element.dataset.payoutratio = item.payoutRatio.toFixed(2);
         element.dataset.per = item.options.per.toFixed(2);
         element.dataset.pbr = item.options.pbr.toFixed(2);
         element.dataset.eps = item.options.eps.toFixed(2);
@@ -773,7 +775,7 @@
         'trend': (val, _) => val,
         'realDividend': (val, _) => val.toLocaleString(),
         'yield': (val, _) => val.toFixed(2),
-        'payoutratio': (val, _) => val.toFixed(2),
+        'payoutRatio': (val, _) => val.toFixed(2),
         'value': (val, _) => val.toLocaleString(),
         'count': (val, _) => val.toLocaleString(),
         'diff': (val, _) => val.toLocaleString(),
