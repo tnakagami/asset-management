@@ -33,22 +33,28 @@ def pseudo_stock_data(django_db_blocker):
     ]
     stock_params = [
       {'code': '0010', 'name': 'sampel1', 'industry': 0, 'price': '1200', 'dividend': '15',
-        'per':  '0.2', 'pbr': '1.3', 'eps': '1.7', 'bps': '2.3', 'roe': '5.0', 'er': '23.2'},
+        'per':  '0.2', 'pbr': '1.3', 'eps': '1.7', 'bps': '2.3', 'roe': '5.0', 'er': '23.2',
+        'market_cap': '12.37', 'payout_ratio': '882.11', 'operating_cashflow': '543.1'},
       {'code': '0012', 'name': 'alpha01', 'industry': 0, 'price': '800', 'dividend': '5',
-        'per':  '1.3', 'pbr': '2.5', 'eps': '0.25', 'bps': '1.1', 'roe': '5.3', 'er': '16'},
+        'per':  '1.3', 'pbr': '2.5', 'eps': '0.25', 'bps': '1.1', 'roe': '5.3', 'er': '16',
+        'market_cap': '501.59', 'payout_ratio': '20.01', 'operating_cashflow': '2034.7'},
       {'code': '0033', 'name': 'beta20', 'industry': 1, 'price': '2000', 'dividend': '15.1',
-        'per':  '2.2', 'pbr': '4.3', 'eps': '5.3', 'bps': '4.1', 'roe': '7.2', 'er': '12.7'},
+        'per':  '2.2', 'pbr': '4.3', 'eps': '5.3', 'bps': '4.1', 'roe': '7.2', 'er': '12.7',
+        'market_cap': '1200.23', 'payout_ratio': '284.91', 'operating_cashflow': '5120.7'},
       {'code': '005A', 'name': 'kappa88', 'industry': 1, 'price': '1500', 'dividend': '5.2',
-        'per':  '5.7', 'pbr': '1.3', 'eps': '7.9', 'bps': '-5.6', 'roe': '2.1', 'er': '8'},
+        'per':  '5.7', 'pbr': '1.3', 'eps': '7.9', 'bps': '-5.6', 'roe': '2.1', 'er': '8',
+        'market_cap': '6000.71', 'payout_ratio': '65.82', 'operating_cashflow': '1432.9'},
       {'code': '040a', 'name': 'gamma_c', 'industry': 2, 'price': '1000', 'dividend': '9',
-        'per':  '1.7', 'pbr': '0.1', 'eps': '3.5', 'bps': '3.7', 'roe': '0.9', 'er': '7.2'},
+        'per':  '1.7', 'pbr': '0.1', 'eps': '3.5', 'bps': '3.7', 'roe': '0.9', 'er': '7.2',
+        'market_cap': '120.99', 'payout_ratio': '2.57', 'operating_cashflow': '634.1'},
     ]
     stocks = [
       factories.StockFactory(
-        code=kwargs['code'], industry=industries[kwargs['industry']],
-        price=Decimal(kwargs['price']), dividend=Decimal(kwargs['dividend']),
+        code=kwargs['code'], industry=industries[kwargs['industry']], price=Decimal(kwargs['price']),
+        dividend=Decimal(kwargs['dividend']), payout_ratio=Decimal(kwargs['payout_ratio']),
         per=Decimal(kwargs['per']), pbr=Decimal(kwargs['pbr']), eps=Decimal(kwargs['eps']),
         bps=Decimal(kwargs['bps']), roe=Decimal(kwargs['roe']), er=Decimal(kwargs['er']), skip_task=False,
+        market_cap=Decimal(kwargs['market_cap']), operating_cashflow=Decimal(kwargs['operating_cashflow']),
       ) for kwargs in stock_params
     ]
     localized_stocks = [
@@ -482,24 +488,30 @@ class TestValidateCondition:
     ('industry_name == "cone"', ), ('industry_name != "cone"', ), ('industry_name in "cone"', ), ('industry_name not in "cone"', ),
     ('price == 10.0', ), ('price != 10.0', ), ('price < 10.0', ), ('price <= 10.0', ), ('price > 10.0', ), ('price >= 10.0', ),
     ('dividend == 10.0', ), ('dividend != 10.0', ), ('dividend < 10.0', ), ('dividend <= 10.0', ), ('dividend > 10.0', ), ('dividend >= 10.0', ),
+    ('payout_ratio == 10.0', ), ('payout_ratio != 10.0', ), ('payout_ratio < 10.0', ), ('payout_ratio <= 10.0', ), ('payout_ratio > 10.0', ), ('payout_ratio >= 10.0', ),
     ('per == 10.0', ), ('per != 10.0', ), ('per < 10.0', ), ('per <= 10.0', ), ('per > 10.0', ), ('per >= 10.0', ),
     ('pbr == 10.0', ), ('pbr != 10.0', ), ('pbr < 10.0', ), ('pbr <= 10.0', ), ('pbr > 10.0', ), ('pbr >= 10.0', ),
     ('eps == 10.0', ), ('eps != 10.0', ), ('eps < 10.0', ), ('eps <= 10.0', ), ('eps > 10.0', ), ('eps >= 10.0', ),
     ('bps == 10.0', ), ('bps != 10.0', ), ('bps < 10.0', ), ('bps <= 10.0', ), ('bps > 10.0', ), ('bps >= 10.0', ),
     ('roe == 10.0', ), ('roe != 10.0', ), ('roe < 10.0', ), ('roe <= 10.0', ), ('roe > 10.0', ), ('roe >= 10.0', ),
     ('er == 10.0', ), ('er != 10.0', ), ('er < 10.0', ), ('er <= 10.0', ), ('er > 10.0', ), ('er >= 10.0', ),
+    ('market_cap == 10.0', ), ('market_cap != 10.0', ), ('market_cap < 10.0', ), ('market_cap <= 10.0', ), ('market_cap > 10.0', ), ('market_cap >= 10.0', ),
+    ('operating_cashflow == 10.0', ), ('operating_cashflow != 10.0', ), ('operating_cashflow < 10.0', ), ('operating_cashflow <= 10.0', ), ('operating_cashflow > 10.0', ), ('operating_cashflow >= 10.0', ),
   ], ids=[
     'check-code-with-eq', 'check-code-with-not-eq', 'check-code-with-in', 'check-code-with-not-in',
     'check-name-with-eq', 'check-name-with-not-eq', 'check-name-with-in', 'check-name-with-not-in',
     'check-industry-with-eq', 'check-industry-with-not-eq', 'check-industry-with-in', 'check-industry-with-not-in',
     'check-price-with-eq', 'check-price-with-not-eq', 'check-price-with-lt', 'check-price-with-lte', 'check-price-with-gt', 'check-price-with-gte',
     'check-dividend-with-eq', 'check-dividend-with-not-eq', 'check-dividend-with-lt', 'check-dividend-with-lte', 'check-dividend-with-gt', 'check-dividend-with-gte',
+    'check-payoutratio-with-eq', 'check-payoutratio-with-not-eq', 'check-payoutratio-with-lt', 'check-payoutratio-with-lte', 'check-payoutratio-with-gt', 'check-payoutratio-with-gte',
     'check-per-with-eq', 'check-per-with-not-eq', 'check-per-with-lt', 'check-per-with-lte', 'check-per-with-gt', 'check-per-with-gte',
     'check-pbr-with-eq', 'check-pbr-with-not-eq', 'check-pbr-with-lt', 'check-pbr-with-lte', 'check-pbr-with-gt', 'check-pbr-with-gte',
     'check-eps-with-eq', 'check-eps-with-not-eq', 'check-eps-with-lt', 'check-eps-with-lte', 'check-eps-with-gt', 'check-eps-with-gte',
     'check-bps-with-eq', 'check-bps-with-not-eq', 'check-bps-with-lt', 'check-bps-with-lte', 'check-bps-with-gt', 'check-bps-with-gte',
     'check-roe-with-eq', 'check-roe-with-not-eq', 'check-roe-with-lt', 'check-roe-with-lte', 'check-roe-with-gt', 'check-roe-with-gte',
     'check-er-with-eq', 'check-er-with-not-eq', 'check-er-with-lt', 'check-er-with-lte', 'check-er-with-gt', 'check-er-with-gte',
+    'check-marketcap-with-eq', 'check-marketcap-with-not-eq', 'check-marketcap-with-lt', 'check-marketcap-with-lte', 'check-marketcap-with-gt', 'check-marketcap-with-gte',
+    'check-operatingcf-with-eq', 'check-operatingcf-with-not-eq', 'check-operatingcf-with-lt', 'check-operatingcf-with-lte', 'check-operatingcf-with-gt', 'check-operatingcf-with-gte',
   ])
   def test_valid_validate_method(self, condition):
     field_types, comp_ops = self.get_stock_validator_config()
@@ -932,6 +944,8 @@ class TestStock(SharedFixtures):
     ({'price': 99999999.99}, ),
     ({'dividend': 0}, ),
     ({'dividend': 99999.99}, ),
+    ({'payout_ratio': -9999.99}, ),
+    ({'payout_ratio':  9999.99}, ),
     ({'per': 0}, ),
     ({'per': 99999.99}, ),
     ({'pbr': 0}, ),
@@ -940,16 +954,22 @@ class TestStock(SharedFixtures):
     ({'eps':  99999.99}, ),
     ({'bps': -99999.99}, ),
     ({'bps':  99999.99}, ),
-    ({'roe':  -9999.99}, ),
-    ({'roe':   9999.99}, ),
-    ({'er':    -999.99}, ),
-    ({'er':     999.99}, ),
+    ({'roe': -9999.99}, ),
+    ({'roe':  9999.99}, ),
+    ({'er': -999.99}, ),
+    ({'er':  999.99}, ),
+    ({'market_cap': 0}, ),
+    ({'market_cap': 99999999.99}, ),
+    ({'operating_cashflow': -99999999.99}, ),
+    ({'operating_cashflow':  99999999.99}, ),
   ], ids=[
     'valid-values',
     'min-value-of-price',
     'max-value-of-price',
     'min-value-of-dividend',
     'max-value-of-dividend',
+    'min-value-of-payoutratio',
+    'max-value-of-payoutratio',
     'min-value-of-per',
     'max-value-of-per',
     'min-value-of-pbr',
@@ -962,17 +982,24 @@ class TestStock(SharedFixtures):
     'max-value-of-roe',
     'min-value-of-er',
     'max-value-of-er',
+    'min-value-of-marketcap',
+    'max-value-of-marketcap',
+    'min-value-of-operatingcf',
+    'max-value-of-operatingcf',
   ])
   def test_check_valid_inputs(self, options):
     kwargs = {
-      'price':    Decimal('1.23'),
+      'price': Decimal('1.23'),
       'dividend': Decimal('12.0'),
-      'per':      Decimal('1.07'),
-      'pbr':      Decimal('2.0'),
-      'eps':      Decimal('1.12'),
-      'bps':      Decimal('2.33'),
-      'roe':      Decimal('5.41'),
-      'er':       Decimal('13.41'),
+      'payout_ratio': Decimal('35.1'),
+      'per': Decimal('1.07'),
+      'pbr': Decimal('2.0'),
+      'eps': Decimal('1.12'),
+      'bps': Decimal('2.33'),
+      'roe': Decimal('5.41'),
+      'er': Decimal('13.41'),
+      'market_cap': Decimal('2501.66'),
+      'operating_cashflow': Decimal('137.53'),
     }
     kwargs.update(options)
 
@@ -990,23 +1017,30 @@ class TestStock(SharedFixtures):
     'err_idx',
     'digit',
   ], [
-    ({'price':          -0.01}, 0, 10), ({'price':    78.991}, 1, 2), ({'price':    100000000.00}, 2, 8),
-    ({'dividend':       -0.01}, 0,  7), ({'dividend': 78.991}, 1, 2), ({'dividend':   1000000.00}, 2, 5),
-    ({'per':            -0.01}, 0,  7), ({'per':      78.991}, 1, 2), ({'per':        1000000.00}, 2, 5),
-    ({'pbr':            -0.01}, 0,  7), ({'pbr':      78.991}, 1, 2), ({'pbr':        1000000.00}, 2, 5),
-    ({'eps':      -1000000.00}, 2,  5), ({'eps':      78.991}, 1, 2), ({'eps':        1000000.00}, 2, 5),
-    ({'bps':      -1000000.00}, 2,  5), ({'bps':      78.991}, 1, 2), ({'bps':        1000000.00}, 2, 5),
-    ({'roe':       -100000.00}, 2,  4), ({'roe':      78.991}, 1, 2), ({'roe':         100000.00}, 2, 4),
-    ({'er':         -10000.00}, 2,  3), ({'er':       78.991}, 1, 2), ({'er':           10000.00}, 2, 3),
+    #                        987654321012                                   210123                                  987654321012
+    ({'price':                      -0.01}, 0, 10), ({'price':              78.991}, 1, 2), ({'price':              100000000.00}, 2, 8),
+    ({'dividend':                   -0.01}, 0,  7), ({'dividend':           78.991}, 1, 2), ({'dividend':              100000.00}, 2, 5),
+    ({'payout_ratio':           -10000.00}, 2,  4), ({'payout_ratio':       78.991}, 1, 2), ({'payout_ratio':           10000.00}, 2, 4),
+    ({'per':                        -0.01}, 0,  7), ({'per':                78.991}, 1, 2), ({'per':                   100000.00}, 2, 5),
+    ({'pbr':                        -0.01}, 0,  7), ({'pbr':                78.991}, 1, 2), ({'pbr':                   100000.00}, 2, 5),
+    ({'eps':                   -100000.00}, 2,  5), ({'eps':                78.991}, 1, 2), ({'eps':                   100000.00}, 2, 5),
+    ({'bps':                   -100000.00}, 2,  5), ({'bps':                78.991}, 1, 2), ({'bps':                   100000.00}, 2, 5),
+    ({'roe':                    -10000.00}, 2,  4), ({'roe':                78.991}, 1, 2), ({'roe':                    10000.00}, 2, 4),
+    ({'er':                      -1000.00}, 2,  3), ({'er':                 78.991}, 1, 2), ({'er':                      1000.00}, 2, 3),
+    ({'market_cap':                 -0.01}, 0, 10), ({'market_cap':         78.991}, 1, 2), ({'market_cap':         100000000.00}, 2, 8),
+    ({'operating_cashflow': -100000000.00}, 2,  8), ({'operating_cashflow': 78.991}, 1, 2), ({'operating_cashflow': 100000000.00}, 2, 8),
   ], ids=[
-    'negative-price',    'invalid-decimal-part-of-price',    'invalid-max-digits-of-price',
-    'negative-dividend', 'invalid-decimal-part-of-dividend', 'invalid-max-digits-of-dividend',
-    'negative-per',      'invalid-decimal-part-of-per',      'invalid-max-digits-of-per',
-    'negative-pbr',      'invalid-decimal-part-of-pbr',      'invalid-max-digits-of-pbr',
-    'negative-eps',      'invalid-decimal-part-of-eps',      'invalid-max-digits-of-eps',
-    'negative-bps',      'invalid-decimal-part-of-bps',      'invalid-max-digits-of-bps',
-    'negative-roe',      'invalid-decimal-part-of-roe',      'invalid-max-digits-of-roe',
-    'negative-er',       'invalid-decimal-part-of-er',       'invalid-max-digits-of-er',
+    'negative-price',       'invalid-decimal-part-of-price',       'invalid-max-digits-of-price',
+    'negative-dividend',    'invalid-decimal-part-of-dividend',    'invalid-max-digits-of-dividend',
+    'negative-payoutratio', 'invalid-decimal-part-of-payoutratio', 'invalid-max-digits-of-payoutratio',
+    'negative-per',         'invalid-decimal-part-of-per',         'invalid-max-digits-of-per',
+    'negative-pbr',         'invalid-decimal-part-of-pbr',         'invalid-max-digits-of-pbr',
+    'negative-eps',         'invalid-decimal-part-of-eps',         'invalid-max-digits-of-eps',
+    'negative-bps',         'invalid-decimal-part-of-bps',         'invalid-max-digits-of-bps',
+    'negative-roe',         'invalid-decimal-part-of-roe',         'invalid-max-digits-of-roe',
+    'negative-er',          'invalid-decimal-part-of-er',          'invalid-max-digits-of-er',
+    'negative-marketcap',   'invalid-decimal-part-of-marketcap',   'invalid-max-digits-of-marketcap',
+    'negative-operatingcf', 'invalid-decimal-part-of-operatingcf', 'invalid-max-digits-of-operatingcf',
   ])
   def test_check_invalid_inputs(self, options, err_idx, digit):
     err_types = [
@@ -1047,12 +1081,15 @@ class TestStock(SharedFixtures):
     ('industry_name not in "foo"', [4]),
     ('price <= 1000', [1, 4]),
     ('dividend > 6', [0, 2, 4]),
+    ('payout_ratio > 100.5', [0, 2]),
     ('1.1 < per < 2.5', [1, 2, 4]),
     ('pbr > 10', []),
     ('eps == 0.25', [1]),
     ('bps <= 0', [3]),
     ('roe < 2 or 5 < roe', [1, 2, 4]),
     ('8 <= er and er <= 16', [1, 2, 3]),
+    ('market_cap < 1000.0', [0, 1, 4]),
+    ('1000 < operating_cashflow < 2100', [1, 3]),
     ('code in "1" and price < 1000 or name in "_" or industry_name == "foo" or price > 1000', [0,1,2,3,4]),
   ], ids=[
     'based-on-code',
@@ -1060,12 +1097,15 @@ class TestStock(SharedFixtures):
     'based-on-industry',
     'based-on-price',
     'based-on-dividend',
+    'based-on-payoutratio',
     'based-on-per',
     'based-on-pbr',
     'based-on-eps',
     'based-on-bps',
     'based-on-roe',
     'based-on-er',
+    'based-on-marketcap',
+    'based-on-operatingcf',
     'complex-expression-by-using-several-columns',
   ])
   def test_select_targets_with_tree(self, mocker, pseudo_stock_data, expression, indices):
@@ -1085,7 +1125,7 @@ class TestStock(SharedFixtures):
     en_lang = factories.LocalizedStockFactory(language_code='en', stock=instance)
     ja_lang = factories.LocalizedStockFactory(language_code='ja', stock=instance)
     out_dict = instance.get_dict()
-    fields = collector(models.Stock, exclude=['industry', 'skip_task'])
+    fields = list(sorted(collector(models.Stock, exclude=['industry', 'skip_task'])))
     industry = out_dict.pop('industry', None)
     skip_task = out_dict.pop('skip_task', None)
     names = out_dict.pop('names', None)
@@ -1093,7 +1133,7 @@ class TestStock(SharedFixtures):
     assert industry is not None
     assert skip_task is None
     assert names == {'en': en_lang.name, 'ja': ja_lang.name}
-    assert compare_keys(list(out_dict.keys()), fields)
+    assert compare_keys(list(sorted(out_dict.keys())), fields)
     assert compare_values(fields, out_dict, instance)
 
   @pytest.mark.parametrize([
@@ -1155,9 +1195,9 @@ class TestStock(SharedFixtures):
     expected_name = urllib.parse.quote(_tmp_name.encode('utf-8'))
     expected_header = [
       'Stock code', 'Stock name', 'Stock industry', 'Stock price', 'Dividend', 'Dividend yield',
-      'Price Earnings Ratio (PER)', 'Price Book-value Ratio (PBR)', 'PER x PBR',
+      'Payout Ratio', 'Price Earnings Ratio (PER)', 'Price Book-value Ratio (PBR)', 'PER x PBR',
       'Earnings Per Share (EPS)', 'Book value Per Share (BPS)', 'Return On Equity (ROE)',
-      'Equity Ratio (ER)',
+      'Equity Ratio (ER)', 'Market Capitalization (100M)', 'Operating Cashflow (100M)',
     ]
     # Get estimated values
     rows = list(kwargs['rows'])
@@ -1217,8 +1257,10 @@ class TestStockMembers:
     ]
     expect_number_members = [
       self.class_name.PRICE.value, self.class_name.DIVIDEND.value, self.class_name.DIV_YIELD.value,
-      self.class_name.PER.value, self.class_name.PBR.value, self.class_name.MULTI_PP.value, self.class_name.EPS.value,
-      self.class_name.BPS.value, self.class_name.ROE.value, self.class_name.ER.value,
+      self.class_name.PAYOUT_RATIO.value, self.class_name.PER.value, self.class_name.PBR.value,
+      self.class_name.MULTI_PP.value, self.class_name.EPS.value, self.class_name.BPS.value,
+      self.class_name.ROE.value, self.class_name.ER.value, self.class_name.MARKET_CAP.value,
+      self.class_name.OPERATING_CASHFLOW.value,
     ]
     # Call target method
     attr_types = self.class_name.get_attribute_types()
@@ -1231,8 +1273,9 @@ class TestStockMembers:
   def test_get_field_types(self):
     defaults = [
       self.class_name.CODE.value, self.class_name.PRICE.value, self.class_name.DIVIDEND.value,
-      self.class_name.PER.value, self.class_name.PBR.value, self.class_name.EPS.value,
-      self.class_name.BPS.value, self.class_name.ROE.value, self.class_name.ER.value,
+      self.class_name.PAYOUT_RATIO.value, self.class_name.PER.value, self.class_name.PBR.value,
+      self.class_name.EPS.value, self.class_name.BPS.value, self.class_name.ROE.value,
+      self.class_name.ER.value, self.class_name.MARKET_CAP.value, self.class_name.OPERATING_CASHFLOW.value,
     ]
     exacts = {
       self.class_name.NAME.value:      type(models.LocalizedStock._meta.get_field('name')),
@@ -1252,8 +1295,10 @@ class TestStockMembers:
     ]
     number_members = [
       self.class_name.PRICE.value, self.class_name.DIVIDEND.value, self.class_name.DIV_YIELD.value,
-      self.class_name.PER.value, self.class_name.PBR.value, self.class_name.MULTI_PP.value, self.class_name.EPS.value,
-      self.class_name.BPS.value, self.class_name.ROE.value, self.class_name.ER.value,
+      self.class_name.PAYOUT_RATIO.value, self.class_name.PER.value, self.class_name.PBR.value,
+      self.class_name.MULTI_PP.value, self.class_name.EPS.value, self.class_name.BPS.value,
+      self.class_name.ROE.value, self.class_name.ER.value, self.class_name.MARKET_CAP.value,
+      self.class_name.OPERATING_CASHFLOW.value,
     ]
     exact_string = {key: models.FOR_STRING for key in string_members}
     exact_number = {key: models.FOR_NUMBER for key in number_members}
@@ -1373,11 +1418,11 @@ class TestCash(SharedFixtures, SelectedRangeFixture):
       registered_date=target,
     )
     out_dict = instance.get_dict()
-    fields = collector(models.Cash, exclude=['user', 'registered_date'])
+    fields = list(sorted(collector(models.Cash, exclude=['user', 'registered_date'])))
     _registered_date = out_dict.pop('registered_date', None)
 
     assert _registered_date is not None
-    assert compare_keys(list(out_dict.keys()), fields)
+    assert compare_keys(list(sorted(out_dict.keys())), fields)
     assert compare_values(fields, out_dict, instance)
     assert _registered_date == models.convert_timezone(target, is_string=True)
 
@@ -1505,13 +1550,13 @@ class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
       has_been_sold=sold_out,
     )
     out_dict = instance.get_dict()
-    fields = collector(models.PurchasedStock, exclude=['user', 'stock', 'purchase_date', 'has_been_sold'])
+    fields = list(sorted(collector(models.PurchasedStock, exclude=['user', 'stock', 'purchase_date', 'has_been_sold'])))
     _stock = out_dict.pop('stock', None)
     _purchase_date = out_dict.pop('purchase_date', None)
 
     assert _stock is not None
     assert _purchase_date is not None
-    assert compare_keys(list(out_dict.keys()), fields)
+    assert compare_keys(list(sorted(out_dict.keys())), fields)
     assert compare_values(fields, out_dict, instance)
     assert _purchase_date == models.convert_timezone(target, is_string=True)
 
@@ -1849,8 +1894,9 @@ class TestSnapshotRecord(SharedFixtures):
   @pytest.fixture
   def get_default_record(self):
     params = {
-      'code': '7531', 'price': 123.0, 'dividend': 3.0, 'per': 2.0,
-      'pbr': 1.0, 'eps': 0.2, 'bps': 0.3, 'roe': 0.1, 'er': 3.0,
+      'code': '7531', 'price': 123.0, 'dividend': 3.0, 'per': 2.0, 'pbr': 1.0,
+      'eps': 0.2, 'bps': 0.3, 'roe': 0.1, 'er': 3.0, 'payout_ratio': 34.7,
+      'market_cap': 1234.57, 'operating_cashflow': 154.01,
     }
     instance = models._SnapshotRecord(**params)
 
@@ -2014,6 +2060,7 @@ class TestSnapshotRecord(SharedFixtures):
       industry='foo3',
       trend='Defensive',
       dividend=2.0,
+      payout_ratio=19.6,
       purchased_value=2000.0,
       count=2,
       price=1100.0,
@@ -2023,6 +2070,8 @@ class TestSnapshotRecord(SharedFixtures):
       bps=0.147,
       roe=10.1,
       er=11.22,
+      market_cap=508.9,
+      operating_cashflow=10.99,
     )
     expected = [
       '5384',      # Code
@@ -2031,6 +2080,7 @@ class TestSnapshotRecord(SharedFixtures):
       'Defensive', # trend
       '4.00',      # dividend * count
       '0.20',      # div_yield
+      '19.60',     # payout_ratio
       '2000.00',   # purchased_value
       '2',         # count
       '200.00',    # diff
@@ -2041,6 +2091,8 @@ class TestSnapshotRecord(SharedFixtures):
       '0.15',      # bps
       '10.10',     # roe
       '11.22',     # er
+      '508.90',    # market_cap
+      '10.99',     # operating_cashflow
     ]
     record = instance.get_record()
 
@@ -2055,6 +2107,7 @@ class TestSnapshotRecord(SharedFixtures):
       'Economic trend',
       'Dividend',
       'Dividend yield',
+      'Payout Ratio',
       'Purchased price',
       'Number of stocks',
       'Diff',
@@ -2065,6 +2118,8 @@ class TestSnapshotRecord(SharedFixtures):
       'Book value Per Share (BPS)',
       'Return On Equity (ROE)',
       'Equity Ratio (ER)',
+      'Market Capitalization (100M)',
+      'Operating Cashflow (100M)',
     ]
     header = instance.get_header()
 
@@ -2381,14 +2436,17 @@ class TestSnapshot(SharedFixtures):
             'names': {'en': 'en-XXX', 'ge': 'ge-XXX'},
             'is_defensive': True,
           },
-          'price': 1200.00,
-          'dividend': 2.00,
-          'per':      9.31,
-          'pbr':      1.21,
-          'eps':      2.34,
-          'bps':      2.34,
-          'roe':      0.34,
-          'er':      11.22,
+          'price':            1200.00,
+          'dividend':            2.00,
+          'payout_ratio':        19.2,
+          'per':                 9.31,
+          'pbr':                 1.21,
+          'eps':                 2.34,
+          'bps':                 2.34,
+          'roe':                 0.34,
+          'er':                 11.22,
+          'market_cap':         157.8,
+          'operating_cashflow': 10.91,
         },
         'price': 1234.00,
         'count': 100,
@@ -2402,14 +2460,17 @@ class TestSnapshot(SharedFixtures):
             'names': {'en': 'en-YYY', 'ge': 'ge-YYY'},
             'is_defensive': False,
           },
-          'price':  900.00,
-          'dividend': 1.00,
-          'per':      7.50,
-          'pbr':      2.22,
-          'eps':      7.54,
-          'bps':      8.12,
-          'roe':      1.81,
-          'er':      31.12,
+          'price':             900.00,
+          'dividend':            1.00,
+          'payout_ratio':        21.3,
+          'per':                 7.50,
+          'pbr':                 2.22,
+          'eps':                 7.54,
+          'bps':                 8.12,
+          'roe':                 1.81,
+          'er':                 31.12,
+          'market_cap':         97.49,
+          'operating_cashflow':  5.10,
         },
         'price': 1000.00,
         'count': 300,
@@ -2423,14 +2484,17 @@ class TestSnapshot(SharedFixtures):
             'names': {'en': 'en-XXX', 'ge': 'ge-XXX'},
             'is_defensive': True,
           },
-          'price': 1200.00,
-          'dividend': 2.00,
-          'per':      9.31,
-          'pbr':      1.21,
-          'eps':      2.34,
-          'bps':      2.34,
-          'roe':      0.34,
-          'er':      11.22,
+          'price':            1200.00,
+          'dividend':            2.00,
+          'payout_ratio':        19.2,
+          'per':                 9.31,
+          'pbr':                 1.21,
+          'eps':                 2.34,
+          'bps':                 2.34,
+          'roe':                 0.34,
+          'er':                 11.22,
+          'market_cap':         157.8,
+          'operating_cashflow': 10.91,
         },
         'price': 1300.0,
         'count': 200,
@@ -2450,21 +2514,26 @@ class TestSnapshot(SharedFixtures):
       'purchased_stocks': pstocks,
     })
     # Define expected rows
+    _target_cash = f'{cash:.2f}' if cash is not None else '0.00'
     _cash_data = [
-      '-', 'Cash', '-', '-', '0.00', '0.00', f'{cash:.2f}' if cash is not None else '0.00', # From code to pval
-      '0', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00',                  # From count to er
+      '-', 'Cash', '-', '-', '0.00', '0.00', '0.00', _target_cash,         # From code to payout_ratio, pval
+      '0', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', # From count to er
+      '0.00', '0.00',                                                      # market_cap and operating_cashflow
     ]
     _only_data = [
-      'A1B3', 'ge-hoge', 'ge-XXX', 'Defensive', '200.00', '0.16', '123400.00',       # From code to pval
-      '100', '-3400.00', '1200.00', '9.31', '1.21', '2.34', '2.34', '0.34', '11.22', # From count to er
+      'A1B3', 'ge-hoge', 'ge-XXX', 'Defensive', '200.00', '0.16', '19.20',       # From code to payout_ratio
+      '123400.00', '100', '-3400.00', '1200.00', '9.31', '1.21', '2.34', '2.34', # From pval to bps
+      '0.34', '11.22','157.80', '10.91',                                         # From roe to operating_cashflow
     ]
     _diff_data = [
-      'A1CC', 'ge-bar', 'ge-YYY', 'Economically sensitive', '300.00', '0.10', '300000.00', # From code to pval
-      '300', '-30000.00', '900.00', '7.50', '2.22', '7.54', '8.12', '1.81', '31.12',       # From count to er
+      'A1CC', 'ge-bar', 'ge-YYY', 'Economically sensitive', '300.00', '0.10', '21.30', # From code to payout_ratio
+      '300000.00', '300', '-30000.00', '900.00', '7.50', '2.22', '7.54', '8.12',       # From pval to bps
+      '1.81', '31.12', '97.49', '5.10',                                                # From roe to operating_cashflow
     ]
     _same_data = [
-      'A1B3', 'ge-hoge', 'ge-XXX', 'Defensive', '600.00', '0.16', '383400.00',        # From code to pval
-      '300', '-23400.00', '1200.00', '9.31', '1.21', '2.34', '2.34', '0.34', '11.22', # From count to er
+      'A1B3', 'ge-hoge', 'ge-XXX', 'Defensive', '600.00', '0.16', '19.20', # From code to payout_ratio
+      '383400.00', '300', '-23400.00', '1200.00', '9.31', '1.21', '2.34',  # From pval to eps
+      '2.34', '0.34', '11.22', '157.80', '10.91',                          # From bps to operating_cashflow
     ]
     expected_table = {
       'none': ([_cash_data], ['cash'], 'monthly report 20/12'),
@@ -2489,22 +2558,25 @@ class TestSnapshot(SharedFixtures):
     pairs = list(zip(keys, expected_rows))
 
     assert all([key in keys for key in records.keys()])
-    assert all([          records[key].code             == arr[ 0] for key, arr in pairs])
-    assert all([          records[key].name             == arr[ 1] for key, arr in pairs])
-    assert all([          records[key].industry         == arr[ 2] for key, arr in pairs])
-    assert all([          records[key].trend            == arr[ 3] for key, arr in pairs])
-    assert all([formatter(records[key].real_div)        == arr[ 4] for key, arr in pairs])
-    assert all([formatter(records[key].div_yield)       == arr[ 5] for key, arr in pairs])
-    assert all([formatter(records[key].purchased_value) == arr[ 6] for key, arr in pairs])
-    assert all([      str(records[key].count)           == arr[ 7] for key, arr in pairs])
-    assert all([formatter(records[key].diff)            == arr[ 8] for key, arr in pairs])
-    assert all([formatter(records[key].price)           == arr[ 9] for key, arr in pairs])
-    assert all([formatter(records[key].per)             == arr[10] for key, arr in pairs])
-    assert all([formatter(records[key].pbr)             == arr[11] for key, arr in pairs])
-    assert all([formatter(records[key].eps)             == arr[12] for key, arr in pairs])
-    assert all([formatter(records[key].bps)             == arr[13] for key, arr in pairs])
-    assert all([formatter(records[key].roe)             == arr[14] for key, arr in pairs])
-    assert all([formatter(records[key].er)              == arr[15] for key, arr in pairs])
+    assert all([          records[key].code                == arr[ 0] for key, arr in pairs])
+    assert all([          records[key].name                == arr[ 1] for key, arr in pairs])
+    assert all([          records[key].industry            == arr[ 2] for key, arr in pairs])
+    assert all([          records[key].trend               == arr[ 3] for key, arr in pairs])
+    assert all([formatter(records[key].real_div)           == arr[ 4] for key, arr in pairs])
+    assert all([formatter(records[key].div_yield)          == arr[ 5] for key, arr in pairs])
+    assert all([formatter(records[key].payout_ratio)       == arr[ 6] for key, arr in pairs])
+    assert all([formatter(records[key].purchased_value)    == arr[ 7] for key, arr in pairs])
+    assert all([      str(records[key].count)              == arr[ 8] for key, arr in pairs])
+    assert all([formatter(records[key].diff)               == arr[ 9] for key, arr in pairs])
+    assert all([formatter(records[key].price)              == arr[10] for key, arr in pairs])
+    assert all([formatter(records[key].per)                == arr[11] for key, arr in pairs])
+    assert all([formatter(records[key].pbr)                == arr[12] for key, arr in pairs])
+    assert all([formatter(records[key].eps)                == arr[13] for key, arr in pairs])
+    assert all([formatter(records[key].bps)                == arr[14] for key, arr in pairs])
+    assert all([formatter(records[key].roe)                == arr[15] for key, arr in pairs])
+    assert all([formatter(records[key].er)                 == arr[16] for key, arr in pairs])
+    assert all([formatter(records[key].market_cap)         == arr[17] for key, arr in pairs])
+    assert all([formatter(records[key].operating_cashflow) == arr[18] for key, arr in pairs])
 
   def test_create_response_kwargs(self, mocker, get_user, get_config):
     mocker.patch('stock.models.get_language', return_value='ge')
@@ -2513,9 +2585,10 @@ class TestSnapshot(SharedFixtures):
     expected_fname = 'snapshot-{}.csv'.format(urllib.parse.quote(fname.encode('utf-8')))
     header = [
       'Stock code', 'Name', 'Stock industry', 'Economic trend', 'Dividend', 'Dividend yield',
-      'Purchased price', 'Number of stocks', 'Diff', 'Stock price', 'Price Earnings Ratio (PER)',
-      'Price Book-value Ratio (PBR)', 'Earnings Per Share (EPS)', 'Book value Per Share (BPS)',
-      'Return On Equity (ROE)', 'Equity Ratio (ER)',
+      'Payout Ratio', 'Purchased price', 'Number of stocks', 'Diff', 'Stock price',
+      'Price Earnings Ratio (PER)', 'Price Book-value Ratio (PBR)', 'Earnings Per Share (EPS)',
+      'Book value Per Share (BPS)', 'Return On Equity (ROE)', 'Equity Ratio (ER)',
+      'Market Capitalization (100M)', 'Operating Cashflow (100M)',
     ]
     kwargs = instance.create_response_kwargs()
     rows = list(kwargs['rows'])

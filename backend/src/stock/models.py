@@ -449,10 +449,11 @@ class Stock(models.Model):
   class Meta:
     ordering = ('code',)
     constraints = [
-      models.CheckConstraint(condition=models.Q(price__gte=0),    name='price_gte_0_in_stock'),
-      models.CheckConstraint(condition=models.Q(dividend__gte=0), name='dividend_gte_0_in_stock'),
-      models.CheckConstraint(condition=models.Q(per__gte=0),      name='per_gte_0_in_stock'),
-      models.CheckConstraint(condition=models.Q(pbr__gte=0),      name='pbr_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(price__gte=0),      name='price_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(dividend__gte=0),   name='dividend_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(per__gte=0),        name='per_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(pbr__gte=0),        name='pbr_gte_0_in_stock'),
+      models.CheckConstraint(condition=models.Q(market_cap__gte=0), name='marketcap_gte_0_in_stock'),
     ]
 
   objects = StockManager()

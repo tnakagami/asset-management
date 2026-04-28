@@ -84,12 +84,15 @@ class StockFactory(factory.django.DjangoModelFactory):
   industry = factory.SubFactory(IndustryFactory)
   price = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=8, **instance.money_params))
   dividend = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=5, **instance.money_params))
+  payout_ratio = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=3, right_digits=2))
   per = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
   pbr = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
   eps = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
   bps = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.ratio_params))
   roe = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.roe_params))
   er  = factory.LazyAttribute(lambda instance: faker.pydecimal(**instance.er_params))
+  market_cap = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=8, **instance.money_params))
+  operating_cashflow = factory.LazyAttribute(lambda instance: faker.pydecimal(left_digits=8, **instance.money_params))
   skip_task = False
 
 class LocalizedStockFactory(factory.django.DjangoModelFactory):
