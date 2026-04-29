@@ -1713,6 +1713,8 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
           },
           'price': 650.00, 'dividend': 2.00, 'per': 1.73, 'pbr': 2.34,
           'eps': 0.52, 'bps': 2.11, 'roe': 0.12, 'er':  50.31,
+          'payout_ratio': 23.6, 'market_cap': 456.82,
+          'operating_cashflow': 56.1,
         },
         'price': 500.00,
         'purchase_date': '2021-02-13',
@@ -1728,12 +1730,15 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
         industry=industry,
         price=Decimal('650.00'),
         dividend=Decimal('2.00'),
+        payout_ratio=Decimal('23.60'),
         per=Decimal('1.73'),
         pbr=Decimal('2.34'),
         eps=Decimal('0.52'),
         bps=Decimal('2.11'),
         roe=Decimal('0.12'),
         er=Decimal('50.31'),
+        market_cap=Decimal('456.82'),
+        operating_cashflow=Decimal('56.10'),
       )
       # Create localized data
       for lang in ['en', 'ja']:
