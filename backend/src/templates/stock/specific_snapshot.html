@@ -20,6 +20,7 @@
                 <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Payout Ratio" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
@@ -34,12 +35,15 @@
                 data-price="{{ record.price|floatformat:2|intcomma }}"
                 data-dividend="{{ record.dividend|floatformat:1 }}"
                 data-yield="{{ record.stock_yield|floatformat:2 }}"
+                data-payoutratio="{{ record.payout_ratio|default:'0.0'|floatformat:2 }}"
                 data-per="{{ record.per|floatformat:2 }}"
                 data-pbr="{{ record.pbr|floatformat:2 }}"
                 data-eps="{{ record.eps|floatformat:2|intcomma }}"
                 data-bps="{{ record.bps|floatformat:2|intcomma }}"
                 data-roe="{{ record.roe|floatformat:2 }}"
                 data-er="{{ record.er|floatformat:2 }}"
+                data-marketcap="{{ record.market_cap|default:'0.0'|floatformat:2|intcomma }}"
+                data-operatingcashflow="{{ record.operating_cashflow|default:'0.0'|floatformat:2|intcomma }}"
               >
                 <td scope="row">{{ forloop.counter0 }}</td>
                 <td>{{ record.code }}</td>
@@ -48,6 +52,7 @@
                 <td>{{ record.trend }}</td>
                 <td {% if not forloop.first %}data-type="dividend"{% endif %}>{{ record.real_div|floatformat:0|intcomma }}</td>
                 <td>{{ record.div_yield|floatformat:2 }}&#37;</td>
+                <td>{{ record.payout_ratio|floatformat:2 }}&#37;</td>
                 <td {% if not forloop.first %}data-type="value"{% endif %}>{{ record.purchased_value|floatformat:-1|intcomma }}</td>
                 <td {% if not forloop.first %}data-type="count"{% endif %}>{{ record.count|intcomma }}</td>
                 <td {% if not forloop.first %}data-type="diff"{% endif %}{% if record.diff|is_negative %} class="text-danger"{% endif %}>{{ record.diff|floatformat:-1|intcomma }}</td>
@@ -59,6 +64,7 @@
                 <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
                 <th><span id="total-dividend"></span></th>
                 <th><span id="average-yield"></span>&#37;</th>
+                <th><span>-</span></th>
                 <th><span id="total-value"></span></th>
                 <th><span id="total-count"></span></th>
                 <th><span id="total-diff"></span></th>
@@ -113,6 +119,10 @@
                 <td class="text-nowrap"><span id="stock-yield"></span>&#37;</td>
               </tr>
               <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Payout Ratio" %}</td>
+                <td class="text-nowrap"><span id="stock-payoutratio"></span>&#37;</td>
+              </tr>
+              <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
                 <td class="text-nowrap"><span id="stock-per"></span></td>
               </tr>
@@ -135,6 +145,14 @@
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Equity Ratio" %}</td>
                 <td class="text-nowrap"><span id="stock-er"></span>&#37;</td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Market Capitalization (100M)" %}</td>
+                <td class="text-nowrap"><span id="stock-marketcap"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Operating Cashflow (100M)" %}</td>
+                <td class="text-nowrap"><span id="stock-operatingcashflow"></span></td>
               </tr>
             </tbody>
           </table>
@@ -162,7 +180,8 @@
     const canClickLinks = document.querySelectorAll('.js-click-link');
     const validKeys = Object.freeze([
       'code', 'name', 'industry', 'price', 'dividend', 'yield',
-      'per', 'pbr', 'eps', 'bps', 'roe', 'er',
+      'payoutratio', 'per', 'pbr', 'eps', 'bps', 'roe', 'er',
+      'marketcap', 'operatingcashflow',
     ]);
     const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
     const isNegative = (val) => pattern.test(val);

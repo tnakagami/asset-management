@@ -65,6 +65,7 @@
                 <th scope="col" class="text-nowrap" data-name="price">{% trans "Stock price" %}</th>
                 <th scope="col" class="text-nowrap" data-name="dividend">{% trans "Dividend" %}</th>
                 <th scope="col" class="text-nowrap" data-name="yield">{% trans "Dividend yield" %}</th>
+                <th scope="col" class="text-nowrap" data-name="payout_ratio">{% trans "Payout Ratio" %}</th>
                 <th scope="col" class="text-nowrap" data-name="per">{% trans "Price Earnings Ratio" %}</th>
                 <th scope="col" class="text-nowrap" data-name="pbr">{% trans "Price Book-value Ratio" %}</th>
                 <th scope="col" class="text-nowrap" data-name="multpp">{% trans "PER &times; PBR" %}</th>
@@ -72,6 +73,8 @@
                 <th scope="col" class="text-nowrap" data-name="bps">{% trans "Book value Per Share" %}</th>
                 <th scope="col" class="text-nowrap" data-name="roe">{% trans "Return On Equity" %}</th>
                 <th scope="col" class="text-nowrap" data-name="er">{% trans "Equity Ratio" %}</th>
+                <th scope="col" class="text-nowrap" data-name="market_cap">{% trans "Market Capitalization (100M)" %}</th>
+                <th scope="col" class="text-nowrap" data-name="operating_cashflow">{% trans "Operating Cashflow (100M)" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -84,6 +87,7 @@
                 <td data-type="price" {% if instance.price|is_negative %}class="text-danger"{% endif %}>{{ instance.price|intcomma }}</td>
                 <td data-type="dividend">{{ instance.dividend|intcomma }}</td>
                 <td data-type="yield">{{ instance.div_yield|floatformat:2 }}&#37;</td>
+                <td data-type="payout_ratio">{{ instance.payout_ratio|floatformat:2 }}&#37;</td>
                 <td data-type="per">{{ instance.per }}</td>
                 <td data-type="pbr">{{ instance.pbr }}</td>
                 <td data-type="multi">{{ instance.multi_pp|floatformat:2 }}</td>
@@ -91,6 +95,8 @@
                 <td data-type="bps" {% if instance.bps|is_negative %}class="text-danger"{% endif %}>{{ instance.bps|intcomma }}</td>
                 <td data-type="roe" {% if instance.roe|is_negative %}class="text-danger"{% endif %}>{{ instance.roe }}&#37;</td>
                 <td data-type="er" {% if instance.er|is_negative %}class="text-danger"{% endif %}>{{ instance.er }}&#37;</td>
+                <td data-type="market_cap">{{ instance.market_cap }}</td>
+                <td data-type="operating_cashflow" {% if instance.operating_cashflow|is_negative %}class="text-danger"{% endif %}>{{ instance.operating_cashflow }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -337,17 +343,20 @@
     // Define options
     const defaultIDs = ['no', 'code', 'stock'];
     const options = [
-      {value: 'industry', order:  1, selected: false, text: '{% trans "Industry" %}'},
-      {value: 'price',    order:  2, selected: false, text: '{% trans "Stock price" %}'},
-      {value: 'dividend', order:  3, selected: false, text: '{% trans "Dividend" %}'},
-      {value: 'yield',    order:  4, selected: false, text: '{% trans "Dividend yield" %}'},
-      {value: 'per',      order:  5, selected: false, text: '{% trans "Price Earnings Ratio" %}'},
-      {value: 'pbr',      order:  6, selected: false, text: '{% trans "Price Book-value Ratio" %}'},
-      {value: 'multpp',   order:  7, selected: false, text: '{% trans "PER &times; PBR" %}'},
-      {value: 'eps',      order:  8, selected: false, text: '{% trans "Earnings Per Share" %}'},
-      {value: 'bps',      order:  9, selected: false, text: '{% trans "Book value Per Share" %}'},
-      {value: 'roe',      order: 10, selected: false, text: '{% trans "Return On Equity" %}'},
-      {value: 'er',       order: 11, selected: false, text: '{% trans "Equity Ratio" %}'},
+      {value: 'industry',           order:  1, selected: false, text: '{% trans "Industry" %}'},
+      {value: 'price',              order:  2, selected: false, text: '{% trans "Stock price" %}'},
+      {value: 'dividend',           order:  3, selected: false, text: '{% trans "Dividend" %}'},
+      {value: 'yield',              order:  4, selected: false, text: '{% trans "Dividend yield" %}'},
+      {value: 'payout_ratio',       order:  5, selected: false, text: '{% trans "Payout Ratio" %}'},
+      {value: 'per',                order:  6, selected: false, text: '{% trans "Price Earnings Ratio" %}'},
+      {value: 'pbr',                order:  7, selected: false, text: '{% trans "Price Book-value Ratio" %}'},
+      {value: 'multpp',             order:  8, selected: false, text: '{% trans "PER &times; PBR" %}'},
+      {value: 'eps',                order:  9, selected: false, text: '{% trans "Earnings Per Share" %}'},
+      {value: 'bps',                order: 10, selected: false, text: '{% trans "Book value Per Share" %}'},
+      {value: 'roe',                order: 11, selected: false, text: '{% trans "Return On Equity" %}'},
+      {value: 'er',                 order: 12, selected: false, text: '{% trans "Equity Ratio" %}'},
+      {value: 'market_cap',         order: 13, selected: false, text: '{% trans "Market Capitalization (100M)" %}'},
+      {value: 'operating_cashflow', order: 14, selected: false, text: '{% trans "Operating Cashflow (100M)" %}'},
     ];
     const dualListbox = helper.createDualListbox('headers', options);
     const callback = () => updateTableHeaders(defaultIDs);

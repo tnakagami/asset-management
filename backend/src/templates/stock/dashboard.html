@@ -187,6 +187,7 @@
                       <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
+                      <th scope="col" class="text-nowrap">{% trans "Payout Ratio" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
@@ -199,6 +200,7 @@
                       <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
                       <th><span name="total-asset-dividend"></span></th>
                       <th><span name="average-asset-yield"></span>&#37;</th>
+                      <th><span>-</span></th>
                       <th><span name="total-asset-value"></span></th>
                       <th><span name="total-asset-count"></span></th>
                       <th><span name="total-asset-diff"></span></th>
@@ -297,6 +299,10 @@
                 <td class="text-nowrap"><span data-target="yield"></span>&#37;</td>
               </tr>
               <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Payout Ratio" %}</td>
+                <td class="text-nowrap"><span data-target="payoutratio"></span>&#37;</td>
+              </tr>
+              <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Price Earnings Ratio" %}</td>
                 <td class="text-nowrap"><span data-target="per"></span></td>
               </tr>
@@ -319,6 +325,14 @@
               <tr>
                 <td scope="row" class="text-nowrap fw-bold">{% trans "Equity Ratio" %}</td>
                 <td class="text-nowrap"><span data-target="er"></span>&#37;</td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Market Capitalization (100M)" %}</td>
+                <td class="text-nowrap"><span data-target="marketcap"></span></td>
+              </tr>
+              <tr>
+                <td scope="row" class="text-nowrap fw-bold">{% trans "Operating Cashflow (100M)" %}</td>
+                <td class="text-nowrap"><span data-target="operatingcashflow"></span></td>
               </tr>
             </tbody>
           </table>
@@ -346,6 +360,7 @@
   <td><span class="asset-trend"></span></td>
   <td><span class="asset-realDividend"></span></td>
   <td><span class="asset-yield"></span>&#37;</td>
+  <td><span class="asset-payoutRatio"></span>&#37;</td>
   <td><span class="asset-value"></span></td>
   <td><span class="asset-count"></span></td>
   <td><span class="asset-diff"></span></td>
@@ -377,6 +392,7 @@
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 (function () {
+  const getValue = (val, base=0.0) => (val || base);
   const calcTotal = (arr, initVal=0.0) => arr.reduce((acc, val) => acc + val, initVal);
   // Define chart data
   const createChartData = (data, sortCallback, collectType) => {
@@ -433,19 +449,22 @@
         industry: _getName(_stock.industry),
         dividend: _stock.dividend,
         realDividend: _scaler(_stock.dividend),
+        payoutRatio: getValue(_stock.payout_ratio),
         isDefensive: trendStat.isDefensive,
         trend: trendStat.name,
         price: record.price,
         count: record.count,
         diff: diff,
         options: {
-          price: _stock.price,
-          per: _stock.per,
-          pbr: _stock.pbr,
-          eps: _stock.eps,
-          bps: _stock.bps,
-          roe: _stock.roe,
-          er: _stock.er,
+          price: getValue(_stock.price),
+          per: getValue(_stock.per),
+          pbr: getValue(_stock.pbr),
+          eps: getValue(_stock.eps),
+          bps: getValue(_stock.bps),
+          roe: getValue(_stock.roe),
+          er: getValue(_stock.er),
+          market_cap: getValue(_stock.market_cap),
+          operating_cashflow: getValue(_stock.operating_cashflow),
         },
       };
     });
@@ -471,6 +490,7 @@
             dividend: item.dividend,
             realDividend: item.realDividend,
             yield: 0,
+            payoutRatio: getValue(item.payoutRatio),
             isDefensive: item.isDefensive,
             trend: item.trend,
             value: _calcValue(item),
@@ -490,6 +510,7 @@
       industry: '-',
       dividend: 0,
       realDividend: 0,
+      payoutRatio: 0,
       yield: 0,
       isDefensive: undefined,
       trend: '-',
@@ -686,24 +707,32 @@
     const updateNodeStatus = (item, element) => {
       if (item.options) {
         const get_yield = (price, dividend) => ((dividend > 0) ? (dividend / price * 100.0).toFixed(2) : '0.00');
+        const convertNum2StrWithDigit = (val, digit=2) => val.toLocaleString(undefined, {
+          minimumFractionDigits: digit,
+          maximumFractionDigits: digit,
+        });
         element.dataset.name = item.name;
         element.dataset.code = item.code;
         element.dataset.industry = item.industry;
         element.dataset.price = item.options.price.toFixed(2);
         element.dataset.dividend = item.dividend.toFixed(2);
         element.dataset.yield = get_yield(item.options.price, item.dividend);
+        element.dataset.payoutratio = item.payoutRatio.toFixed(2);
         element.dataset.per = item.options.per.toFixed(2);
         element.dataset.pbr = item.options.pbr.toFixed(2);
         element.dataset.eps = item.options.eps.toFixed(2);
         element.dataset.bps = item.options.bps.toFixed(2);
         element.dataset.roe = item.options.roe.toFixed(2);
         element.dataset.er = item.options.er.toFixed(2);
+        element.dataset.marketcap = convertNum2StrWithDigit(item.options.market_cap);
+        element.dataset.operatingcashflow = convertNum2StrWithDigit(item.options.operating_cashflow);
         element.classList.add('text-decoration-underline', 'text-primary');
         // Add click event
         element.addEventListener('click', () => {
           const columns = Object.freeze([
-            'code', 'name', 'industry', 'price', 'dividend',
-            'yield', 'per', 'pbr', 'eps', 'bps', 'roe', 'er',
+            'code', 'name', 'industry', 'price', 'dividend', 'yield',
+            'payoutratio', 'per', 'pbr', 'eps', 'bps', 'roe', 'er',
+            'marketcap', 'operatingcashflow',
           ]);
           const pattern = new RegExp('^-[0-9,]+.?[0-9]+$');
           const isNegative = (val) => pattern.test(val);
@@ -746,6 +775,7 @@
         'trend': (val, _) => val,
         'realDividend': (val, _) => val.toLocaleString(),
         'yield': (val, _) => val.toFixed(2),
+        'payoutRatio': (val, _) => val.toFixed(2),
         'value': (val, _) => val.toLocaleString(),
         'count': (val, _) => val.toLocaleString(),
         'diff': (val, _) => val.toLocaleString(),
@@ -763,7 +793,7 @@
 
         for (const [key, callback] of Object.entries(nodeList)) {
           const element = clone.querySelector(`.asset-${key}`);
-          const val = item[key];
+          const val = getValue(item[key]);
           element.textContent = callback(val, idx);
 
           if ((key === 'diff') && (val < 0)) {
@@ -828,7 +858,7 @@
 
         for (const [key, callback] of Object.entries(nodeList)) {
           const element = clone.querySelector(`.sector-${key}`);
-          const val = item[key];
+          const val = getValue(item[key]);
           element.textContent = callback(val, idx);
 
           if ((key === 'diff') && (val < 0)) {
