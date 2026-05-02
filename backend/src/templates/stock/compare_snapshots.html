@@ -5,6 +5,12 @@
 
 {% block header %}
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+<style>
+  .ts-dropdown, .ts-control, .ts-control input {
+    font-size: inherit !important;
+    line-height: inherit !important;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -181,7 +187,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <select name="snapshot-list" id="snapshot-list" class="form-control"></select>
+        <select name="snapshot-list" id="snapshot-list" class="form-control form-control-lg"></select>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">{% trans "Close" %}</button>
