@@ -136,23 +136,23 @@
                 <tbody class="table-group-divider">
                   <tr>
                     <td scope="row" class="text-nowrap fw-bold">{% trans "Count" %}</td>
-                    <td class="text-nowrap"><span data-type="refCount"></span></td>
-                    <td class="text-nowrap"><span data-type="compCount"></span></td>
+                    <td class="text-nowrap"><span data-type="refcount"></span></td>
+                    <td class="text-nowrap"><span data-type="compcount"></span></td>
                   </tr>
                   <tr>
                     <td scope="row" class="text-nowrap fw-bold">{% trans "Purchased price" %}</td>
-                    <td class="text-nowrap"><span data-type="refValue"></span></td>
-                    <td class="text-nowrap"><span data-type="compValue"></span></td>
+                    <td class="text-nowrap"><span data-type="refvalue"></span></td>
+                    <td class="text-nowrap"><span data-type="compvalue"></span></td>
                   </tr>
                   <tr>
                     <td scope="row" class="text-nowrap fw-bold">{% trans "Current price" %}</td>
-                    <td class="text-nowrap"><span data-type="refStock"></span>(<span data-type="refUnit"></span>)</td>
-                    <td class="text-nowrap"><span data-type="compStock"></span>(<span data-type="compUnit"></span>)</td>
+                    <td class="text-nowrap"><span data-type="refstock"></span>(<span data-type="refunit"></span>)</td>
+                    <td class="text-nowrap"><span data-type="compstock"></span>(<span data-type="compunit"></span>)</td>
                   </tr>
                   <tr>
                     <td scope="row" class="text-nowrap fw-bold">{% trans "Dividend" %}</td>
-                    <td class="text-nowrap"><span data-type="refDividend"></span></td>
-                    <td class="text-nowrap"><span data-type="compDividend"></span></td>
+                    <td class="text-nowrap"><span data-type="refdividend"></span></td>
+                    <td class="text-nowrap"><span data-type="compdividend"></span></td>
                   </tr>
                 </tbody>
               </table>
@@ -268,22 +268,22 @@
       // Add dataset attribute
       element.dataset.code = wrapper(ref, comp, 'code');
       element.dataset.name = wrapper(ref, comp, 'name');
-      element.dataset.refCount = convertor(getVal(ref, 'count'));
-      element.dataset.compCount = convertor(getVal(comp, 'count'));
-      element.dataset.refValue = convertor(getVal(ref, 'value'));
-      element.dataset.compValue = convertor(getVal(comp, 'value'));
-      element.dataset.refStock = convertor(calcCurrentPrice(ref));
-      element.dataset.compStock = convertor(calcCurrentPrice(comp));
-      element.dataset.refUnit = convertor(getVal(ref, 'stock'));
-      element.dataset.compUnit = convertor(getVal(comp, 'stock'));
-      element.dataset.refDividend = convertor(getVal(ref, 'dividend'));
-      element.dataset.compDividend = convertor(getVal(comp, 'dividend'));
+      element.dataset.refcount = convertor(getVal(ref, 'count'));
+      element.dataset.compcount = convertor(getVal(comp, 'count'));
+      element.dataset.refvalue = convertor(getVal(ref, 'value'));
+      element.dataset.compvalue = convertor(getVal(comp, 'value'));
+      element.dataset.refstock = convertor(calcCurrentPrice(ref));
+      element.dataset.compstock = convertor(calcCurrentPrice(comp));
+      element.dataset.refunit = convertor(getVal(ref, 'stock'));
+      element.dataset.compunit = convertor(getVal(comp, 'stock'));
+      element.dataset.refdividend = convertor(getVal(ref, 'dividend'));
+      element.dataset.compdividend = convertor(getVal(comp, 'dividend'));
       element.classList.add('text-decoration-underline', 'text-primary');
       // Add click event
       element.addEventListener('click', (event) => {
         const columns = Object.freeze([
-          'refCount', 'compCount', 'refValue', 'compValue', 'refStock',
-          'compStock', 'refUnit', 'compUnit', 'refDividend', 'compDividend',
+          'refcount', 'compcount', 'refvalue', 'compvalue', 'refstock',
+          'compstock', 'refunit', 'compunit', 'refdividend', 'compdividend',
         ]);
         // Update modal data and show modal
         for (const key of columns) {
