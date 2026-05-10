@@ -1,5 +1,28 @@
-{% with id=widget.attrs.id %}<div{% if id %} id="{{ id }}"{% endif %}>{% for group, options, index in widget.optgroups %}{% if group %}
+{% with id=widget.attrs.id %}<div class="card-body"{% if id %} id="{{ id }}"{% endif %}>{% for group, options, index in widget.optgroups %}{% if group %}
   <div><label>{{ group }}</label>{% endif %}{% for option in options %}<div{% if widget.attrs.class %} class="{{ widget.attrs.class }}"{% endif %}>
     {% include option.template_name with widget=option %}</div>{% endfor %}{% if group %}
-  </div>{% endif %}{% endfor %}<script>(function () { const element = document.querySelector('#{{ id }}'); element.parentElement.classList.remove('form-floating'); })();</script>
+  </div>{% endif %}{% endfor %}
+  <script>(function () {
+    document.addEventListener('DOMContentLoaded', () => {
+      const element = document.querySelector('#{{ id }}');
+      const parent = element.parentElement;
+      const peCL = parent.classList;
+      const label = parent.querySelector('label.form-label');
+      // Change class list of parent element
+      peCL.remove('form-floating');
+      // Change class list of label element
+      if (label) {
+        const node = label.cloneNode(true);
+        const ncl = node.classList;
+        peCL.add('card');
+        ncl.remove('form-label');
+        ncl.add('card-footer');
+        // Set id for `for` attribute
+        node.htmlFor = element.id;
+        // Update DOM element
+        parent.removeChild(label);
+        parent.appendChild(node);
+      }
+    });
+  })();</script>
 </div>{% endwith %}
