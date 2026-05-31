@@ -15,7 +15,7 @@ class Command(BaseCommand):
       run_stock_task(idx, total, instance)
 
       if (idx % 100) == 0:
-        message = gettext_lazy(f'Processing status: {idx} / {total} started')
+        message = gettext_lazy('Processing status: %(idx)s / %(total)s started') % {'idx': idx, 'total': total}
         self.stdout.write(str(message))
 
     # Post process

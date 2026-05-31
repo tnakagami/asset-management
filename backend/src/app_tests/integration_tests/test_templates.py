@@ -1953,7 +1953,7 @@ class TestDownloadUploadOperation(BaseStockTestUtils):
     # Collect response data
     records = response.context['stocks']
     elements = [
-      element.contents[0] for element in response.html.find_all('td', attrs={'data-type': 'name'})
+      element.get_text(strip=True) for element in response.html.find_all('td', attrs={'data-type': 'name'})
     ]
 
     assert response.status_code == status.HTTP_200_OK
