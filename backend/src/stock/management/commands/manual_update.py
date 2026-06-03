@@ -18,7 +18,7 @@ class Command(BaseCommand):
     # Get the argument
     input_codes = {code.strip() for code in options.get('codes') if code.strip()}
     # Collect stock instances
-    stocks = Stock.objects.filter(code__in=input_codes)
+    stocks = Stock.objects.filter(code__in=input_codes).order_by('?')
     total = stocks.count()
 
     # Pre-process
