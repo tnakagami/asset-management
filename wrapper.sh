@@ -179,13 +179,24 @@ while [ -n "$1" ]; do
       ;;
 
     command )
+      command=
+      cmd_args=
       # In the case of that the 2nd argument has a hyphen as the 1st charactor (= str.startswith('-'))
-      # Ex) command -hogehoge -> ${command} is hogehoge
-      if [[ "$2" =~ ^-([a-z0-9]+) ]]; then
-        command=${BASH_REMATCH[1]}
+      # Ex 1) command -hogehoge                -> ${command} is hogehoge and ${cmd_args} is empty string
+      # Ex 2) command -hogehoge --args foo bar -> ${command} is hogehoge and ${cmd_args} is "--args foo bar"
+      if [[ "$2" =~ ^-([a-z0-9_]+) ]]; then
         shift
-        # Execute the command
-        docker exec -it ${BACKEND_CONTAINER_NAME} python manage.py ${command}
+        command=${BASH_REMATCH[1]}
+      fi
+      # Check the 3rd and subsequent arguments
+      if [[ "$2" =~ ^--.* ]]; then
+        shift
+        cmd_args="$@"
+      fi
+      # Validate command
+      if [ -n "${command}" ]; then
+        # Execute the command with arguments
+        docker exec -it ${BACKEND_CONTAINER_NAME} python manage.py ${command} ${cmd_args}
       fi
 
       shift

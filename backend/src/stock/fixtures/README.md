@@ -123,8 +123,10 @@ popd
         with transaction.atomic():
           classname.objects.bulk_create(instances)
         print(f"Create {target} (count: {len(instances)})")
-      except IntegrityError as ex:
-        print(f"IntegrityError: {ex}")
+      except IntegrityError as integrity_err:
+        print(f"Integrity Error[{target}]: {integrity_err}")
+      except Exception as general_err:
+        print(f"Error[{target}]: {general_err}")
 
     # ------------
     # main routine
