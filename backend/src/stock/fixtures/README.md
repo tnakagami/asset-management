@@ -77,7 +77,7 @@ pushd /opt/app/stock/fixtures
 
 # Run the following command
 ./dump_db.sh
-# [Note] Output files are db_industry.yaml and db_stock.yaml in /opt/app/stock/fixtures
+# [Note] Output files are db_industry.yaml, db_stock.yaml, and valid_stocks.yaml in /opt/app/stock/fixtures
 
 # Replace created yaml files to original ones.
 mv db_industry.yaml industry.yaml
@@ -85,3 +85,89 @@ mv db_stock.yaml stock.yaml
 
 popd
 ```
+
+## Add new stock data based on Japan Exchange Group, Inc.
+1. Save stock list by following format as `stock_list.yaml`.
+
+    ```yaml
+    - code: 8303
+      industry: 銀行業
+      ja: SBI新生銀行
+      en: SBI Shinsei Bank, Limited
+    - code: 409A
+      industry: 食料品
+      ja: オリオンビール
+      en: Orion Breweries, Ltd.
+    ```
+
+1. Create following python code.
+
+    ```python
+    import yaml
+    import django
+    from config.define_module import setup_default_setting
+
+    #
+    # Setup
+    #
+    setup_default_setting()
+    django.setup()
+
+    # Import relevant models
+    from django.db import transaction
+    from django.db.utils import IntegrityError
+    from stock.models import LocalizedIndustry, LocalizedStock, Stock
+
+    def bulk_create(target, classname, instances):
+      try:
+        with transaction.atomic():
+          classname.objects.bulk_create(instances)
+        print(f"Create {target} (count: {len(instances)})")
+      except IntegrityError as integrity_err:
+        print(f"Integrity Error[{target}]: {integrity_err}")
+      except Exception as general_err:
+        print(f"Error[{target}]: {general_err}")
+
+    # ------------
+    # main routine
+    # ------------
+    # Read target file
+    with open("stock_list.yaml", "r", encoding="utf-8") as fin:
+      data = yaml.safe_load(fin)
+
+    # Create stock instance if its stock does not exist
+    all_codes = set(Stock.objects.values_list("code", flat=True))
+    new_stocks = []
+
+    for row in data:
+      code, industry_name = str(row["code"]).strip(), row["industry"].strip()
+
+      if code not in all_codes:
+        try:
+          localized_industry = LocalizedIndustry.get(name=industry_name)
+          new_stocks += [Stock(code=code, industry=localized_industry.industry)]
+        except LocalizedIndustry.DoesNotExist:
+          print(f"Error: {industry_name} does not exist(code={code}).")
+        except Exception as ex:
+          print(f"Error: {ex}")
+
+    if new_stocks:
+      bulk_create("stocks", Stock, new_stocks)
+
+    # Create localized stock instance
+    new_localized_stocks = []
+    for row in data:
+      code = str(row["code"]).strip()
+      languages = [(key, val.strip()) for key, val in row.items() if key not in ["code", "industry"]]
+      stock = Stock.objects.get(code=code)
+      new_localized_stocks += [LocalizedStock(language_code=lang_code, name=name, stock=stock) for (lang_code, name) in languages]
+
+    if new_localized_stocks:
+      bulk_create("localized stocks", LocalizedStock, new_localized_stocks)
+    ```
+
+3. Run the following command.
+
+    ```bash
+    python $(find /opt/app -name "manage.py") shell < above_script_file.py
+    ```
