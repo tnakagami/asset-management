@@ -100,50 +100,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     return short_name
 
 class PortfolioUserQuerySet(models.QuerySet):
-  @staticmethod
-  def _get_annual_dividend(dividend_field, count_field):
-    return models.ExpressionWrapper(
-      models.F(dividend_field) * models.F(count_field),
-      output_field=models.DecimalField(max_digits=10, decimal_places=2),
-    )
-
-  @staticmethod
-  def _get_total_investment(price_field, count_field):
-    return models.ExpressionWrapper(
-      models.F(price_field) * models.F(count_field),
-      output_field=models.DecimalField(max_digits=12, decimal_places=2),
-    )
-
-  def _annotate_stock_count(self):
-    return self.annotate(
-      total_stock_counts=models.Count('purchased_stocks__stock__code', distinct=True)
-    )
-
-  def _annotate_investment(self):
-    return self.annotate(
-      total_investments=models.Sum(
-        self._get_total_investment(
-          price_field='purchased_stocks__price',
-          count_field='purchased_stocks__count',
-        )
-      )
-    )
-
-  def _annotate_dividend(self):
-    return self.annotate(
-      total_dividends=models.Sum(
-        self._get_annual_dividend(
-          dividend_field='purchased_stocks__stock__dividend',
-          count_field='purchased_stocks__count',
-        )
-      )
-    )
-
   def with_stats(self):
-    return (
-      self._annotate_stock_count()
-          ._annotate_investment()
-          ._annotate_dividend()
+    from stock.models import PurchasedStock
+
+    annotations = PurchasedStock.objects.get_summary_expressions(relation_prefix='purchased_stocks')
+
+    return self.annotate(
+      total_stock_counts=annotations['total_stock_counts'],
+      total_investments=annotations['total_investments'],
+      total_dividends=annotations['total_dividends'],
     )
 
 class PortfolioUserManager(models.Manager.from_queryset(PortfolioUserQuerySet)):
@@ -170,34 +135,22 @@ class PortfolioUser(User):
 
   @property
   def industry_stats(self):
-    from stock.models import Stock
+    from stock.models import PurchasedStock
 
-    return (
-      Stock.objects
-        .select_targets()
-        .filter(
-          purchasedstock__user=self,
-          purchasedstock__has_been_sold=False,
-        )
-        .values(
-          'industry',
-          'industry_name',
-          is_defensive=models.F('industry__is_defensive'),
-        )
-        .annotate(
-          stock_count=models.Count('code', distinct=True),
-          total_investment=models.Sum(
-            PortfolioUserQuerySet._get_total_investment(
-              price_field='purchasedstock__price',
-              count_field='purchasedstock__count',
-            )
-          ),
-          total_dividend=models.Sum(
-            PortfolioUserQuerySet._get_annual_dividend(
-              dividend_field='dividend',
-              count_field='purchasedstock__count',
-            )
-          ),
-        )
-        .order_by('-is_defensive', '-total_investment')
+    annotations = PurchasedStock.objects.get_summary_expressions(relation_prefix='')
+    queryset = self.purchased_stocks.select_targets()
+    stats = (
+      queryset.values(
+        industry_pk=models.F('stock__industry'),
+        industry_name=models.F('industry_name'),
+        is_defensive=models.F('stock__industry__is_defensive'),
+      )
+      .annotate(
+        industry_stock_count=annotations['total_stock_counts'],
+        industry_investment=annotations['total_investments'],
+        industry_dividend=annotations['total_dividends'],
+      )
+      .order_by('-is_defensive', '-industry_investment')
     )
+
+    return stats

@@ -66,9 +66,9 @@
                     {% trans "Economically sensitive" %}
                   {% endif %}
                 </td>
-                <td class="text-end">{{ stat.stock_count }}</td>
-                <td class="text-end">{{ stat.total_dividend|floatformat:2|intcomma }}</td>
-                <td class="text-end">{{ stat.total_investment|floatformat:0|intcomma }}</td>
+                <td class="text-end">{{ stat.industry_stock_count }}</td>
+                <td class="text-end">{{ stat.industry_dividend|floatformat:2|intcomma }}</td>
+                <td class="text-end">{{ stat.industry_investment|floatformat:0|intcomma }}</td>
               </tr>
               {% empty %}
               <tr>

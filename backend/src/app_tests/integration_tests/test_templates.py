@@ -185,6 +185,84 @@ class TestAccountApplication(SharedFixture):
 
     assert str(status.HTTP_403_FORBIDDEN) in ex.value.args[0]
 
+  # ===========================
+  # Purchased stock information
+  # ===========================
+  def test_industry_stats_order_by_rendering(self, csrf_exempt_django_app):
+    user = factories.UserFactory()
+    industries = [
+      factories.IndustryFactory(is_defensive=False),
+      factories.IndustryFactory(is_defensive=False),
+      factories.IndustryFactory(is_defensive=True),
+      factories.IndustryFactory(is_defensive=True),
+    ]
+    stocks = [
+      factories.StockFactory(industry=industries[0], price=Decimal( '1000.00'), dividend=Decimal( '10.00')),
+      factories.StockFactory(industry=industries[1], price=Decimal( '2500.00'), dividend=Decimal( '20.00')),
+      factories.StockFactory(industry=industries[2], price=Decimal( '2000.00'), dividend=Decimal( '30.00')),
+      factories.StockFactory(industry=industries[3], price=Decimal( '1500.00'), dividend=Decimal( '40.00')),
+      factories.StockFactory(industry=industries[2], price=Decimal('10000.00'), dividend=Decimal('500.00')),
+      factories.StockFactory(industry=industries[3], price=Decimal( '2000.00'), dividend=Decimal( '50.00')),
+    ]
+    params = [
+      {'stock': stocks[0], 'price': Decimal( '1000.00'), 'count': 10, 'has_been_sold': False},
+      {'stock': stocks[1], 'price': Decimal( '2500.00'), 'count': 20, 'has_been_sold': False},
+      {'stock': stocks[2], 'price': Decimal( '2000.00'), 'count': 10, 'has_been_sold': False},
+      {'stock': stocks[3], 'price': Decimal( '1500.00'), 'count': 10, 'has_been_sold': False},
+      {'stock': stocks[3], 'price': Decimal( '1500.00'), 'count': 10, 'has_been_sold': False},
+      {'stock': stocks[4], 'price': Decimal('10000.00'), 'count': 10, 'has_been_sold': True},
+      {'stock': stocks[5], 'price': Decimal( '2000.00'), 'count':  5, 'has_been_sold': False},
+    ]
+    for idx, obj in enumerate(params, 3):
+      factories.PurchasedStockFactory(
+        user=user, stock=obj['stock'], price=obj['price'], count=obj['count'],
+        purchase_date=get_date((2023, 4, idx)), has_been_sold=obj['has_been_sold'],
+      )
+    # ------------
+    # main routine
+    # ------------
+    app = csrf_exempt_django_app
+    page = app.get(self.index_url, user=user)
+    response = page.click('User Profile')
+    owner = response.context['owner']
+    stats = list(owner.industry_stats)
+
+    assert page.status_code == 200
+    assert len(stats) == 4
+    # -------
+    # Summary
+    # -------
+    # stocks[0], stocks[1], stocks[2], stocks[3], and stocks[5]
+    assert owner.purchased_stock_count == 5
+    # 10,000 + 50,000 + 20,000 + 30,000 + 10,000 = 120,000.00
+    assert owner.total_investment_amount == Decimal('120000.00')
+    # 100 + 400 + 300 + 800 + 250 = 1,850.00
+    assert owner.total_annual_dividend == Decimal('1850.00')
+    # The 1st data
+    assert stats[0]['industry_pk'] == industries[3].pk
+    assert stats[0]['is_defensive']
+    assert stats[0]['industry_stock_count'] == 2
+    assert stats[0]['industry_investment'] == Decimal('40000.00')
+    assert stats[0]['industry_dividend'] == Decimal('1050.00')
+    # The 2nd data
+    assert stats[1]['industry_pk'] == industries[2].pk
+    assert stats[1]['is_defensive']
+    assert stats[1]['industry_stock_count'] == 1
+    assert stats[1]['industry_investment'] == Decimal('20000.00')
+    assert stats[1]['industry_dividend'] == Decimal('300.00')
+    # The 3rd data
+    assert stats[2]['industry_pk'] == industries[1].pk
+    assert not stats[2]['is_defensive']
+    assert stats[2]['industry_stock_count'] == 1
+    assert stats[2]['industry_investment'] == Decimal('50000.00')
+    assert stats[2]['industry_dividend'] == Decimal('400.00')
+    # The 4th data
+    assert stats[3]['industry_pk'] == industries[0].pk
+    assert not stats[3]['is_defensive']
+    assert stats[3]['industry_stock_count'] == 1
+    assert stats[3]['industry_investment'] == Decimal('10000.00')
+    assert stats[3]['industry_dividend'] == Decimal('100.00')
+
 # =================
 # Stock application
 # =================
@@ -765,7 +843,7 @@ class TestStockAppOperation(BaseStockTestUtils):
     # Collect response data
     records = response.context[object_name]
     elements = {
-      element.attrs['data-type']: element.get_text().strip()
+      element.attrs['data-type']: element.get_text(strip=True)
       for element in response.html.find_all('td', attrs={'data-type': True})
     }
 
@@ -802,7 +880,7 @@ class TestStockAppOperation(BaseStockTestUtils):
     # Collect response data
     records = response.context['tasks']
     elements = {
-      element.attrs['data-type']: element.contents[0]
+      element.attrs['data-type']: element.get_text(strip=True)
       for element in response.html.find_all('td', attrs={'data-type': True})
     }
 
@@ -932,7 +1010,7 @@ class TestStockAppOperation(BaseStockTestUtils):
     # Collect response data
     records = response.context[object_name]
     elements = {
-      element.attrs['data-type']: element.get_text().strip()
+      element.attrs['data-type']: element.get_text(strip=True)
       for element in response.html.find_all('td', attrs={'data-type': True})
     }
 
@@ -976,7 +1054,7 @@ class TestStockAppOperation(BaseStockTestUtils):
     # Collect response data
     records = response.context['tasks']
     elements = {
-      element.attrs['data-type']: element.contents[0]
+      element.attrs['data-type']: element.get_text(strip=True)
       for element in response.html.find_all('td', attrs={'data-type': True})
     }
 

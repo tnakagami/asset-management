@@ -1458,6 +1458,85 @@ class TestCash(SharedFixtures, SelectedRangeFixture):
 @pytest.mark.model
 @pytest.mark.django_db
 class TestPurchasedStock(SharedFixtures, SelectedRangeFixture):
+  @pytest.fixture
+  def get_summarization_stock_data(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+      industry = factories.IndustryFactory(is_defensive=False)
+      stocks = [
+        factories.StockFactory(code='sX01', industry=industry, price=Decimal('2000.00'), dividend=Decimal('50.00')),
+        factories.StockFactory(code='sX02', industry=industry, price=Decimal('5000.00'), dividend=Decimal('100.00')),
+        factories.StockFactory(code="sX03", industry=industry, price=Decimal('1000.00'), dividend=Decimal('10.00')),
+      ]
+      _ = [
+        factories.LocalizedIndustryFactory(industry=industry, name='summary-hoge'),
+        factories.LocalizedStockFactory(stock=stocks[0], name='dy01'),
+        factories.LocalizedStockFactory(stock=stocks[1], name='dy02'),
+        factories.LocalizedStockFactory(stock=stocks[2], name='dy03'),
+      ]
+
+      purchased_stocks = [
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[0], price=Decimal('2000.00'), count=100, purchase_date=get_date((2022, 6, 1)), has_been_sold=False,
+        ),
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[0], price=Decimal('2200.00'), count=50, purchase_date=get_date((2022, 6, 2)), has_been_sold=False,
+        ),
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[1], price=Decimal('5000.00'), count=200, purchase_date=get_date((2022, 6, 3)), has_been_sold=False,
+        ),
+        factories.PurchasedStockFactory(
+          user=user, stock=stocks[2], price=Decimal('1000.00'), count=100, purchase_date=get_date((2022, 6, 3)), has_been_sold=True,
+        ),
+      ]
+      expected = {
+        # stocks[0] and stocks[1]
+        'total_stock_counts': 2,
+        # ------------------------
+        # (2000*100) + (2200*50) + (5000*200) = 200,000 + 110,000 + 1,000,000 = 1,310,000.00
+        'total_investments': Decimal("1310000.00"),
+        # ------------------------
+        # (50*100) + (50*50) + (100*200) = 5,000 + 2,500 + 20,000 = 27,500.00
+        'total_dividends': Decimal("27500.00"),
+      }
+
+    return user, expected
+
+  def test_default_prefix_with_aggregate_on_related_model(self, get_summarization_stock_data):
+    user, expected = get_summarization_stock_data
+    expressions = models.PurchasedStockQuerySet.get_summary_expressions(relation_prefix='purchased_stocks')
+    result = UserModel.objects.filter(pk=user.pk).aggregate(**expressions)
+
+    assert result['total_stock_counts'] == expected['total_stock_counts']
+    assert result['total_investments'] == expected['total_investments']
+    assert result['total_dividends'] == expected['total_dividends']
+
+  @pytest.mark.parametrize([
+    'prefix',
+    'expected',
+  ], [
+    ('hoge', 'hoge__has_been_sold'),
+    ('', 'has_been_sold'),
+  ], ids=[
+    'set-something-prefix',
+    'empty-prefix'
+  ])
+  def test_get_summary_expressions_with_custom_prefix(self, prefix, expected):
+    expressions = models.PurchasedStockQuerySet.get_summary_expressions(relation_prefix=prefix)
+
+    assert set(expressions.keys()) == {'total_stock_counts', 'total_investments', 'total_dividends'}
+    assert expressions['total_stock_counts'].filter.children[0][0] == expected
+
+  def test_get_summary_expressions_when_no_active_stocks(self):
+    user = factories.UserFactory()
+    factories.PurchasedStockFactory(user=user, has_been_sold=True)
+    expressions = models.PurchasedStockQuerySet.get_summary_expressions(relation_prefix='')
+    result = models.PurchasedStock.objects.filter(user=user).aggregate(**expressions)
+
+    assert result['total_stock_counts'] == 0
+    assert result['total_investments'] is None
+    assert result['total_dividends'] is None
+
   @pytest.mark.parametrize([
     'options',
   ], [

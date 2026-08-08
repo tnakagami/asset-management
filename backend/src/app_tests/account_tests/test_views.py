@@ -1,8 +1,9 @@
 import pytest
 from dataclasses import dataclass
+from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from app_tests import status, factories
+from app_tests import status, factories, get_date
 
 UserModel = get_user_model()
 
@@ -92,3 +93,70 @@ class TestUserProfile:
     assert response.status_code == status.HTTP_302_FOUND
     assert response['Location'] == self.profile_url(user.pk)
     assert updated_user.screen_name == new_name
+
+  def test_portfolio_context_stats(self, client):
+    user = factories.UserFactory()
+    industry_defensive = factories.IndustryFactory(is_defensive=True)
+    stock_a = factories.StockFactory(
+      industry=industry_defensive,
+      price=Decimal('1000.00'),
+      dividend=Decimal('50.00'),
+    )
+    factories.PurchasedStockFactory(
+      user=user,
+      stock=stock_a,
+      price=Decimal('1000.00'),
+      count=10,
+      purchase_date=get_date((2023, 10, 11)),
+      has_been_sold=False,
+    )
+    industry_non_defensive = factories.IndustryFactory(is_defensive=False)
+    stock_b = factories.StockFactory(
+      industry=industry_non_defensive,
+      price=Decimal('2000.00'),
+      dividend=Decimal('100.00'),
+    )
+    factories.PurchasedStockFactory(
+      user=user,
+      stock=stock_b,
+      price=Decimal('2000.00'),
+      count=20,
+      purchase_date=get_date((2023, 10, 12)),
+      has_been_sold=False,
+    )
+    stock_c = factories.StockFactory(
+      industry=industry_non_defensive,
+      price=Decimal('3000.00'),
+      dividend=Decimal('150.00'),
+    )
+    factories.PurchasedStockFactory(
+      user=user,
+      stock=stock_c,
+      price=Decimal('3000.00'),
+      count=5,
+      purchase_date=get_date((2023, 10, 13)),
+      has_been_sold=True,
+    )
+    # ------------
+    # main routine
+    # ------------
+    client.force_login(user)
+    response = client.get(self.profile_url(user.pk))
+    owner = response.context['owner']
+    stats = list(owner.industry_stats)
+
+    assert response.status_code == 200
+    assert owner.purchased_stock_count == 2
+    assert owner.total_investment_amount == Decimal('50000.00')
+    assert owner.total_annual_dividend == Decimal('2500.00')
+    assert len(stats) == 2
+    assert stats[0]['industry_pk'] == industry_defensive.pk
+    assert stats[0]['is_defensive']
+    assert stats[0]['industry_stock_count'] == 1
+    assert stats[0]['industry_investment'] == Decimal('10000.00')
+    assert stats[0]['industry_dividend'] == Decimal('500.00')
+    assert stats[1]['industry_pk'] == industry_non_defensive.pk
+    assert not stats[1]['is_defensive']
+    assert stats[1]['industry_stock_count'] == 1
+    assert stats[1]['industry_investment'] == Decimal('40000.00')
+    assert stats[1]['industry_dividend'] == Decimal('2000.00')

@@ -1,8 +1,13 @@
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import (
+  DataError,
+  models as DjangoModels
+)
 from django.db.utils import IntegrityError, DataError
+from decimal import Decimal
 from account import models
-from app_tests import factories
+from app_tests import factories, get_date
 
 @pytest.mark.account
 @pytest.mark.model
@@ -182,3 +187,134 @@ class TestUser:
     )
 
     assert user.get_full_name() == expected
+
+@pytest.mark.account
+@pytest.mark.model
+@pytest.mark.django_db
+class TestPortfolioUser:
+  def _get_expressions(self, counts=5, investments=Decimal('2.00'), dividends=Decimal('5.00')):
+    expressions = {
+      'total_stock_counts': DjangoModels.Value(
+        counts,
+        output_field=DjangoModels.IntegerField(),
+      ),
+      'total_investments': DjangoModels.Value(
+        investments,
+        output_field=DjangoModels.DecimalField(max_digits=12, decimal_places=2),
+      ),
+      'total_dividends': DjangoModels.Value(
+        dividends,
+        output_field=DjangoModels.DecimalField(max_digits=10, decimal_places=2),
+      ),
+    }
+
+    return expressions
+
+  @pytest.fixture(scope='class')
+  def get_normal_user(self, django_db_blocker):
+    with django_db_blocker.unblock():
+      user = factories.UserFactory()
+
+    return user
+
+  @pytest.fixture
+  def common_mock(self, mocker):
+    from stock.models import PurchasedStock
+
+    def inner(**kwargs):
+      return mocker.patch.object(
+        PurchasedStock.objects,
+        'get_summary_expressions',
+        **kwargs,
+      )
+
+    return inner
+
+  @pytest.mark.parametrize([
+    'counts',
+    'investments',
+    'dividends',
+  ],[
+    (0, '0.00', '0.00'),
+    (1, '0.01', '0.01'),
+    (2, '2500000.00', '1200000.00'),
+    (3, '9999999999.99', '99999999.99'),
+  ], ids=[
+    'zero-pattern',
+    'min-pattern',
+    'normal-pattern',
+    'max-pattern',
+  ])
+  def test_valid_properties(self, common_mock, get_normal_user, counts, investments, dividends):
+    total_investments = Decimal(investments)
+    total_dividends = Decimal(dividends)
+    dummy_expressions = self._get_expressions(counts, total_investments, total_dividends)
+    mock_get_expressions = common_mock(return_value=dummy_expressions)
+    # ------------
+    # main routine
+    # ------------
+    user = get_normal_user
+    portfolio = models.PortfolioUser.objects.get(pk=user.pk)
+
+    mock_get_expressions.assert_called_once_with(relation_prefix='purchased_stocks')
+    assert portfolio.purchased_stock_count == counts
+    assert abs(float(portfolio.total_investment_amount) - float(total_investments)) < 1e-2
+    assert abs(float(portfolio.total_dividends) - float(total_dividends)) < 1e-2
+
+  @pytest.mark.parametrize([
+    'investments',
+    'dividends',
+  ],[
+    ('10000000000.00',  '99999999.99'),
+    ( '9999999999.99', '100000000.00'),
+  ], ids=[
+    'investment-overflow',
+    'dividend-overflow',
+  ])
+  def test_invalid_properties(self, common_mock, get_normal_user, investments, dividends):
+    dummy_expressions = self._get_expressions(investments=Decimal(investments), dividends=Decimal(dividends))
+    mock_get_expressions = common_mock(side_effect=DataError('numeric field overflow / out of range'))
+    # ------------
+    # main routine
+    # ------------
+    user = get_normal_user
+
+    with pytest.raises(DataError) as ex:
+      portfolio = models.PortfolioUser.objects.get(pk=user.pk)
+      _ = portfolio.total_investment_amount
+    err_msg = str(ex.value).lower()
+
+    assert any([keyword in err_msg for keyword in ['overflow', 'out of range']])
+
+  def test_industry_stat(self, common_mock, mocker, get_normal_user):
+    dummy_expressions = self._get_expressions()
+    mock_get_expressions = common_mock(return_value=dummy_expressions)
+    # ------------
+    # main routine
+    # ------------
+    user = get_normal_user
+    portfolio = models.PortfolioUser.objects.get(pk=user.pk)
+    _ = list(portfolio.industry_stats)
+
+    assert mock_get_expressions.call_count == 2
+    assert mock_get_expressions.mock_calls == [
+      mocker.call(relation_prefix='purchased_stocks'),
+      mocker.call(relation_prefix=''),
+    ]
+
+  def test_empty_portfolio(self, common_mock, get_normal_user):
+    empty_expressions = self._get_expressions(0, None, None)
+    mock_get_expressions = common_mock(return_value=empty_expressions)
+    # ------------
+    # main routine
+    # ------------
+    user = get_normal_user
+    portfolio = models.PortfolioUser.objects.get(pk=user.pk)
+
+    assert portfolio is not None
+    assert portfolio.purchased_stock_count == 0
+    assert portfolio.total_investment_amount == 0
+    assert portfolio.total_annual_dividend == 0
+    assert portfolio.total_investments is None
+    assert portfolio.total_dividends is None
+    assert len(list(portfolio.industry_stats)) == 0
