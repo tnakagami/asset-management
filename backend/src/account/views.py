@@ -28,7 +28,7 @@ class LogoutPage(LogoutView):
 
 class UserProfilePage(LoginRequiredMixin, IsOwner, DetailView, DjangoBreadcrumbsMixin):
   raise_exception = True
-  model = models.User
+  model = models.PortfolioUser
   template_name = 'account/user_profile.html'
   context_object_name = 'owner'
   crumbles = DjangoBreadcrumbsMixin.get_target_crumbles(

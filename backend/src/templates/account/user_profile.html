@@ -1,12 +1,14 @@
 {% extends 'base.html' %}
 {% load i18n %}
+{% load humanize %}
 
 {% block content %}
 {% include 'breadcrumbs.html' with title=_("User profile") %}
 <div class="row justify-content-center">
   <div class="col">
-    <div class="row">
+    <div class="row row-cols-1 g-2">
       <div class="col">
+        <h3 class="mt-2">{% trans "Summary of user profile" %}</h3>
         <div class="table-responsive">
           <table class="table table-hover">
             <thead>
@@ -17,23 +19,70 @@
             </thead>
             <tbody class="table-group-divider">
               <tr>
-                <th scope="row">{% trans 'screen name' %}</th>
+                <th scope="row">{% trans "Screen name" %}</th>
                 <td>{{ owner.get_full_name }}</td>
               </tr>
               <tr>
-                <th>{% trans 'UID' %}</th>
+                <th>{% trans "UID" %}</th>
                 <td>{{ owner.pk }}</td>
+              </tr>
+              <tr>
+                <th>{% translate "Number of purchased stocks" %}</th>
+                <td>{{ owner.purchased_stock_count }}</td>
+              </tr>
+              <tr>
+                <th>{% translate "Total purchased price" %}</th>
+                <td>{{ owner.total_investment_amount|floatformat:0|intcomma }}</td>
+              </tr>
+              <tr>
+                <th>{% translate "Total annual dividend" %}</th>
+                <td>{{ owner.total_annual_dividend|floatformat:2|intcomma }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-    <div class="row">
+      <div class="col">
+        <h3 class="mt-2">{% trans "Each sector information for purchased stocks" %}</h3>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
+                <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "#Target stocks" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Dividend" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Purchased price" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stat in owner.industry_stats %}
+              <tr>
+                <td>{{ stat.industry_name|default:"" }}</td>
+                <td>
+                  {% if stat.is_defensive %}
+                    {% trans "Defensive" %}
+                  {% else %}
+                    {% trans "Economically sensitive" %}
+                  {% endif %}
+                </td>
+                <td class="text-end">{{ stat.industry_stock_count }}</td>
+                <td class="text-end">{{ stat.industry_dividend|floatformat:2|intcomma }}</td>
+                <td class="text-end">{{ stat.industry_investment|floatformat:0|intcomma }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5">{% trans "No purchased stocks found." %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
       <div class="col">
         <a
           href="{% url 'account:update_profile' pk=owner.pk %}"
-          class="btn btn-primary w-100 custom-boxshadow"
+          class="btn btn-primary w-100 custom-boxshadow mb-2"
         >
           {% trans "Update user profile" %}
         </a>

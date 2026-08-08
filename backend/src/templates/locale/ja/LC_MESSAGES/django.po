@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: asset-management 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-31 21:32+0900\n"
+"POT-Creation-Date: 2026-08-08 10:38+0900\n"
 "PO-Revision-Date:  2025-05-12 14:00+0900\n"
 "Last-Translator: tnakagami\n"
 "Language-Team: language-solo-team\n"
@@ -154,7 +154,7 @@ msgstr "ログイン"
 msgid "Cancel"
 msgstr "キャンセル"
 
-#: templates/account/profile_form.html:5 templates/account/user_profile.html:38
+#: templates/account/profile_form.html:5 templates/account/user_profile.html:87
 msgid "Update user profile"
 msgstr "ユーザプロフィールの更新"
 
@@ -162,30 +162,109 @@ msgstr "ユーザプロフィールの更新"
 msgid "Update"
 msgstr "更新"
 
-#: templates/account/user_profile.html:5
+#: templates/account/user_profile.html:6
 msgid "User profile"
 msgstr "ユーザプロフィール"
 
-#: templates/account/user_profile.html:14
+#: templates/account/user_profile.html:11
+msgid "Summary of user profile"
+msgstr "ユーザプロフィールのサマリ"
+
+#: templates/account/user_profile.html:16
 #: templates/stock/compare_snapshots.html:137
 #: templates/stock/dashboard.html:272 templates/stock/purchased_stocks.html:147
 #: templates/stock/specific_snapshot.html:92
 msgid "Element"
 msgstr "項目"
 
-#: templates/account/user_profile.html:15 templates/stock/dashboard.html:273
+#: templates/account/user_profile.html:17 templates/stock/dashboard.html:273
 #: templates/stock/purchased_stocks.html:148
 #: templates/stock/specific_snapshot.html:93
 msgid "Value"
 msgstr "値"
 
-#: templates/account/user_profile.html:20
-msgid "screen name"
+#: templates/account/user_profile.html:22
+msgid "Screen name"
 msgstr "表示名"
 
-#: templates/account/user_profile.html:24
+#: templates/account/user_profile.html:26
 msgid "UID"
 msgstr "ユーザID"
+
+#: templates/account/user_profile.html:30
+msgid "Number of purchased stocks"
+msgstr "購入済み株式数"
+
+#: templates/account/user_profile.html:34
+msgid "Total purchased price"
+msgstr "購入価格の合計"
+
+#: templates/account/user_profile.html:38
+msgid "Total annual dividend"
+msgstr "年間配当金の合計"
+
+#: templates/account/user_profile.html:46
+msgid "Each sector information for purchased stocks"
+msgstr "購入済み株式に対する各セクタの情報"
+
+#: templates/account/user_profile.html:51
+#: templates/stock/compare_snapshots.html:62 templates/stock/dashboard.html:186
+#: templates/stock/dashboard.html:219 templates/stock/dashboard.html:286
+#: templates/stock/purchased_stocks.html:61
+#: templates/stock/purchased_stocks.html:161
+#: templates/stock/screened_stocks.html:49
+#: templates/stock/screened_stocks.html:173
+#: templates/stock/specific_snapshot.html:19
+#: templates/stock/specific_snapshot.html:106 templates/stock/stocks.html:64
+#: templates/stock/stocks.html:346
+msgid "Industry"
+msgstr "株式会社の業種"
+
+#: templates/account/user_profile.html:52
+#: templates/stock/compare_snapshots.html:63 templates/stock/dashboard.html:79
+#: templates/stock/dashboard.html:187 templates/stock/dashboard.html:220
+#: templates/stock/specific_snapshot.html:20
+msgid "Economic trend"
+msgstr "経済動向"
+
+#: templates/account/user_profile.html:53 templates/stock/dashboard.html:221
+msgid "#Target stocks"
+msgstr "該当企業数"
+
+#: templates/account/user_profile.html:54
+#: templates/stock/compare_snapshots.html:159
+#: templates/stock/dashboard.html:188 templates/stock/dashboard.html:222
+#: templates/stock/dashboard.html:294 templates/stock/dashboard.html:609
+#: templates/stock/dashboard.html:627 templates/stock/dashboard.html:645
+#: templates/stock/purchased_stocks.html:169
+#: templates/stock/screened_stocks.html:51
+#: templates/stock/screened_stocks.html:175
+#: templates/stock/specific_snapshot.html:21
+#: templates/stock/specific_snapshot.html:114 templates/stock/stocks.html:66
+#: templates/stock/stocks.html:348
+msgid "Dividend"
+msgstr "配当金"
+
+#: templates/account/user_profile.html:55
+#: templates/stock/compare_snapshots.html:149
+#: templates/stock/dashboard.html:191 templates/stock/dashboard.html:223
+#: templates/stock/investment_history.html:71
+#: templates/stock/investment_history.html:202
+#: templates/stock/specific_snapshot.html:24
+msgid "Purchased price"
+msgstr "購入価格"
+
+#: templates/account/user_profile.html:64 templates/stock/dashboard.html:400
+msgid "Defensive"
+msgstr "ディフェンシブ"
+
+#: templates/account/user_profile.html:66 templates/stock/dashboard.html:400
+msgid "Economically sensitive"
+msgstr "景気敏感"
+
+#: templates/account/user_profile.html:75
+msgid "No purchased stocks found."
+msgstr "購入済み株式が見つかりません。"
 
 #: templates/delete_modal_form.html:7
 msgid "Confirmation of deletion"
@@ -354,24 +433,6 @@ msgstr "株式コード"
 msgid "Stock name"
 msgstr "株式会社名"
 
-#: templates/stock/compare_snapshots.html:62 templates/stock/dashboard.html:186
-#: templates/stock/dashboard.html:219 templates/stock/dashboard.html:286
-#: templates/stock/purchased_stocks.html:61
-#: templates/stock/purchased_stocks.html:161
-#: templates/stock/screened_stocks.html:49
-#: templates/stock/screened_stocks.html:173
-#: templates/stock/specific_snapshot.html:19
-#: templates/stock/specific_snapshot.html:106 templates/stock/stocks.html:64
-#: templates/stock/stocks.html:346
-msgid "Industry"
-msgstr "株式会社の業種"
-
-#: templates/stock/compare_snapshots.html:63 templates/stock/dashboard.html:79
-#: templates/stock/dashboard.html:187 templates/stock/dashboard.html:220
-#: templates/stock/specific_snapshot.html:20
-msgid "Economic trend"
-msgstr "経済動向"
-
 #: templates/stock/compare_snapshots.html:64
 msgid "Diff (Count)"
 msgstr "差分（株式数）"
@@ -420,30 +481,9 @@ msgstr "比較先"
 msgid "Count"
 msgstr "株式数"
 
-#: templates/stock/compare_snapshots.html:149
-#: templates/stock/dashboard.html:191 templates/stock/dashboard.html:223
-#: templates/stock/investment_history.html:71
-#: templates/stock/investment_history.html:202
-#: templates/stock/specific_snapshot.html:24
-msgid "Purchased price"
-msgstr "購入価格"
-
 #: templates/stock/compare_snapshots.html:154
 msgid "Current price"
 msgstr "現在価格"
-
-#: templates/stock/compare_snapshots.html:159
-#: templates/stock/dashboard.html:188 templates/stock/dashboard.html:222
-#: templates/stock/dashboard.html:294 templates/stock/dashboard.html:609
-#: templates/stock/dashboard.html:627 templates/stock/dashboard.html:645
-#: templates/stock/purchased_stocks.html:169
-#: templates/stock/screened_stocks.html:51
-#: templates/stock/screened_stocks.html:175
-#: templates/stock/specific_snapshot.html:21
-#: templates/stock/specific_snapshot.html:114 templates/stock/stocks.html:66
-#: templates/stock/stocks.html:348
-msgid "Dividend"
-msgstr "配当金"
 
 #: templates/stock/dashboard.html:22
 msgid "Target snapshot"
@@ -526,10 +566,6 @@ msgstr "配当性向"
 msgid "Owned sector items"
 msgstr "所有銘柄のセクターごとの内訳"
 
-#: templates/stock/dashboard.html:221
-msgid "#Target stocks"
-msgstr "該当企業数"
-
 #: templates/stock/dashboard.html:231
 msgid "Total"
 msgstr "合計"
@@ -611,14 +647,6 @@ msgstr "時価総額（億円）"
 #: templates/stock/stocks.html:359
 msgid "Operating Cashflow (100M)"
 msgstr "営業CF（億円）"
-
-#: templates/stock/dashboard.html:400
-msgid "Defensive"
-msgstr "ディフェンシブ"
-
-#: templates/stock/dashboard.html:400
-msgid "Economically sensitive"
-msgstr "景気敏感"
 
 #: templates/stock/dashboard.html:508
 #: templates/stock/investment_history.html:76

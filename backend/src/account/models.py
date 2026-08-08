@@ -98,3 +98,59 @@ class User(AbstractBaseUser, PermissionsMixin):
       short_name = full_name
 
     return short_name
+
+class PortfolioUserQuerySet(models.QuerySet):
+  def with_stats(self):
+    from stock.models import PurchasedStock
+
+    annotations = PurchasedStock.objects.get_summary_expressions(relation_prefix='purchased_stocks')
+
+    return self.annotate(
+      total_stock_counts=annotations['total_stock_counts'],
+      total_investments=annotations['total_investments'],
+      total_dividends=annotations['total_dividends'],
+    )
+
+class PortfolioUserManager(models.Manager.from_queryset(PortfolioUserQuerySet)):
+  def get_queryset(self):
+    return super().get_queryset().with_stats()
+
+class PortfolioUser(User):
+  class Meta:
+    proxy = True
+
+  objects = PortfolioUserManager()
+
+  @property
+  def purchased_stock_count(self):
+    return self.total_stock_counts
+
+  @property
+  def total_investment_amount(self):
+    return self.total_investments or 0
+
+  @property
+  def total_annual_dividend(self):
+    return self.total_dividends or 0
+
+  @property
+  def industry_stats(self):
+    from stock.models import PurchasedStock
+
+    annotations = PurchasedStock.objects.get_summary_expressions(relation_prefix='')
+    queryset = self.purchased_stocks.selected_range().select_targets()
+    stats = (
+      queryset.values(
+        industry_pk=models.F('stock__industry'),
+        industry_name=models.F('industry_name'),
+        is_defensive=models.F('stock__industry__is_defensive'),
+      )
+      .annotate(
+        industry_stock_count=annotations['total_stock_counts'],
+        industry_investment=annotations['total_investments'],
+        industry_dividend=annotations['total_dividends'],
+      )
+      .order_by('-is_defensive', '-industry_investment')
+    )
+
+    return stats

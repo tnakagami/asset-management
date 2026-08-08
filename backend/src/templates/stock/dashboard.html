@@ -185,12 +185,12 @@
                       <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Payout Ratio" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Dividend" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Dividend yield" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Payout Ratio" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Purchased price" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Count" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Diff" %}</th>
                     </tr>
                   </thead>
                   <tbody id="all-assets-list" class="table-group-divider">
@@ -198,12 +198,12 @@
                   <tfoot class="table-group-divider text-left" id="asset-totals">
                     <tr>
                       <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
-                      <th><span name="total-asset-dividend"></span></th>
-                      <th><span name="average-asset-yield"></span>&#37;</th>
-                      <th><span>-</span></th>
-                      <th><span name="total-asset-value"></span></th>
-                      <th><span name="total-asset-count"></span></th>
-                      <th><span name="total-asset-diff"></span></th>
+                      <th class="text-end"><span name="total-asset-dividend"></span></th>
+                      <th class="text-end"><span name="average-asset-yield"></span>&#37;</th>
+                      <th class="text-end"><span>-</span></th>
+                      <th class="text-end"><span name="total-asset-value"></span></th>
+                      <th class="text-end"><span name="total-asset-count"></span></th>
+                      <th class="text-end"><span name="total-asset-diff"></span></th>
                     </tr>
                   </tfoot>
                 </table>
@@ -218,10 +218,10 @@
                       <th scope="col">{% trans "No." %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
                       <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "#Target stocks" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
-                      <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "#Target stocks" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Dividend" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Purchased price" %}</th>
+                      <th scope="col" class="text-nowrap text-center">{% trans "Diff" %}</th>
                     </tr>
                   </thead>
                   <tbody id="all-sectors-list" class="table-group-divider">
@@ -229,10 +229,10 @@
                   <tfoot class="table-group-divider text-left" id="sector-totals">
                     <tr>
                       <th scope="row" colspan="3" class="text-center">{% trans "Total" %}</th>
-                      <th><span name="total-sector-count"></span></th>
-                      <th><span name="total-sector-dividend"></span></th>
-                      <th><span name="total-sector-value"></span></th>
-                      <th><span name="total-sector-diff"></span></th>
+                      <th class="text-end"><span name="total-sector-count"></span></th>
+                      <th class="text-end"><span name="total-sector-dividend"></span></th>
+                      <th class="text-end"><span name="total-sector-value"></span></th>
+                      <th class="text-end"><span name="total-sector-diff"></span></th>
                     </tr>
                   </tfoot>
                 </table>
@@ -358,12 +358,12 @@
   <td><span class="asset-name" tabindex="0"></span></td>
   <td><span class="asset-industry"></span></td>
   <td><span class="asset-trend"></span></td>
-  <td><span class="asset-realDividend"></span></td>
-  <td><span class="asset-yield"></span>&#37;</td>
-  <td><span class="asset-payoutRatio"></span>&#37;</td>
-  <td><span class="asset-value"></span></td>
-  <td><span class="asset-count"></span></td>
-  <td><span class="asset-diff"></span></td>
+  <td class="text-end"><span class="asset-realDividend"></span></td>
+  <td class="text-end"><span class="asset-yield"></span>&#37;</td>
+  <td class="text-end"><span class="asset-payoutRatio"></span>&#37;</td>
+  <td class="text-end"><span class="asset-value"></span></td>
+  <td class="text-end"><span class="asset-count"></span></td>
+  <td class="text-end"><span class="asset-diff"></span></td>
 </tr>
 </template>
 
@@ -372,10 +372,10 @@
   <td scope="row"><span class="sector-idx"></span></td>
   <td><span class="sector-industry"></span></td>
   <td><span class="sector-trend"></span></td>
-  <td><span class="sector-count"></span></td>
-  <td><span class="sector-dividend"></span></td>
-  <td><span class="sector-value"></span></td>
-  <td><span class="sector-diff"></span></td>
+  <td class="text-end"><span class="sector-count"></span></td>
+  <td class="text-end"><span class="sector-dividend"></span></td>
+  <td class="text-end"><span class="sector-value"></span></td>
+  <td class="text-end"><span class="sector-diff"></span></td>
 </tr>
 </template>
 {% endblock %}

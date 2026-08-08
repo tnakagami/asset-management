@@ -61,20 +61,20 @@
                 <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Diff (Count)" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Diff (Purchased price)" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Diff (Current price)" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Diff (Dividend)" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Diff (Count)" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Diff (Purchased price)" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Diff (Current price)" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Diff (Dividend)" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider" id="all-records"></tbody>
             <tfoot class="table-group-divider text-left" id="record-totals">
               <tr>
                 <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
-                <th><span name="total-record-count"></span></th>
-                <th><span name="total-record-value"></span></th>
-                <th><span name="total-record-stock"></span></th>
-                <th><span name="total-record-dividend"></span></th>
+                <th class="text-end"><span name="total-record-count"></span></th>
+                <th class="text-end"><span name="total-record-value"></span></th>
+                <th class="text-end"><span name="total-record-stock"></span></th>
+                <th class="text-end"><span name="total-record-dividend"></span></th>
               </tr>
             </tfoot>
           </table>
@@ -101,10 +101,10 @@
   <td><span class="record-name" tabindex="0"></span></td>
   <td><span class="record-industry"></span></td>
   <td><span class="record-trend"></span></td>
-  <td><span class="record-count"></span></td>
-  <td><span class="record-value"></span></td>
-  <td><span class="record-stock"></span></td>
-  <td><span class="record-dividend"></span></td>
+  <td class="text-end"><span class="record-count"></span></td>
+  <td class="text-end"><span class="record-value"></span></td>
+  <td class="text-end"><span class="record-stock"></span></td>
+  <td class="text-end"><span class="record-dividend"></span></td>
 </tr>
 </template>
 

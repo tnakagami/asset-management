@@ -423,10 +423,12 @@ class StockQuerySet(models.QuerySet):
     return queryset
 
   def select_targets(self, tree=None):
-    queryset = self.filter(skip_task=False) \
-                   ._annotate_dividend() \
-                   ._annotate_per_pbr() \
-                   ._annotate_names()
+    queryset = (
+      self.filter(skip_task=False)
+          ._annotate_dividend()
+          ._annotate_per_pbr()
+          ._annotate_names()
+    )
 
     if tree:
       # Assumption: abstract syntax tree is validated by caller
@@ -436,14 +438,9 @@ class StockQuerySet(models.QuerySet):
 
     return queryset
 
-class StockManager(models.Manager):
+class StockManager(models.Manager.from_queryset(StockQuerySet)):
   def get_queryset(self):
-    queryset = StockQuerySet(self.model, using=self._db)
-
-    return queryset.select_related('industry').prefetch_related('locals')
-
-  def select_targets(self, tree=None):
-    return self.get_queryset().select_targets(tree)
+    return super().get_queryset().select_related('industry').prefetch_related('locals')
 
 class Stock(models.Model):
   class Meta:
@@ -723,9 +720,7 @@ class OperatorTypes(models.TextChoices):
       cls.LESS_THAN.value, cls.LESS_THAN_OR_EQ.value
     ]
     for_str = [cls.IN.value, cls.NOT_IN.value]
-    pairs =   [(key, 'both') for key in for_both] \
-            + [(key, 'number') for key in for_number] \
-            + [(key, 'str') for key in for_str]
+    pairs = [(key, 'both') for key in for_both] + [(key, 'number') for key in for_number] + [(key, 'str') for key in for_str]
     attr_types = dict(pairs)
 
     return attr_types
@@ -833,12 +828,16 @@ class PurchasedStockQuerySet(models.QuerySet):
     return self.order_by('purchase_date')
 
   def _annotate_names(self):
-    stocks = LocalizedStock.objects \
-                           .select_current_lang() \
-                           .filter(stock=models.OuterRef('stock'))
-    industries = LocalizedIndustry.objects \
-                                  .select_current_lang() \
-                                  .filter(industry=models.OuterRef('stock__industry'))
+    stocks = (
+      LocalizedStock.objects
+        .select_current_lang()
+        .filter(stock=models.OuterRef('stock'))
+    )
+    industries = (
+      LocalizedIndustry.objects
+        .select_current_lang()
+        .filter(industry=models.OuterRef('stock__industry'))
+    )
     # Annotation
     queryset = self.annotate(
       code=models.F('stock__code')
@@ -856,10 +855,12 @@ class PurchasedStockQuerySet(models.QuerySet):
     )
 
   def select_targets(self, tree=None):
-    queryset = self.select_related('stock') \
-                   .prefetch_related('stock__locals') \
-                   ._annotate_names() \
-                   ._annotate_diff()
+    queryset = (
+      self.select_related('stock')
+          .prefetch_related('stock__locals')
+          ._annotate_names()
+          ._annotate_diff()
+    )
 
     if tree:
       # Assumption: abstract syntax tree is validated by caller
@@ -880,6 +881,33 @@ class PurchasedStockQuerySet(models.QuerySet):
       queryset = queryset.filter(purchase_date__lte=to_date)
 
     return queryset
+
+  @staticmethod
+  def get_summary_expressions(relation_prefix='purchased_stocks'):
+    prefix = f'{relation_prefix}__' if relation_prefix else ''
+    active_filter = models.Q(**{f'{prefix}has_been_sold': False})
+    # Total investment
+    investment_expr = models.ExpressionWrapper(
+      models.F(f'{prefix}price') * models.F(f'{prefix}count'),
+      output_field=models.DecimalField(max_digits=12, decimal_places=2),
+    )
+    # Total annual dividend
+    dividend_expr = models.ExpressionWrapper(
+      models.F(f'{prefix}stock__dividend') * models.F(f'{prefix}count'),
+      output_field=models.DecimalField(max_digits=10, decimal_places=2),
+    )
+    # Create annotation expressions
+    expressions = {
+      'total_stock_counts': models.Count(
+        f'{prefix}stock__code',
+        distinct=True,
+        filter=active_filter,
+      ),
+      'total_investments': models.Sum(investment_expr, filter=active_filter),
+      'total_dividends': models.Sum(dividend_expr, filter=active_filter),
+    }
+
+    return expressions
 
 class PurchasedStock(models.Model):
   class Meta:
@@ -1447,9 +1475,12 @@ class Snapshot(models.Model):
     if pk is not None:
       params.update({'pk': pk})
     # Get queryset
-    queryset = PeriodicTask.objects.filter(**params) \
-                                   .prefetch_related('interval', 'crontab', 'solar', 'clocked') \
-                                   .order_by('-total_run_count')
+    queryset = (
+      PeriodicTask.objects
+        .filter(**params)
+        .prefetch_related('interval', 'crontab', 'solar', 'clocked')
+        .order_by('-total_run_count')
+    )
 
     return queryset
 

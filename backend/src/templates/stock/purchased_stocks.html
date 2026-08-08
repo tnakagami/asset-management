@@ -60,9 +60,9 @@
                 <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Trade date" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Average trade price" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Average trade price" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Count" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Diff" %}</th>
                 <th colspan="2" class="text-center">{% trans "Operate" %}</th>
               </tr>
             </thead>
@@ -87,15 +87,42 @@
                 data-operatingcashflow="{{ instance.stock.operating_cashflow|default:'0.0'|intcomma }}"
               >
                 {% with table_css=instance.has_been_sold|yesno:'table-secondary,' %}
-                <td scope="row" class="{{ table_css }}">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                <td data-type="code" class="{{ table_css }}">{{ instance.stock.code }}</td>
-                <td data-type="name" class="text-decoration-underline text-primary js-click-link {{ table_css }}" tabindex="0">{{ instance.stock.get_name }}</td>
-                <td data-type="industry" class="{{ table_css }}">{{ instance.stock.industry }}</td>
-                <td data-type="purchaseDate" class="{{ table_css }}">{{ instance.purchase_date|date:"Y-m-d" }}</td>
-                <td data-type="price" class="{{ table_css }}">{{ instance.price|intcomma }}</td>
-                <td data-type="count" class="{{ table_css }}">{{ instance.count|intcomma }}</td>
+                <td scope="row" class="{{ table_css }}">
+                  {{ page_obj.start_index|add:forloop.counter0 }}
+                </td>
+                <td data-type="code" class="{{ table_css }}">
+                  {{ instance.stock.code }}
+                </td>
+                <td
+                  data-type="name"
+                  class="text-decoration-underline text-primary js-click-link {{ table_css }}"
+                  tabindex="0"
+                >
+                  {{ instance.stock.get_name }}
+                </td>
+                <td data-type="industry" class="{{ table_css }}">
+                  {{ instance.stock.industry }}
+                </td>
+                <td data-type="purchaseDate" class="{{ table_css }}">
+                  {{ instance.purchase_date|date:"Y-m-d" }}
+                </td>
+                <td data-type="price" class="{{ table_css }} text-end">
+                  {{ instance.price|intcomma }}
+                </td>
+                <td data-type="count" class="{{ table_css }} text-end">
+                  {{ instance.count|intcomma }}
+                </td>
                 {% with total=instance|get_total_diff %}
-                <td data-type="diff" {% if total|is_negative %}class="text-danger {{ table_css }}"{% else %}class="{{ table_css }}"{% endif %}>{{ total|floatformat:0|intcomma }}</td>
+                <td
+                  data-type="diff"
+                  {% if total|is_negative %}
+                  class="text-danger text-end {{ table_css }}"
+                  {% else %}
+                  class="text-end {{ table_css }}"
+                  {% endif %}
+                >
+                  {{ total|floatformat:0|intcomma }}
+                </td>
                 {% endwith %}
                 {% endwith %}
                 <td data-operate="edit" class="text-center">
