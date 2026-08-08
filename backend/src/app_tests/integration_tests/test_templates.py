@@ -195,6 +195,7 @@ class TestAccountApplication(SharedFixture):
       factories.IndustryFactory(is_defensive=False),
       factories.IndustryFactory(is_defensive=True),
       factories.IndustryFactory(is_defensive=True),
+      factories.IndustryFactory(is_defensive=False),
     ]
     stocks = [
       factories.StockFactory(industry=industries[0], price=Decimal( '1000.00'), dividend=Decimal( '10.00')),
@@ -203,6 +204,8 @@ class TestAccountApplication(SharedFixture):
       factories.StockFactory(industry=industries[3], price=Decimal( '1500.00'), dividend=Decimal( '40.00')),
       factories.StockFactory(industry=industries[2], price=Decimal('10000.00'), dividend=Decimal('500.00')),
       factories.StockFactory(industry=industries[3], price=Decimal( '2000.00'), dividend=Decimal( '50.00')),
+      factories.StockFactory(industry=industries[0], price=Decimal( '3000.00'), dividend=Decimal( '60.00')),
+      factories.StockFactory(industry=industries[4], price=Decimal( '5000.00'), dividend=Decimal('100.00')),
     ]
     params = [
       {'stock': stocks[0], 'price': Decimal( '1000.00'), 'count': 10, 'has_been_sold': False},
@@ -212,6 +215,9 @@ class TestAccountApplication(SharedFixture):
       {'stock': stocks[3], 'price': Decimal( '1500.00'), 'count': 10, 'has_been_sold': False},
       {'stock': stocks[4], 'price': Decimal('10000.00'), 'count': 10, 'has_been_sold': True},
       {'stock': stocks[5], 'price': Decimal( '2000.00'), 'count':  5, 'has_been_sold': False},
+      {'stock': stocks[0], 'price': Decimal( '1500.00'), 'count': 10, 'has_been_sold': True},
+      {'stock': stocks[6], 'price': Decimal( '3000.00'), 'count':  5, 'has_been_sold': False},
+      {'stock': stocks[7], 'price': Decimal( '5000.00'), 'count': 10, 'has_been_sold': True},
     ]
     for idx, obj in enumerate(params, 3):
       factories.PurchasedStockFactory(
@@ -232,12 +238,15 @@ class TestAccountApplication(SharedFixture):
     # -------
     # Summary
     # -------
-    # stocks[0], stocks[1], stocks[2], stocks[3], and stocks[5]
-    assert owner.purchased_stock_count == 5
-    # 10,000 + 50,000 + 20,000 + 30,000 + 10,000 = 120,000.00
-    assert owner.total_investment_amount == Decimal('120000.00')
-    # 100 + 400 + 300 + 800 + 250 = 1,850.00
-    assert owner.total_annual_dividend == Decimal('1850.00')
+    # stocks[0], stocks[1], stocks[2], stocks[3], stocks[5], and stocks[6]
+    assert owner.purchased_stock_count == 6
+    # 10,000 + 50,000 + 20,000 + 40,000 + 15,000 = 135,000.00
+    assert owner.total_investment_amount == Decimal('135000.00')
+    # 100 + 400 + 300 + 1050 + 300 = 2,150.00
+    assert owner.total_annual_dividend == Decimal('2150.00')
+    # -------
+    # Details
+    # -------
     # The 1st data
     assert stats[0]['industry_pk'] == industries[3].pk
     assert stats[0]['is_defensive']
@@ -259,9 +268,9 @@ class TestAccountApplication(SharedFixture):
     # The 4th data
     assert stats[3]['industry_pk'] == industries[0].pk
     assert not stats[3]['is_defensive']
-    assert stats[3]['industry_stock_count'] == 1
-    assert stats[3]['industry_investment'] == Decimal('10000.00')
-    assert stats[3]['industry_dividend'] == Decimal('100.00')
+    assert stats[3]['industry_stock_count'] == 2
+    assert stats[3]['industry_investment'] == Decimal('25000.00')
+    assert stats[3]['industry_dividend'] == Decimal('400.00')
 
 # =================
 # Stock application

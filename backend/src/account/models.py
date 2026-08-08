@@ -138,7 +138,7 @@ class PortfolioUser(User):
     from stock.models import PurchasedStock
 
     annotations = PurchasedStock.objects.get_summary_expressions(relation_prefix='')
-    queryset = self.purchased_stocks.select_targets()
+    queryset = self.purchased_stocks.selected_range().select_targets()
     stats = (
       queryset.values(
         industry_pk=models.F('stock__industry'),
