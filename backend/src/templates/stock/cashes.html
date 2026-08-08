@@ -22,7 +22,7 @@
             <thead>
               <tr>
                 <th scope="col">{% trans "No." %}</th>
-                <th scope="col">{% trans "Balance" %}</th>
+                <th scope="col" class="text-center">{% trans "Balance" %}</th>
                 <th scope="col">{% trans "Registered date" %}</th>
                 <th colspan="2" class="text-center">{% trans "Operate" %}</th>
               </tr>
@@ -31,7 +31,7 @@
               {% for instance in cashes %}
               <tr>
                 <td scope="row">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                <td data-type="balance">{{ instance.balance|intcomma }}</td>
+                <td data-type="balance" class="text-end">{{ instance.balance|intcomma }}</td>
                 <td data-type="registeredDate">{{ instance.registered_date|date:"Y-m-d" }}</td>
                 <td data-operate="edit" class="text-center">
                   <a

@@ -18,12 +18,12 @@
                 <th scope="col" class="text-nowrap">{% trans "Stock name" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Industry" %}</th>
                 <th scope="col" class="text-nowrap">{% trans "Economic trend" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Dividend" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Payout Ratio" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Count" %}</th>
-                <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Dividend" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Dividend yield" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Payout Ratio" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Purchased price" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Count" %}</th>
+                <th scope="col" class="text-nowrap text-center">{% trans "Diff" %}</th>
               </tr>
             </thead>
             <tbody class="table-group-divider">
@@ -47,27 +47,66 @@
               >
                 <td scope="row">{{ forloop.counter0 }}</td>
                 <td>{{ record.code }}</td>
-                <td {% if not forloop.first %}tabindex="0" class="text-decoration-underline text-primary js-click-link"{% endif %}>{{ record.name }}</td>
+                <td
+                  {% if not forloop.first %}
+                  tabindex="0"
+                  class="text-decoration-underline text-primary js-click-link"
+                  {% endif %}
+                >
+                  {{ record.name }}
+                </td>
                 <td>{{ record.industry }}</td>
                 <td>{{ record.trend }}</td>
-                <td {% if not forloop.first %}data-type="dividend"{% endif %}>{{ record.real_div|floatformat:0|intcomma }}</td>
-                <td>{{ record.div_yield|floatformat:2 }}&#37;</td>
-                <td>{{ record.payout_ratio|floatformat:2 }}&#37;</td>
-                <td {% if not forloop.first %}data-type="value"{% endif %}>{{ record.purchased_value|floatformat:-1|intcomma }}</td>
-                <td {% if not forloop.first %}data-type="count"{% endif %}>{{ record.count|intcomma }}</td>
-                <td {% if not forloop.first %}data-type="diff"{% endif %}{% if record.diff|is_negative %} class="text-danger"{% endif %}>{{ record.diff|floatformat:-1|intcomma }}</td>
+                <td
+                  {% if not forloop.first %}
+                  data-type="dividend"
+                  {% endif %}
+                  class="text-end"
+                >
+                  {{ record.real_div|floatformat:0|intcomma }}
+                </td>
+                <td class="text-end">{{ record.div_yield|floatformat:2 }}&#37;</td>
+                <td class="text-end">{{ record.payout_ratio|floatformat:2 }}&#37;</td>
+                <td
+                  {% if not forloop.first %}
+                  data-type="value"
+                  {% endif %}
+                  class="text-end"
+                >
+                  {{ record.purchased_value|floatformat:-1|intcomma }}
+                </td>
+                <td
+                  {% if not forloop.first %}
+                  data-type="count"
+                  {% endif %}
+                  class="text-end"
+                >
+                  {{ record.count|intcomma }}
+                </td>
+                <td
+                  {% if not forloop.first %}
+                  data-type="diff"
+                  {% endif %}
+                  {% if record.diff|is_negative %}
+                  class="text-end text-danger"
+                  {% else %}
+                  class="text-end"
+                  {% endif %}
+                >
+                  {{ record.diff|floatformat:-1|intcomma }}
+                </td>
               </tr>
               {% endfor %}
             </tbody>
             <tfoot class="table-group-divider text-left">
               <tr>
                 <th scope="row" colspan="5" class="text-center">{% trans "Total except cash" %}</th>
-                <th><span id="total-dividend"></span></th>
-                <th><span id="average-yield"></span>&#37;</th>
-                <th><span>-</span></th>
-                <th><span id="total-value"></span></th>
-                <th><span id="total-count"></span></th>
-                <th><span id="total-diff"></span></th>
+                <th class="text-end"><span id="total-dividend"></span></th>
+                <th class="text-end"><span id="average-yield"></span>&#37;</th>
+                <th class="text-end"><span>-</span></th>
+                <th class="text-end"><span id="total-value"></span></th>
+                <th class="text-end"><span id="total-count"></span></th>
+                <th class="text-end"><span id="total-diff"></span></th>
               </tr>
             </tfoot>
           </table>

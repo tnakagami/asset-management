@@ -66,14 +66,14 @@
           <thead>
             <tr>
               <th scope="col">{% trans "Title" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "#Stocks" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "Total counts" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "Purchased price" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "Evaluated price" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "Diff" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "Dividend (per year)" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "Dividend yield" %}</th>
-              <th scope="col" class="text-nowrap">{% trans "Cash" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "#Stocks" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "Total counts" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "Purchased price" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "Evaluated price" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "Diff" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "Dividend (per year)" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "Dividend yield" %}</th>
+              <th scope="col" class="text-nowrap text-center">{% trans "Cash" %}</th>
             </tr>
           </thead>
           <tbody id="all-snapshot-list" class="table-group-divider">
@@ -99,14 +99,14 @@
 <template id="tbody-template">
 <tr>
   <td scope="row"><span class="ss-title"></span></td>
-  <td><span class="ss-count"></span></td>
-  <td><span class="ss-total"></span></td>
-  <td><span class="ss-purchasedPrice"></span></td>
-  <td><span class="ss-stockPrice"></span></td>
-  <td><span class="ss-diff"></span></td>
-  <td><span class="ss-dividend"></span></td>
-  <td><span class="ss-yield"></span>&#37;</td>
-  <td><span class="ss-cash"></span></td>
+  <td class="text-end"><span class="ss-count"></span></td>
+  <td class="text-end"><span class="ss-total"></span></td>
+  <td class="text-end"><span class="ss-purchasedPrice"></span></td>
+  <td class="text-end"><span class="ss-stockPrice"></span></td>
+  <td class="text-end"><span class="ss-diff"></span></td>
+  <td class="text-end"><span class="ss-dividend"></span></td>
+  <td class="text-end"><span class="ss-yield"></span>&#37;</td>
+  <td class="text-end"><span class="ss-cash"></span></td>
 </tr>
 </template>
 {% endblock %}
