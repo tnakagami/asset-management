@@ -196,7 +196,7 @@ while [ -n "$1" ]; do
       # Validate command
       if [ -n "${command}" ]; then
         # Execute the command with arguments
-        docker exec -it ${BACKEND_CONTAINER_NAME} python manage.py ${command} ${cmd_args}
+        docker exec -i ${BACKEND_CONTAINER_NAME} python manage.py ${command} ${cmd_args}
       fi
 
       shift

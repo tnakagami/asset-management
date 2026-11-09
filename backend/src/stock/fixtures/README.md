@@ -86,6 +86,51 @@ mv db_stock.yaml stock.yaml
 popd
 ```
 
+## How to update status of skip task
+1. Prepare for target stock codes to update `skip_task` status in `stock.yaml`.
+1. Create following python code.
+
+    ```python
+    import django
+    from config.define_module import setup_default_setting
+
+    #
+    # Setup
+    #
+    setup_default_setting()
+    django.setup()
+
+    # Import relevant models
+    from django.db import transaction
+    from stock.models import Stock
+
+    # ------------
+    # main routine
+    # ------------
+    # Define target ids defined by user
+    codes = ['2686', '2692', '2763']
+
+    try:
+      with transaction.atomic():
+        # Update skip_task field for instances which have target codes
+        updated_counts = Stock.objects.filter(code__in=codes).update(skip_task=True)
+        print(f"Updated count: {updated_counts}")
+    except Exception as ex:
+      print(f"Error: {ex}")
+    ```
+
+1. Access to docker environment to use the following command.
+
+    ```bash
+    docker exec -it backend.asset-management bash
+    ```
+
+1. Run the following command.
+
+    ```bash
+    python $(find /opt/app -name "manage.py") shell < above_script_file.py
+    ```
+
 ## Add new stock data based on Japan Exchange Group, Inc.
 1. Save stock list by following format as `stock_list.yaml`.
 
@@ -166,7 +211,7 @@ popd
       bulk_create("localized stocks", LocalizedStock, new_localized_stocks)
     ```
 
-3. Run the following command.
+1. Run the following command.
 
     ```bash
     python $(find /opt/app -name "manage.py") shell < above_script_file.py
