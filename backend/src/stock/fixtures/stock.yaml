@@ -1493,7 +1493,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 89
   fields:
@@ -1765,7 +1765,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 105
   fields:
@@ -2292,7 +2292,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 136
   fields:
@@ -4485,7 +4485,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 265
   fields:
@@ -5930,7 +5930,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 350
   fields:
@@ -7392,7 +7392,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 436
   fields:
@@ -8157,7 +8157,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 481
   fields:
@@ -8225,7 +8225,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 485
   fields:
@@ -8769,7 +8769,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 517
   fields:
@@ -11506,7 +11506,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 678
   fields:
@@ -12934,7 +12934,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 762
   fields:
@@ -13495,7 +13495,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 795
   fields:
@@ -13665,7 +13665,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 805
   fields:
@@ -15348,7 +15348,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 904
   fields:
@@ -15773,7 +15773,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 929
   fields:
@@ -15841,7 +15841,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 933
   fields:
@@ -16232,7 +16232,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 956
   fields:
@@ -17150,7 +17150,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1010
   fields:
@@ -18782,7 +18782,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1106
   fields:
@@ -21485,7 +21485,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1265
   fields:
@@ -23338,7 +23338,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1374
   fields:
@@ -23610,7 +23610,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1390
   fields:
@@ -24579,7 +24579,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1447
   fields:
@@ -25021,7 +25021,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1473
   fields:
@@ -25327,7 +25327,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1491
   fields:
@@ -25599,7 +25599,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1507
   fields:
@@ -26602,7 +26602,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1566
   fields:
@@ -26959,7 +26959,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1587
   fields:
@@ -28472,7 +28472,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1676
   fields:
@@ -28982,7 +28982,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1706
   fields:
@@ -29815,7 +29815,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1755
   fields:
@@ -30835,7 +30835,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1815
   fields:
@@ -31498,7 +31498,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1854
   fields:
@@ -32909,7 +32909,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1937
   fields:
@@ -33198,7 +33198,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1954
   fields:
@@ -33657,7 +33657,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 1981
   fields:
@@ -34065,7 +34065,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2005
   fields:
@@ -36071,7 +36071,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2123
   fields:
@@ -36683,7 +36683,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2159
   fields:
@@ -37006,7 +37006,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2178
   fields:
@@ -37074,7 +37074,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2182
   fields:
@@ -39216,7 +39216,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2308
   fields:
@@ -40049,7 +40049,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2357
   fields:
@@ -40967,7 +40967,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2411
   fields:
@@ -41970,7 +41970,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2470
   fields:
@@ -42395,7 +42395,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2495
   fields:
@@ -43908,7 +43908,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2584
   fields:
@@ -45846,7 +45846,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2698
   fields:
@@ -45914,7 +45914,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2702
   fields:
@@ -46050,7 +46050,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2710
   fields:
@@ -47274,7 +47274,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2782
   fields:
@@ -48073,7 +48073,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2829
   fields:
@@ -49025,7 +49025,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2885
   fields:
@@ -49518,7 +49518,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 2914
   fields:
@@ -51915,7 +51915,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3055
   fields:
@@ -53666,7 +53666,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3158
   fields:
@@ -53683,7 +53683,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3159
   fields:
@@ -53700,7 +53700,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3160
   fields:
@@ -53853,7 +53853,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3169
   fields:
@@ -54533,7 +54533,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3209
   fields:
@@ -56488,7 +56488,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3324
   fields:
@@ -56981,7 +56981,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3353
   fields:
@@ -60432,7 +60432,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3556
   fields:
@@ -62625,7 +62625,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3685
   fields:
@@ -66824,7 +66824,7 @@
     market_cap: 0
     payout_ratio: 0
     operating_cashflow: 0
-    skip_task: false
+    skip_task: true
 - model: stock.stock
   pk: 3932
   fields:
